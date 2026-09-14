@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulasi Portal Layanan Publik</title>
+  <style>
+    body { font-family: sans-serif; padding: 30px; background-color: #f4f6f8; }
+    .card { background: white; padding: 25px; border-radius: 8px; max-width: 480px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Formulir Pengajuan Bantuan Sosial</h2>
+    <form id="bansosForm">
+      <div class="form-group">
+        <label for="nik">Nomor Induk Kependudukan (NIK):</label>
+        <input type="text" id="nik" name="nik" placeholder="Masukkan 16 digit NIK">
+      </div>
+      <div class="form-group">
+        <label for="nama">Nama Lengkap:</label>
+        <input type="text" id="nama" name="nama" placeholder="Sesuai KTP">
+      </div>
+      <div class="form-group">
+        <label for="alamat">Alamat Domisili:</label>
+        <input type="text" id="alamat" name="alamat" placeholder="Jalan, RT/RW, Kota">
+      </div>
+      <div class="form-group">
+        <label for="telepon">Nomor Telepon / WhatsApp:</label>
+        <input type="text" id="telepon" name="telepon" placeholder="08xxxxxxxxxx">
+      </div>
+      <button type="button">Kirim Formulir</button>
+    </form>
+  </div>
+</body>
+</html>

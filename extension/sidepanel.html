@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>GovConnect Assistant</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; margin: 0; background: #fafafa; color: #333; }
+    .header { border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px; }
+    .badge { background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: bold; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    .profile-row { font-size: 13px; margin-bottom: 6px; }
+    .profile-label { color: #6b7280; font-size: 11px; }
+    button { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    #status { margin-top: 12px; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h3 style="margin: 0 0 6px 0;">GovConnect</h3>
+    <span class="badge" id="apiStatus">API: Menghubungkan...</span>
+  </div>
+
+  <div class="card">
+    <div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Profil Aktif</div>
+    <div class="profile-row"><div class="profile-label">Nama</div><div id="profName">-</div></div>
+    <div class="profile-row"><div class="profile-label">NIK</div><div id="profNik">-</div></div>
+    <div class="profile-row"><div class="profile-label">Alamat</div><div id="profAddress">-</div></div>
+  </div>
+
+  <button id="btnAutofill" disabled>⚡ Autofill All Fields</button>
+  <div id="status"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

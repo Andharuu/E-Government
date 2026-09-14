@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovConnect Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Top Header -->
+    <header class="flex justify-between items-center border-b border-slate-800 pb-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">GovConnect Hub</h1>
+        <p class="text-xs text-slate-400">Pusat kendali profil identitas dan monitoring autofill</p>
+      </div>
+      <div id="statusBadge" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+        Menghubungkan...
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Profil Management Form -->
+      <section class="md:col-span-2 bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 shadow-sm">
+        <h2 class="text-lg font-semibold mb-4 text-slate-200">Data Kependudukan (Master Profile)</h2>
+        <form id="profileForm" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">NIK (16 Digit)</label>
+              <input type="text" id="nik" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Nama Lengkap</label>
+              <input type="text" id="full_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Nomor Telepon / WA</label>
+              <input type="text" id="phone_number" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Pekerjaan</label>
+              <input type="text" id="occupation" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Alamat Domisili Lengkap</label>
+            <textarea id="address" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+          </div>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-500 transition-colors text-white font-medium text-sm px-4 py-2 rounded-lg">
+            Simpan Perubahan
+          </button>
+          <span id="saveAlert" class="text-xs ml-3 text-emerald-400 hidden">Tersimpan ke database!</span>
+        </form>
+      </section>
+
+      <!-- Activity Logs Widget -->
+      <section class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 shadow-sm flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold text-slate-200">Riwayat Injeksi</h2>
+          <button onclick="loadActivities()" class="text-xs text-blue-400 hover:underline">Refresh</button>
+        </div>
+        <div id="activityList" class="space-y-3 overflow-y-auto max-h-[380px] pr-1 text-xs text-slate-300">
+          <div class="text-slate-500">Memuat riwayat...</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    const API = "http://127.0.0.1:8000/api/v1";
+
+    async function loadProfile() {
+      const badge = document.getElementById("statusBadge");
+      try {
+        const res = await fetch(`${API}/profile/me`);
+        const data = await res.json();
+        document.getElementById("nik").value = data.nik || "";
+        document.getElementById("full_name").value = data.full_name || "";
+        document.getElementById("phone_number").value = data.phone_number || "";
+        document.getElementById("occupation").value = data.occupation || "";
+        document.getElementById("address").value = data.address || "";
+
+        badge.className = "text-xs px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800";
+        badge.innerText = "System Online";
+      } catch (err) {
+        badge.className = "text-xs px-3 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-800";
+        badge.innerText = "Offline";
+      }
+    }
+
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        nik: document.getElementById("nik").value,
+        full_name: document.getElementById("full_name").value,
+        phone_number: document.getElementById("phone_number").value,
+        occupation: document.getElementById("occupation").value,
+        address: document.getElementById("address").value
+      };
+
+      const res = await fetch(`${API}/profile/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const alert = document.getElementById("saveAlert");
+        alert.classList.remove("hidden");
+        setTimeout(() => alert.classList.add("hidden"), 2500);
+      }
+    });
+
+    async function loadActivities() {
+      const list = document.getElementById("activityList");
+      try {
+        const res = await fetch(`${API}/activities?limit=6`);
+        const logs = await res.json();
+        if (logs.length === 0) {
+          list.innerHTML = `<div class="text-slate-500">Belum ada aktivitas terekam.</div>`;
+          return;
+        }
+        list.innerHTML = logs.map(log => `
+          <div class="bg-slate-900 border border-slate-700/50 rounded p-3">
+            <div class="flex justify-between font-mono text-[10px] text-slate-400 mb-1">
+              <span>${new Date(log.created_at).toLocaleTimeString()}</span>
+              <span class="text-emerald-400">+${log.fields_filled_count} fields</span>
+            </div>
+            <div class="truncate text-slate-300 font-medium" title="${log.target_url}">${log.target_url}</div>
+          </div>
+        `).join("");
+      } catch (err) {
+        list.innerHTML = `<div class="text-rose-400">Gagal memuat log.</div>`;
+      }
+    }
+
+    loadProfile();
+    loadActivities();
+  </script>
+</body>
+</html>
