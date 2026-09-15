@@ -2,35 +2,219 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>GovConnect Assistant</title>
+  <title>GovConnect Side Panel</title>
   <style>
-    body { font-family: sans-serif; padding: 16px; margin: 0; background: #fafafa; color: #333; }
-    .header { border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px; }
-    .badge { background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: bold; }
-    .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
-    .profile-row { font-size: 13px; margin-bottom: 6px; }
-    .profile-label { color: #6b7280; font-size: 11px; }
-    button { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    button:hover { background: #1d4ed8; }
-    button:disabled { background: #9ca3af; cursor: not-allowed; }
-    #status { margin-top: 12px; font-size: 12px; text-align: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #1e293b;
+      position: sticky; top: 0;
+      background: #0f172a; z-index: 10;
+    }
+    .logo-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+    }
+    .header-text { flex: 1; min-width: 0; }
+    .header-title { font-size: 14px; font-weight: 700; }
+    .header-sub {
+      font-size: 10px; color: #64748b;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .badge {
+      font-size: 9px; font-weight: 700; padding: 2px 7px;
+      border-radius: 999px; flex-shrink: 0;
+    }
+    .badge-connected { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+    .badge-error { background: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+
+    /* ---- SCREENS ---- */
+    .screen { display: none; flex-direction: column; flex: 1; padding: 14px 16px; gap: 12px; }
+    .screen.active { display: flex; }
+
+    /* ---- UNSUPPORTED STATE ---- */
+    #screenUnsupported {
+      justify-content: center; align-items: center; text-align: center; gap: 10px;
+    }
+    .unsupported-icon { font-size: 32px; color: #475569; }
+    .unsupported-title { font-size: 14px; font-weight: 700; color: #94a3b8; }
+    .unsupported-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+    /* ---- FIELD SELECTION STATE ---- */
+    .section-title {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;
+    }
+    .detect-summary {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 10px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .detect-count { font-size: 12px; font-weight: 700; color: #38bdf8; }
+    .detect-label { font-size: 11px; color: #64748b; }
+
+    .field-list {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      overflow: hidden;
+    }
+    .field-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-bottom: 1px solid #0f172a; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .field-item:last-child { border-bottom: none; }
+    .field-item:hover { background: #263143; }
+    .field-item input[type=checkbox] { accent-color: #2563eb; width: 14px; height: 14px; flex-shrink: 0; }
+    .field-name { font-size: 12px; font-weight: 600; flex: 1; }
+    .field-profile { font-size: 10px; color: #64748b; }
+    .field-badge {
+      font-size: 9px; padding: 2px 6px; border-radius: 999px; font-weight: 600;
+    }
+    .fb-matched { background: #14532d; color: #86efac; }
+    .fb-notfound { background: #1e293b; color: #64748b; border: 1px solid #334155; }
+
+    /* ---- RESULT STATE ---- */
+    .result-summary {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 12px;
+    }
+    .result-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .result-row:last-child { margin-bottom: 0; }
+    .result-label { font-size: 12px; color: #94a3b8; }
+    .result-val { font-size: 12px; font-weight: 700; }
+    .val-success { color: #34d399; }
+    .val-partial { color: #fbbf24; }
+    .val-failed { color: #f87171; }
+    .val-neutral { color: #94a3b8; }
+
+    .result-fields { display: flex; flex-direction: column; gap: 4px; }
+    .rfield {
+      display: flex; align-items: center; gap: 8px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+      padding: 7px 10px; font-size: 11px;
+    }
+    .rfield-icon { font-size: 12px; flex-shrink: 0; }
+    .rfield-name { flex: 1; font-weight: 600; color: #e2e8f0; }
+    .rfield-status { font-size: 10px; font-weight: 600; }
+    .rs-filled { color: #34d399; }
+    .rs-skipped { color: #64748b; }
+    .rs-notfound { color: #94a3b8; }
+
+    .review-notice {
+      background: #1e3a5f; border: 1px solid #2563eb; border-radius: 8px;
+      padding: 10px 12px; font-size: 11px; color: #93c5fd; text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn-primary {
+      width: 100%; padding: 10px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); transform: translateY(-1px); }
+    .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      width: 100%; padding: 8px;
+      background: transparent; color: #64748b;
+      border: 1px solid #334155; border-radius: 7px;
+      font-size: 11px; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-ghost:hover { background: #1e293b; color: #94a3b8; }
+
+    #statusMsg {
+      font-size: 11px; text-align: center; color: #64748b; min-height: 14px;
+    }
   </style>
 </head>
 <body>
+
   <div class="header">
-    <h3 style="margin: 0 0 6px 0;">GovConnect</h3>
-    <span class="badge" id="apiStatus">API: Menghubungkan...</span>
+    <div class="logo-icon">G</div>
+    <div class="header-text">
+      <div class="header-title">GovConnect</div>
+      <div class="header-sub" id="pageTitle">Mendeteksi halaman...</div>
+    </div>
+    <span class="badge badge-connected" id="apiStatus">Online</span>
   </div>
 
-  <div class="card">
-    <div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Profil Aktif</div>
-    <div class="profile-row"><div class="profile-label">Nama</div><div id="profName">-</div></div>
-    <div class="profile-row"><div class="profile-label">NIK</div><div id="profNik">-</div></div>
-    <div class="profile-row"><div class="profile-label">Alamat</div><div id="profAddress">-</div></div>
+  <!-- ====== STATE 1: UNSUPPORTED ====== -->
+  <div id="screenUnsupported" class="screen">
+    <div class="unsupported-icon">○</div>
+    <div class="unsupported-title">Website belum didukung</div>
+    <div class="unsupported-desc">GovConnect belum dapat mengenali<br>form pada halaman ini.</div>
   </div>
 
-  <button id="btnAutofill" disabled>⚡ Autofill All Fields</button>
-  <div id="status"></div>
+  <!-- ====== STATE 2: FIELD SELECTION ====== -->
+  <div id="screenDetect" class="screen">
+    <div>
+      <div class="section-title">Formulir Terdeteksi</div>
+      <div class="detect-summary">
+        <div>
+          <div class="detect-count" id="detectCount">0 field</div>
+          <div class="detect-label">siap untuk diisi</div>
+        </div>
+        <div style="font-size: 20px;">📋</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Pilih Field</div>
+      <div class="field-list" id="fieldList">
+        <!-- diisi JS -->
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btnFill" disabled>⚡ Fill Selected Fields</button>
+    <div id="statusMsg"></div>
+  </div>
+
+  <!-- ====== STATE 3: RESULT ====== -->
+  <div id="screenResult" class="screen">
+    <div class="result-summary">
+      <div class="result-row">
+        <span class="result-label">Status</span>
+        <span class="result-val" id="resultStatus">-</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Field Terisi</span>
+        <span class="result-val val-success" id="resultFilled">0</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Tidak Ditemukan</span>
+        <span class="result-val val-neutral" id="resultSkipped">0</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Detail Per Field</div>
+      <div class="result-fields" id="resultFields"></div>
+    </div>
+
+    <div class="review-notice">
+      ✓ Periksa hasil autofill sebelum submit.<br>
+      GovConnect tidak mengirim formulir secara otomatis.
+    </div>
+
+    <button class="btn-ghost" id="btnRefill">↩ Isi Ulang</button>
+  </div>
 
   <script src="sidepanel.js"></script>
 </body>

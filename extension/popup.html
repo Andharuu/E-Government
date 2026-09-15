@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>GovConnect</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 300px;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* ---- SHARED LAYOUT ---- */
+    .screen { display: none; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    .logo-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .logo-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px; color: #fff;
+    }
+    .logo-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-tagline { font-size: 10px; color: #64748b; }
+
+    /* ---- AUTH SCREEN ---- */
+    #authScreen { padding: 20px; gap: 14px; }
+
+    .auth-title { font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 4px; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+    .field input {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 7px; padding: 9px 11px;
+      color: #f8fafc; font-size: 13px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus { border-color: #2563eb; }
+
+    .btn-primary {
+      width: 100%; padding: 10px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+    .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+    .toggle-link {
+      font-size: 11px; text-align: center; color: #64748b; margin-top: 2px;
+    }
+    .toggle-link span {
+      color: #38bdf8; cursor: pointer; text-decoration: underline;
+    }
+
+    #authError {
+      font-size: 11px; color: #f87171; text-align: center;
+      min-height: 14px; display: none;
+    }
+
+    /* ---- LOGGED-IN SCREEN ---- */
+    #mainScreen { padding: 16px 20px; gap: 12px; }
+
+    .status-row {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .check-pill {
+      font-size: 10px; font-weight: 600; padding: 3px 9px;
+      border-radius: 999px; background: #064e3b; color: #6ee7b7;
+      border: 1px solid #059669;
+    }
+    .user-email { font-size: 11px; color: #64748b; }
+
+    .profile-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 12px;
+    }
+    .profile-card-title {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px;
+    }
+    .profile-row { margin-bottom: 6px; }
+    .profile-row:last-child { margin-bottom: 0; }
+    .profile-label { font-size: 10px; color: #475569; }
+    .profile-value { font-size: 12px; color: #e2e8f0; font-weight: 600; }
+
+    .completion-row {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .completion-label { font-size: 11px; color: #64748b; }
+    .completion-val { font-size: 11px; font-weight: 700; color: #38bdf8; }
+    .progress-bar {
+      height: 4px; background: #1e293b; border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2563eb, #38bdf8);
+      border-radius: 999px; transition: width 0.4s;
+    }
+
+    .actions { display: flex; flex-direction: column; gap: 7px; }
+    .btn-open-panel {
+      width: 100%; padding: 10px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-open-panel:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-sec {
+      flex: 1; padding: 7px;
+      background: transparent; color: #94a3b8;
+      border: 1px solid #334155; border-radius: 7px;
+      font-size: 11px; font-weight: 500; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+    .btn-sec:hover { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+
+    #statusMsg {
+      font-size: 11px; text-align: center;
+      color: #94a3b8; min-height: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== AUTH SCREEN ===================== -->
+  <div id="authScreen" class="screen active">
+    <div class="logo-bar">
+      <div class="logo-icon">G</div>
+      <div>
+        <div class="logo-name">GovConnect</div>
+        <div class="logo-tagline">Fill forms faster. Keep control of your data.</div>
+      </div>
+    </div>
+
+    <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+      <p class="auth-title" id="authTitle">Masuk ke akun Anda</p>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="inputEmail" placeholder="email@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="inputPassword" placeholder="••••••••">
+      </div>
+
+      <!-- Confirm Password — hanya tampil di mode Register -->
+      <div class="field" id="confirmField" style="display:none;">
+        <label>Konfirmasi Password</label>
+        <input type="password" id="inputConfirm" placeholder="••••••••">
+      </div>
+
+      <div id="authError"></div>
+
+      <button class="btn-primary" id="btnSubmitAuth">Masuk</button>
+
+      <div class="toggle-link">
+        <span id="toggleText">Belum punya akun?</span>
+        <span id="toggleLink" onclick="toggleMode()"> Daftar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MAIN SCREEN ===================== -->
+  <div id="mainScreen" class="screen">
+    <div class="logo-bar">
+      <div class="logo-icon">G</div>
+      <div>
+        <div class="logo-name">GovConnect</div>
+        <div class="logo-tagline" id="userEmail">...</div>
+      </div>
+      <div style="margin-left: auto;">
+        <span class="check-pill">✓ Login</span>
+      </div>
+    </div>
+
+    <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+      <!-- Profile card -->
+      <div class="profile-card">
+        <div class="profile-card-title">Profil Aktif</div>
+        <div class="profile-row">
+          <div class="profile-label">Nama Lengkap</div>
+          <div class="profile-value" id="profName">-</div>
+        </div>
+        <div class="profile-row">
+          <div class="profile-label">NIK</div>
+          <div class="profile-value" id="profNik">-</div>
+        </div>
+        <div class="profile-row">
+          <div class="profile-label">Telepon</div>
+          <div class="profile-value" id="profPhone">-</div>
+        </div>
+      </div>
+
+      <!-- Profile completion -->
+      <div>
+        <div class="completion-row">
+          <span class="completion-label">Profile Completion</span>
+          <span class="completion-val" id="completionPct">0%</span>
+        </div>
+        <div class="progress-bar" style="margin-top: 5px;">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button class="btn-open-panel" id="btnOpenPanel">⚡ Buka Side Panel Autofill</button>
+        <div class="btn-row">
+          <button class="btn-sec" id="btnDashboard">⚙ Dashboard</button>
+          <button class="btn-sec" id="btnLogout">↩ Logout</button>
+        </div>
+      </div>
+
+      <div id="statusMsg"></div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
