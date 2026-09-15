@@ -31,16 +31,12 @@ app.include_router(auth_router)
 # Daftarkan router endpoint utama (/api/v1/...)
 app.include_router(api_router)
 
-# Mount folder dashboard sebagai static files di /dashboard
-app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
-
 @app.get("/")
 def read_root():
     return {
         "service": "GovConnect API",
         "version": "2.0.0",
         "status": "online",
-        "dashboard_url": "/dashboard",
         "docs_url": "/docs",
         "database": "connected"
     }

@@ -10,16 +10,16 @@
 
 | Komponen | Teknologi | Fungsi |
 |---|---|---|
-| **Backend API** | Python · FastAPI · SQLAlchemy | Menyimpan profil kependudukan & log aktivitas |
-| **Chrome Extension** | Manifest V3 · Vanilla JS | Menginjeksi data profil ke form di browser |
-| **Dashboard** | HTML · Tailwind CSS | Antarmuka manajemen profil & monitoring |
+| **Backend API** | Python · FastAPI · SQLAlchemy | Menyimpan profil kependudukan, log aktivitas, dan autentikasi (JWT) |
+| **Chrome Extension** | Manifest V3 · Vanilla JS | Auth gateway & workspace autofill via Side Panel |
+| **Dashboard** | React · Vite · Tailwind CSS | Antarmuka manajemen profil & monitoring berbasis SPA |
 
 ### Alur Kerja Sistem
 
 ```
 ┌─────────────────┐     REST API      ┌───────────────────────┐
 │ Chrome Extension│ ◄───────────────► │   FastAPI Backend      │
-│ (Floating Popup)│                   │  (Port 8000)           │
+│ (Side Panel)    │      (JWT)        │  (Port 8000)           │
 └────────┬────────┘                   └──────────┬────────────┘
          │ chrome.tabs.sendMessage                │ SQLAlchemy ORM
          ▼                                        ▼
@@ -40,21 +40,26 @@ E-Government/
 │   │   ├── main.py             # Entry point FastAPI
 │   │   ├── database.py         # Konfigurasi koneksi MySQL
 │   │   ├── api/
+│   │   │   ├── auth.py         # Endpoint autentikasi (JWT)
 │   │   │   └── endpoints.py    # Route REST API (/api/v1/...)
 │   │   ├── models/
 │   │   │   └── entities.py     # Model database (User, Profile, Mapping, Activity)
 │   │   └── schemas/
 │   │       └── schemas.py      # Pydantic schemas
-│   ├── dashboard/
-│   │   └── index.html          # Dashboard web (di-serve di /dashboard)
 │   ├── docker-compose.yml      # Konfigurasi MySQL via Docker
 │   └── requirements.txt        # Dependensi Python
 │
+├── frontend/                   # Dashboard Web SPA
+│   ├── src/                    # React source code
+│   ├── package.json            # Dependensi Node.js
+│   └── vite.config.ts          # Konfigurasi Vite
+│
 ├── extension/                  # Chrome Extension (Manifest V3)
 │   ├── manifest.json           # Konfigurasi ekstensi
-│   ├── popup.html              # UI popup melayang (floating popup)
-│   ├── popup.js                # Logika popup & fetch profil
-│   └── content_script.js       # Script injeksi autofill
+│   ├── background.js           # Service worker & state JWT
+│   ├── popup.html              # Auth Gateway
+│   ├── sidepanel.html          # Workspace Autofill
+│   └── content_script.js       # Script injeksi autofill & deteksi form
 │
 └── test-page/
     └── dummy_form.html         # Formulir dummy untuk pengujian
@@ -69,13 +74,14 @@ Base URL: `http://127.0.0.1:8000`
 | Method | Endpoint | Deskripsi |
 |---|---|---|
 | `GET` | `/` | Cek status server |
-| `GET` | `/api/v1/profile/me` | Ambil profil pengguna aktif |
-| `PUT` | `/api/v1/profile/me` | Perbarui profil pengguna |
-| `GET` | `/api/v1/mappings?domain=...` | Ambil mapping field berdasarkan domain |
-| `POST` | `/api/v1/mappings` | Tambah mapping field baru |
-| `GET` | `/api/v1/activities?limit=10` | Ambil riwayat autofill |
-| `POST` | `/api/v1/activities` | Catat aktivitas autofill |
-| `GET` | `/dashboard` | Buka halaman dashboard |
+| `POST` | `/api/v1/auth/register` | Mendaftarkan akun baru |
+| `POST` | `/api/v1/auth/login` | Login & mendapatkan JWT token |
+| `GET` | `/api/v1/profile/me` | Ambil profil pengguna aktif (Requires JWT) |
+| `PUT` | `/api/v1/profile/me` | Perbarui profil pengguna (Requires JWT) |
+| `GET` | `/api/v1/mappings?domain=...` | Ambil mapping field berdasarkan domain (Requires JWT) |
+| `POST` | `/api/v1/mappings` | Tambah mapping field baru (Requires JWT) |
+| `GET` | `/api/v1/activities?limit=10` | Ambil riwayat autofill (Requires JWT) |
+| `POST` | `/api/v1/activities` | Catat aktivitas autofill (Requires JWT) |
 | `GET` | `/docs` | Swagger UI (dokumentasi interaktif) |
 
 ---
@@ -85,6 +91,7 @@ Base URL: `http://127.0.0.1:8000`
 Pastikan software berikut sudah terinstal:
 
 - **Python** 3.10+ → [python.org](https://www.python.org/downloads/)
+- **Node.js** 18+ → [nodejs.org](https://nodejs.org/) (untuk menjalankan Dashboard Vite)
 - **Docker Desktop** → [docker.com](https://www.docker.com/products/docker-desktop/)
 - **Google Chrome** (versi terbaru)
 
@@ -186,17 +193,31 @@ INFO:     Application startup complete.
 
 ---
 
-### Langkah 6 — Verifikasi Backend
+### Langkah 6 — Jalankan Dashboard React (Vite)
+
+Buka terminal **baru**, lalu jalankan:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Dashboard akan berjalan di: **http://localhost:5173**
+
+---
+
+### Langkah 7 — Verifikasi Backend & Frontend
 
 Buka browser dan akses:
 
+- **Dashboard:** http://localhost:5173 → Login / Daftar akun baru
 - **Status API:** http://127.0.0.1:8000 → Menampilkan JSON `"status": "online"`
-- **Dashboard:** http://127.0.0.1:8000/dashboard → Halaman manajemen profil
 - **API Docs:** http://127.0.0.1:8000/docs → Swagger UI interaktif
 
 ---
 
-### Langkah 7 — Pasang Chrome Extension
+### Langkah 8 — Pasang Chrome Extension
 
 1. Buka Google Chrome
 2. Masuk ke `chrome://extensions/`
@@ -205,29 +226,31 @@ Buka browser dan akses:
 5. Pilih folder `extension/` dari proyek ini
 6. Ekstensi **GovConnect Autofill Assistant** akan muncul di daftar
 
-> Jika ikon tidak terlihat di toolbar, klik ikon puzzle 🧩 lalu pin ekstensi GovConnect.
+> ⚠️ Jika Anda mengubah kode extension, pastikan klik ikon "Refresh" 🔄 di `chrome://extensions/`.
 
 ---
 
-### Langkah 8 — Uji Autofill dengan Halaman Dummy
+### Langkah 9 — Uji Autofill dengan Halaman Dummy
 
-1. Buka file `test-page/dummy_form.html` di Chrome:
-   - Tekan `Ctrl+O` → pilih file, **atau**
-   - Drag & drop file ke jendela Chrome
-2. Klik ikon **GovConnect** di toolbar → Jendela popup melayang (*floating pop-up*) akan muncul tepat di bawah ikon ekstensi (tanpa membelah layar)
-3. Popup menampilkan profil aktif (Nama, NIK, Telepon, Alamat)
-4. Klik **"⚡ Autofill Formulir Sekarang"**
-5. Kolom form akan terisi otomatis!
+1. Buka file `test-page/dummy_form.html` di Chrome.
+2. Klik ikon **GovConnect** di toolbar.
+3. Login menggunakan akun yang dibuat di Dashboard (atau buat baru melalui popup ekstensi).
+4. Setelah login, klik **"⚡ Buka Side Panel Autofill"** di popup.
+5. Side panel akan terbuka di sisi kanan browser, menampilkan daftar *field* form yang berhasil terdeteksi dari `dummy_form.html`.
+6. Centang field yang ingin diisi, lalu klik **"⚡ Fill Selected Fields"**.
+7. Kolom form akan terisi otomatis, dan status tiap field akan dilaporkan.
 
 ---
 
 ## 📊 Menggunakan Dashboard
 
-Akses di: http://127.0.0.1:8000/dashboard
+Akses di: http://localhost:5173
 
 **Fitur:**
-- **Master Profile** — Isi/perbarui NIK, nama, telepon, pekerjaan, dan alamat. Klik **"Simpan Perubahan"** untuk menyimpan ke database.
-- **Riwayat Injeksi** — Log setiap autofill berhasil dijalankan (URL target + jumlah kolom terisi).
+- **Autentikasi (JWT)** — Login aman menggunakan Email dan Password.
+- **KPI & Visualisasi** — Dashboard utama menampilkan total penggunaan, success rate, dan estimasi waktu yang dihemat, beserta grafik riwayat.
+- **Master Profile** — Form wizard / terstruktur untuk mengisi Identitas, Alamat, Kontak, Pendidikan, dan lain-lain.
+- **Riwayat Injeksi** — Log setiap autofill beserta jumlah kolom yang terisi dan status kegagalan/keberhasilan.
 
 ---
 
