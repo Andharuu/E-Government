@@ -648,8 +648,15 @@ async function executeAutofill() {
     // Catat log aktivitas ke API (background async, tidak memblokir UI)
     const token = await getToken();
     if (token) {
-      try {
-        const domain = currentTab?.url ? new URL(currentTab.url).hostname : "";
+        let domain = "";
+        if (currentTab?.url) {
+          try {
+            const parsed = new URL(currentTab.url);
+            domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
+          } catch {
+            domain = "";
+          }
+        }
         const filledFieldKeys = (result.fields || [])
           .filter(f => f.status === "filled" && f.profileKey)
           .map(f => f.profileKey);

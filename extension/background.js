@@ -274,7 +274,15 @@ async function handleAutofillResult(tab, response, token) {
 
     // Catat log aktivitas ke backend secara asynchronous
     try {
-      const domain = tab.url ? new URL(tab.url).hostname : "";
+      let domain = "";
+      if (tab.url) {
+        try {
+          const parsed = new URL(tab.url);
+          domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
+        } catch {
+          domain = "";
+        }
+      }
       const filledFieldKeys = (response.fields || [])
         .filter(f => f.status === "filled" && f.profileKey)
         .map(f => f.profileKey);

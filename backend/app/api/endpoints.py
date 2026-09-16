@@ -68,7 +68,7 @@ def get_mappings(
     """Ambil mapping per domain untuk user yang sedang login."""
     mappings = db.query(Mapping).filter(
         Mapping.user_id == current_user.id,
-        Mapping.domain == domain
+        Mapping.website_domain == domain
     ).all()
     return mappings
 
@@ -116,9 +116,13 @@ def log_activity(
     domain = payload.website_domain
     if not domain and payload.target_url:
         try:
-            domain = urlparse(payload.target_url).netloc
+            parsed = urlparse(payload.target_url)
+            if parsed.scheme == "file":
+                domain = "Local File (HTML)"
+            else:
+                domain = parsed.netloc or "Layanan Publik"
         except Exception:
-            domain = None
+            domain = "Layanan Publik"
 
     activity = Activity(
         user_id=current_user.id,
@@ -298,7 +302,11 @@ def get_activity_analytics(
         site = a.website_domain
         if not site and a.target_url:
             try:
-                site = urlparse(a.target_url).netloc
+                parsed = urlparse(a.target_url)
+                if parsed.scheme == "file":
+                    site = "Local File (HTML)"
+                else:
+                    site = parsed.netloc or "Lainnya"
             except Exception:
                 site = "Lainnya"
         website_counter[site or "Lainnya"] += 1

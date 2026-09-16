@@ -454,13 +454,12 @@ export function Dashboard() {
                     </td>
                     <td className="py-3.5 px-6">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          activity.status === 'success'
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${activity.status === 'success'
                             ? 'bg-green-100 text-green-800'
                             : activity.status === 'partial'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
                       >
                         {activity.status === 'success' ? '✓ Success' : activity.status === 'partial' ? '⚠ Partial' : '✕ Failed'}
                       </span>

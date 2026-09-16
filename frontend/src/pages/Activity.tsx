@@ -8,6 +8,18 @@ const statusConfig = {
   failed: { label: 'Failed', color: 'bg-red-100 text-red-700', icon: XCircle },
 };
 
+function formatWebsiteDomain(domain: string | null, targetUrl: string): string {
+  if (domain && domain.trim()) return domain;
+  if (!targetUrl) return 'Layanan Publik';
+  try {
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol === 'file:') return 'File Pengujian Lokal (HTML)';
+    return parsed.hostname || targetUrl;
+  } catch {
+    return targetUrl || 'Layanan Publik';
+  }
+}
+
 export function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +74,7 @@ export function ActivityPage() {
                         <div className="flex items-center gap-2">
                           <Globe className="w-4 h-4 text-slate-400" />
                           <span className="text-sm font-medium text-slate-900 truncate max-w-xs">
-                            {activity.website_domain || new URL(activity.target_url).hostname}
+                            {formatWebsiteDomain(activity.website_domain, activity.target_url)}
                           </span>
                         </div>
                       </td>
