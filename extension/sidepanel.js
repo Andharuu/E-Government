@@ -84,7 +84,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initAuthenticatedSession(token);
 });
 
-// Dengarkan perpindahan tab atau refresh halaman aktif agar otomatis update
+// ============================================================
+// Segarkan Profil dari API Backend (Selalu Terkini & Tersinkron)
+// ============================================================
+async function refreshProfile() {
+  const token = await getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API_BASE}/profile/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        await chrome.storage.local.remove(["govconnect_token", "govconnect_email", "govconnect_cached_profile"]);
+        showScreen("screenAuth");
+        setupAuthListeners();
+        return null;
+      }
+      throw new Error("Gagal mengambil profil terbaru");
+    }
+    cachedProfile = await res.json();
+    processCustomFields(cachedProfile);
+    await chrome.storage.local.set({ govconnect_cached_profile: cachedProfile });
+    setApiStatus("online");
+    return cachedProfile;
+  } catch (err) {
+    console.warn("GovConnect: Peringatan saat menyegarkan profil:", err);
+    return cachedProfile;
+  }
+}
+
+// Dengarkan perpindahan tab atau refresh halaman aktif agar otomatis update & sync profil
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const token = await getToken();
   if (!token) return;
@@ -93,6 +123,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     if (tab) {
       currentTab = tab;
       updatePageHeader(tab);
+      await refreshProfile();
       await detectPageFields();
     }
   } catch {}
@@ -104,7 +135,19 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (!token) return;
     currentTab = tab;
     updatePageHeader(tab);
+    await refreshProfile();
     await detectPageFields();
+  }
+});
+
+// Auto-sync profil saat window/panel mendapatkan fokus kembali dari tab lain (misal dari dashboard)
+window.addEventListener("focus", async () => {
+  const token = await getToken();
+  if (token) {
+    await refreshProfile();
+    if (currentTab?.id && currentActiveScreen !== "screenResult") {
+      await detectPageFields();
+    }
   }
 });
 
@@ -164,25 +207,8 @@ async function tryAutoSyncFromOpenTabs() {
 // Setup Sesi Terautentikasi
 // ============================================================
 async function initAuthenticatedSession(token) {
-  // Ambil profil user
-  try {
-    const res = await fetch(`${API_BASE}/profile/me`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    if (!res.ok) {
-      if (res.status === 401) {
-        await chrome.storage.local.remove(["govconnect_token", "govconnect_email"]);
-        showScreen("screenAuth");
-        setupAuthListeners();
-        return;
-      }
-      throw new Error("Gagal mengambil profil");
-    }
-    cachedProfile = await res.json();
-    processCustomFields(cachedProfile);
-    chrome.storage.local.set({ govconnect_cached_profile: cachedProfile });
-    setApiStatus("online");
-  } catch (err) {
+  const profile = await refreshProfile();
+  if (!profile) {
     setApiStatus("error");
     showStatus("Gagal memuat profil. Periksa koneksi backend.");
     return;
@@ -293,8 +319,40 @@ function setupMainListeners() {
     btnRetry.onclick = async () => {
       currentTab = await getActiveTab();
       if (currentTab) updatePageHeader(currentTab);
+      await refreshProfile();
       await detectPageFields();
     };
+  }
+
+  // Tombol Refresh Profil di Header
+  const btnRefresh = document.getElementById("btnRefreshProfile");
+  if (btnRefresh) {
+    btnRefresh.onclick = async () => {
+      btnRefresh.style.transform = "rotate(360deg)";
+      btnRefresh.style.transition = "transform 0.5s ease";
+      setTimeout(() => {
+        btnRefresh.style.transform = "none";
+        btnRefresh.style.transition = "none";
+      }, 500);
+
+      showStatus("Menyinkronkan profil dari dashboard...");
+      await refreshProfile();
+      await detectPageFields();
+      showStatus("✓ Profil terbaru berhasil dimuat!");
+      setTimeout(() => showStatus(""), 3000);
+    };
+  }
+
+  // Tombol Pilih Semua
+  const btnSelectAll = document.getElementById("btnSelectAll");
+  if (btnSelectAll) {
+    btnSelectAll.onclick = selectAllFields;
+  }
+
+  // Tombol Batal Pilih (Deselect All)
+  const btnDeselectAll = document.getElementById("btnDeselectAll");
+  if (btnDeselectAll) {
+    btnDeselectAll.onclick = deselectAllFields;
   }
 
   const btnGoDash = document.getElementById("btnGoDashboard");
@@ -380,14 +438,23 @@ let allDetectedResult = null;
 let currentActiveScreen = "screenDetect";
 let isAutofillingInProgress = false;
 
-// Dengarkan notifikasi perubahan form dari content script (misal ganti dropdown)
-chrome.runtime.onMessage.addListener((message) => {
+// Dengarkan notifikasi perubahan form dari content script (misal ganti dropdown) atau pembaruan profil
+chrome.runtime.onMessage.addListener(async (message) => {
   if (message.action === "ONE_CLICK_MODE_CHANGED") {
     const toggle = document.getElementById("toggleOneClick");
     if (toggle) {
       toggle.checked = message.isOneClick;
       updateModeBarUI(message.isOneClick);
     }
+  }
+
+  if (message.action === "PROFILE_UPDATED") {
+    await refreshProfile();
+    if (currentActiveScreen !== "screenResult") {
+      await detectPageFields();
+    }
+    showStatus("✓ Data profil berhasil diperbarui!");
+    setTimeout(() => showStatus(""), 3000);
   }
 
   if (message.action === "FORM_UPDATED") {
@@ -438,6 +505,58 @@ async function detectPageFields() {
 
   } catch (err) {
     showScreen("screenUnsupported");
+  }
+}
+
+// ============================================================
+// Render daftar field dengan checklist
+// ============================================================
+// ============================================================
+// State Manajemen Pilihan Checkbox (Preserves Selection)
+// ============================================================
+let userSelectedMap = {};
+
+function getFieldUid(f, idx) {
+  return `${f.tag || 'input'}_${f.id || ''}_${f.name || ''}_${f.profileKey || ''}_${idx}`;
+}
+
+function selectAllFields() {
+  detectedFields.forEach((field, i) => {
+    const uid = getFieldUid(field, i);
+    const profileValue = cachedProfile ? cachedProfile[field.profileKey] : null;
+    const hasValue = !!(profileValue && profileValue.toString().trim() !== "");
+    if (hasValue) {
+      userSelectedMap[uid] = true;
+    }
+  });
+  renderFieldList();
+}
+
+function deselectAllFields() {
+  detectedFields.forEach((field, i) => {
+    const uid = getFieldUid(field, i);
+    userSelectedMap[uid] = false;
+  });
+  renderFieldList();
+}
+
+function updateSelectionUI() {
+  const checkedBoxes = document.querySelectorAll("#fieldList input[type=checkbox]:checked");
+  const checkedCount = checkedBoxes.length;
+  const summaryEl = document.getElementById("selectionSummary");
+  if (summaryEl) {
+    summaryEl.textContent = `${checkedCount} dari ${detectedFields.length} dipilih`;
+  }
+
+  const btnEl = document.getElementById("btnFill");
+  if (btnEl) {
+    if (checkedCount === 0) {
+      btnEl.disabled = true;
+      btnEl.textContent = "⚡ Pilih Minimal 1 Field";
+    } else {
+      btnEl.disabled = false;
+      btnEl.textContent = `⚡ Isi ${checkedCount} Kolom Formulir`;
+    }
   }
 }
 
@@ -513,29 +632,42 @@ function renderFieldList() {
     } else {
       container.innerHTML = `<div style="padding: 16px; font-size: 12px; color: #64748B; text-align: center;">Tidak ada field yang cocok ditemukan.</div>`;
     }
-    document.getElementById("btnFill").disabled = true;
+    const btnFill = document.getElementById("btnFill");
+    if (btnFill) btnFill.disabled = true;
+    updateSelectionUI();
     syncMarkersWithCheckedFields();
     return;
   }
 
   detectedFields.forEach((field, i) => {
-    const item = document.createElement("label");
-    item.className = "field-item";
-    item.htmlFor = `chk_${i}`;
-
+    const uid = getFieldUid(field, i);
     const profileValue = cachedProfile ? cachedProfile[field.profileKey] : null;
     const hasValue = !!(profileValue && profileValue.toString().trim() !== "");
     const isVis = field.isVisible;
 
+    // Periksa status centang: gunakan preferensi user jika sudah pernah diklik, default centang jika profil ada nilai
+    let isChecked = false;
+    if (uid in userSelectedMap) {
+      isChecked = userSelectedMap[uid] && hasValue;
+    } else {
+      isChecked = hasValue;
+      userSelectedMap[uid] = isChecked;
+    }
+
+    const item = document.createElement("div");
+    item.className = "field-item";
+    item.dataset.uid = uid;
+    item.dataset.index = i;
+
     item.innerHTML = `
-      <input type="checkbox" id="chk_${i}" data-index="${i}" ${hasValue ? "checked" : ""} ${!hasValue ? "disabled" : ""}>
-      <div class="field-info">
+      <input type="checkbox" id="chk_${i}" data-index="${i}" data-uid="${uid}" ${isChecked ? "checked" : ""} ${!hasValue ? "disabled" : ""}>
+      <label for="chk_${i}" class="field-info" style="cursor: pointer; flex: 1; min-width: 0;">
         <div class="field-name">
           ${field.name || field.id || "(field)"}
           ${!isVis ? `<span style="font-size: 9px; color: #D97706; margin-left: 4px; font-weight: 500;">(Tersembunyi di Web)</span>` : ""}
         </div>
-        <div class="field-profile">${formatFieldLabel(field.profileKey)} ${hasValue ? `→ <b>${truncate(profileValue, 20)}</b>` : "— belum ada di profil"}</div>
-      </div>
+        <div class="field-profile">${formatFieldLabel(field.profileKey)} ${hasValue ? `→ <b>${truncate(profileValue, 22)}</b>` : "— belum ada di profil"}</div>
+      </label>
       <span class="field-badge ${hasValue ? "fb-matched" : "fb-notfound"}">${hasValue ? "✓ Matched" : "○ Kosong"}</span>
     `;
 
@@ -557,28 +689,34 @@ function renderFieldList() {
       }
     });
 
-    // Update penanda visual di halaman web saat status checkbox berubah
+    // Checkbox change listener
     const chk = item.querySelector("input[type=checkbox]");
     if (chk) {
-      chk.addEventListener("change", () => {
+      chk.addEventListener("change", (e) => {
+        e.stopPropagation();
+        userSelectedMap[uid] = chk.checked;
+        updateSelectionUI();
         syncMarkersWithCheckedFields();
       });
     }
 
+    // Klik pada baris container (di luar input dan label bawaan)
+    item.addEventListener("click", (e) => {
+      if (e.target.tagName.toLowerCase() === "input" || e.target.closest("label")) {
+        return;
+      }
+      if (chk && !chk.disabled) {
+        chk.checked = !chk.checked;
+        userSelectedMap[uid] = chk.checked;
+        updateSelectionUI();
+        syncMarkersWithCheckedFields();
+      }
+    });
+
     container.appendChild(item);
   });
 
-  const anyFillable = detectedFields.some(f => {
-    const v = cachedProfile ? cachedProfile[f.profileKey] : null;
-    return v && v.toString().trim() !== "";
-  });
-  const btnEl = document.getElementById("btnFill");
-  if (btnEl) {
-    btnEl.textContent = "⚡ Isi Formulir Otomatis";
-    btnEl.disabled = !anyFillable;
-  }
-
-  // Sinkronkan penanda di halaman web dengan field yang tercentang
+  updateSelectionUI();
   syncMarkersWithCheckedFields();
 }
 
@@ -607,23 +745,31 @@ async function executeAutofill() {
   btn.disabled = true;
   btn.textContent = "Mengisi form...";
 
-  const checkedIndices = Array.from(
+  const checkedInputs = Array.from(
     document.querySelectorAll("#fieldList input[type=checkbox]:checked")
-  ).map(el => parseInt(el.dataset.index));
+  );
 
-  if (checkedIndices.length === 0) {
-    btn.textContent = "⚡ Isi Formulir Otomatis";
-    btn.disabled = false;
+  if (checkedInputs.length === 0) {
+    btn.textContent = "⚡ Pilih Minimal 1 Field";
+    btn.disabled = true;
     isAutofillingInProgress = false;
     showStatus("Pilih minimal satu field terlebih dahulu.");
     return;
   }
 
   const selectedProfile = {};
-  checkedIndices.forEach(i => {
-    const field = detectedFields[i];
+  const targetFields = [];
+  checkedInputs.forEach(el => {
+    const idx = parseInt(el.dataset.index);
+    const field = detectedFields[idx];
     if (field && cachedProfile && cachedProfile[field.profileKey] !== undefined) {
       selectedProfile[field.profileKey] = cachedProfile[field.profileKey];
+      targetFields.push({
+        id: field.id,
+        name: field.name,
+        profileKey: field.profileKey,
+        tag: field.tag
+      });
     }
   });
 
@@ -637,7 +783,8 @@ async function executeAutofill() {
 
     const result = await sendMessageToTab(currentTab.id, {
       action: "EXECUTE_AUTOFILL",
-      profile: selectedProfile
+      profile: selectedProfile,
+      targetFields: targetFields
     }, 4000);
 
     if (!result) throw new Error("Tidak ada respons dari halaman");
@@ -840,4 +987,14 @@ function getToken() {
   return new Promise(resolve => {
     chrome.storage.local.get("govconnect_token", r => resolve(r.govconnect_token || null));
   });
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

@@ -5,74 +5,55 @@
 ---
 
 ## 1. Arsitektur Utama
+ 
+```mermaid
+flowchart TB
+    subgraph UserSpace["Lingkungan Pengguna & Peramban"]
+        User["👤 Pengguna (End User)"]
+        subgraph Browser["Google Chrome Browser"]
+            Dashboard["💻 Web Dashboard<br/>(React 18 + TS + Vite)<br/>Port: 5173"]
+            Extension["🧩 Browser Extension<br/>(Manifest V3 Vanilla JS)"]
+        end
+        User -->|Akses Dashboard| Dashboard
+        User -->|Buka Form & Isi Data| Extension
+    end
 
-```
-                         USER
-                           │
-             ┌─────────────┴─────────────┐
-             │                           │
-             ▼                           ▼
-    ┌─────────────────┐        ┌─────────────────┐
-    │ Chrome Extension│        │  Web Dashboard  │
-    │                 │        │                 │
-    │ • Popup         │        │ • Auth          │
-    │ • Side Panel    │        │ • Profile       │
-    │ • Content Script│        │ • Activity      │
-    │ • Field Detect  │        │ • Analytics     │
-    │ • Field Mapping │        │ • Settings      │
-    │ • Autofill      │        │                 │
-    │ • Background    │        │                 │
-    │   Service Worker│        │                 │
-    └────────┬────────┘        └────────┬────────┘
-             │                          │
-             └──────────┬───────────────┘
-                        │
-                   HTTPS / REST (JWT)
-                        │
-                        ▼
-                ┌───────────────┐
-                │    FastAPI    │
-                │               │
-                │ • Auth        │
-                │ • Profile     │
-                │ • Mapping     │
-                │ • Activity    │
-                └───────┬───────┘
-                        │
-                        ▼
-                ┌───────────────┐
-                │     MySQL     │
-                │               │
-                │ • users       │
-                │ • profiles    │
-                │ • mappings    │
-                │ • activities  │
-                └───────────────┘
+    subgraph BackendSpace["⚡ Lingkungan Backend (FastAPI Server)"]
+        Backend["FastAPI Application (Port: 8000)"]
+        subgraph InternalBackend["Komponen Internal"]
+            AuthModule["🔐 Auth Module<br/>(JWT HS256 + Bcrypt)"]
+            APIRouter["📡 Core API Router<br/>(/api/v1/...)"]
+            ORM["🗄️ SQLAlchemy ORM Layer"]
+        end
+        Backend --> AuthModule
+        Backend --> APIRouter
+        AuthModule --> ORM
+        APIRouter --> ORM
+    end
+
+    subgraph DatabaseSpace["🗄️ Lingkungan Database"]
+        DB[("MySQL 8.x Database<br/>govconnect_db<br/>Tabel: users, profiles, mappings, activities")]
+    end
+
+    Dashboard -->|REST / HTTP + Bearer JWT| Backend
+    Extension -->|REST / HTTP + Bearer JWT| Backend
+    ORM -->|PyMySQL Connection Pool| DB
 ```
 
 ## 2. Government Website Integration
 
 Government website **tidak** terhubung ke backend GovConnect. Extension berinteraksi langsung dengan DOM halaman, dan mengambil data profil/mapping dari FastAPI **sebelum** proses autofill dijalankan.
 
-```
-Government Website
-        │ DOM
-        ▼
-Content Script
-        ↓
-Form Detection
-        ↓
-Field Detection
-        ↓
-Fetch Profile & Mapping ← FastAPI (HTTPS/REST)
-        ↓
-Field Mapping (per-user)
-        ↓
-Autofill
-        ↓
-User Review
-        ↓
-Manual Submit
+```mermaid
+flowchart TD
+    Gov["🏛️ Government Website"] -->|DOM Hierarchy| CS["📄 Content Script"]
+    CS --> FD["🔍 Form Detection"]
+    FD --> FieldD["🎯 Field Detection (150+ Keywords)"]
+    FieldD --> Fetch["⚡ Fetch Profile & Mapping<br/>(FastAPI HTTPS/REST)"]
+    Fetch --> Map["🔄 Field Mapping (per-user)"]
+    Map --> Auto["📝 Autofill Form Elements"]
+    Auto --> Review["👁️ User Review (Human-in-the-loop)"]
+    Review --> Submit["✅ Manual Submit oleh Pengguna"]
 ```
 
 FastAPI hanya menangani data & layanan GovConnect — bukan perantara antara extension dan website pemerintah.

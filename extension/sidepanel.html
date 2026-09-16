@@ -603,6 +603,9 @@
       <div class="header-title">GovConnect</div>
       <div class="header-sub" id="pageTitle">Mendeteksi halaman...</div>
     </div>
+    <button id="btnRefreshProfile" title="Sinkronkan data profil dari Dashboard Web" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px 7px; cursor: pointer; color: #475569; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;">
+      🔄
+    </button>
     <span class="badge badge-connected" id="apiStatus">Online</span>
   </header>
 
@@ -695,12 +698,27 @@
 
     <div>
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-        <span class="section-label" style="margin-bottom: 0;">Pilih Field yang Akan Diisi</span>
+        <span class="section-label" style="margin-bottom: 0;">PILIH FIELD YANG AKAN DIISI</span>
         <label style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 4px; cursor: pointer;">
           <input type="checkbox" id="toggleShowHidden" style="width: 13px; height: 13px; accent-color: #2563EB;">
           <span>Tampilkan semua</span>
         </label>
       </div>
+
+      <!-- Quick Selection Controls -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 8px; font-size: 11px;">
+        <span style="color: #475569; font-weight: 500;" id="selectionSummary">0 dipilih</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btnSelectAll" style="background: none; border: none; color: #2563EB; font-weight: 600; cursor: pointer; padding: 2px 4px; font-size: 11px; border-radius: 4px;">
+            Pilih Semua
+          </button>
+          <span style="color: #CBD5E1;">|</span>
+          <button type="button" id="btnDeselectAll" style="background: none; border: none; color: #64748B; font-weight: 600; cursor: pointer; padding: 2px 4px; font-size: 11px; border-radius: 4px;">
+            Batal Pilih
+          </button>
+        </div>
+      </div>
+
       <div class="field-list" id="fieldList">
         <!-- Diisi secara dinamis oleh JavaScript -->
       </div>

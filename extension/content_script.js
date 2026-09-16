@@ -11,21 +11,28 @@
 // Keyword mapping: profile attribute → list keyword
 // Sesuai PRD §14 — multi-level matching (Spesifik -> Umum)
 // ============================================================
+// Kata kunci pendek (2-3 huruf) yang dilarang dicocokkan secara longgar via substring .includes()
+// Hanya boleh dicocokkan jika persis (exact token match)
+const SHORT_KEYWORDS = new Set([
+  "wa", "hp", "kab", "kot", "zip", "nim", "nip", "nrp", "dob", "sex", "job", "telp"
+]);
+
 const KEYWORD_MAP = {
   full_name: [
     "nama_lengkap", "nama_pemohon", "nama_siswa", "nama_mahasiswa", "nama_lengkap_pemohon",
     "nama", "name", "full_name", "fullname", "nama_pelamar"
   ],
   address: [
-    "alamat_ktp", "alamat_saatini", "alamat_domisili", "alamat_lengkap", "alamat_pekerjaan",
+    "alamat_ktp", "alamat_saatini", "alamat_domisili", "alamat_lengkap",
     "alamat_tinggal", "alamat_surat", "alamat", "address", "domisili", "street", "jalan"
   ],
   organization: [
-    "instansi_pekerjaan", "nama_instansi", "nama_perusahaan", "instansi", "organisasi",
-    "perusahaan", "organization", "company"
+    "nama_perusahaan", "nama_instansi", "instansi_pekerjaan", "nama_organisasi", "nama_kantor",
+    "instansi", "organisasi", "perusahaan", "organization", "company"
   ],
   occupation: [
-    "pekerjaan", "occupation", "jabatan", "profesi", "job"
+    "posisi_di_perusahaan", "posisi_pekerjaan", "posisi", "jabatan", "role",
+    "pekerjaan", "occupation", "profesi", "job"
   ],
   education_level: [
     "pendidikan_terakhir", "jenjang_pendidikan", "pendidikan", "education_level", "jenjang"
@@ -45,7 +52,7 @@ const KEYWORD_MAP = {
   ],
   phone: [
     "nomor_hp", "no_hp", "nohp", "no_telepon", "notelepon", "nomor_telepon",
-    "telepon", "phone", "hp", "handphone", "telp", "whatsapp", "wa"
+    "nomor_handphone", "handphone", "telepon", "phone", "hp", "telp", "whatsapp", "wa"
   ],
   email: [
     "email", "surel", "e_mail", "alamat_email"
@@ -69,6 +76,7 @@ const KEYWORD_MAP = {
     "nim", "nip", "nrp", "student_id", "nomor_mahasiswa"
   ],
   institution: [
+    "nama_kampus", "nama_sekolah", "nama_universitas", "nama_institusi", "perguruan_tinggi",
     "institusi", "institution", "sekolah", "universitas", "kampus"
   ],
   nisn: [
@@ -96,7 +104,7 @@ const KEYWORD_MAP = {
     "no_kontak_darurat", "nomor_kontak_darurat", "telp_darurat", "hp_darurat", "emergency_phone"
   ],
   work_address: [
-    "alamat_kantor", "alamat_perusahaan", "alamat_instansi", "work_address", "office_address"
+    "alamat_kantor", "alamat_perusahaan", "alamat_instansi", "alamat_pekerjaan", "work_address", "office_address"
   ],
   npwp: [
     "npwp", "nomor_npwp", "no_npwp", "tax_id"
@@ -598,7 +606,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === "EXECUTE_AUTOFILL" || request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
       isFillingProcess = true;
-      const result = fillForm(request.profile);
+      const result = fillForm(request.profile, request.targetFields);
       try {
         const filledKeys = (result.fields || [])
           .filter(f => f.status === "filled")
@@ -672,7 +680,7 @@ function detectFields() {
 // Isi field berdasarkan profil yang dipilih
 // Mengisi semua field yang dicentang oleh user tanpa terlewat
 // ============================================================
-function fillForm(profile) {
+function fillForm(profile, targetFields = null) {
   if (profile) registerCustomProfileFields(profile);
   const inputs = document.querySelectorAll(
     "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), textarea, select"
@@ -686,6 +694,20 @@ function fillForm(profile) {
     if (!profileKey) {
       results.push({ id: el.id || el.name, status: "not_found" });
       return;
+    }
+
+    // Jika targetFields diberikan, HANYA isi jika elemen ini termasuk dalam target yang dicentang oleh user
+    if (Array.isArray(targetFields) && targetFields.length > 0) {
+      const isSelected = targetFields.some(tf => {
+        if (tf.id && el.id && tf.id === el.id) return true;
+        if (tf.name && el.name && tf.name === el.name) return true;
+        if (!tf.id && !tf.name && tf.profileKey === profileKey) return true;
+        return false;
+      });
+      if (!isSelected) {
+        results.push({ id: el.id || el.name, status: "skipped", profileKey });
+        return;
+      }
     }
 
     // Hanya isi jika field tersebut dicentang/ada dalam profile yang dikirim
@@ -822,34 +844,111 @@ function matchProfileKey(el) {
   }
 
   // Phase 2: Heuristik Token Kata (Pemisah underscore/dash/spasi)
-  // Menjamin jika ada kata "alamat", selalu diprioritaskan ke address bukan nik
   const combined = `${elName} ${elId} ${labelText} ${placeholder} ${ariaLabel}`;
   const tokens = combined.split(/[\s_\-]+/).filter(Boolean);
 
+  // 1. Email (prioritas sebelum address karena sering ada teks 'alamat email')
+  if (tokens.includes("email") || tokens.includes("surel")) {
+    return "email";
+  }
+
+  // 2. Telepon / WA (cek exact token agar 'awal' pada 'tgl_awal_bekerja' tidak kena 'wa')
+  if (
+    tokens.includes("telepon") || tokens.includes("phone") || tokens.includes("handphone") ||
+    tokens.includes("hp") || tokens.includes("nohp") || tokens.includes("no_hp") ||
+    tokens.includes("telp") || tokens.includes("whatsapp") || tokens.includes("wa")
+  ) {
+    if (!tokens.includes("darurat") && !tokens.includes("emergency")) {
+      return "phone";
+    }
+  }
+
+  // 3. Tanggal (tgl / tanggal / date)
+  if (tokens.includes("tgl") || tokens.includes("tanggal") || tokens.includes("date") || tokens.includes("birthdate")) {
+    if (tokens.includes("lahir") || tokens.includes("birth") || tokens.includes("dob")) {
+      return "birth_date";
+    }
+    // Jika tanggal lain (misal tgl_awal_bekerja), cari di custom_fields jika ada yang persis
+    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+      if (profileKey.startsWith("custom_") || profileKey === "tgl_awal_bekerja") {
+        for (const kw of keywords) {
+          if (tokens.includes(kw) || elName === kw || elId === kw) return profileKey;
+        }
+      }
+    }
+    // Cegah tanggal jatuh ke phone atau birth_date sembarangan
+    return null;
+  }
+
+  // 4. Posisi / Jabatan / Pekerjaan (Prioritaskan posisi_di_perusahaan ke occupation, BUKAN organization!)
+  if (
+    tokens.includes("posisi") || tokens.includes("jabatan") || tokens.includes("role") ||
+    tokens.includes("pekerjaan") || tokens.includes("profesi") || tokens.includes("occupation")
+  ) {
+    return "occupation";
+  }
+
+  // 5. Institusi / Kampus / Sekolah (Prioritaskan nama_kampus ke institution, BUKAN full_name!)
+  if (
+    tokens.includes("kampus") || tokens.includes("universitas") || tokens.includes("sekolah") ||
+    tokens.includes("institusi") || tokens.includes("perguruantinggi") || tokens.includes("institution") ||
+    tokens.includes("fakultas") || tokens.includes("prodi")
+  ) {
+    return "institution";
+  }
+
+  // 6. Instansi / Perusahaan / Kantor / Organisasi
+  if (
+    tokens.includes("instansi") || tokens.includes("organisasi") || tokens.includes("perusahaan") ||
+    tokens.includes("company") || tokens.includes("kantor")
+  ) {
+    return "organization";
+  }
+
+  // 7. Alamat Domisili vs Alamat Kantor
+  if (tokens.includes("alamat") || tokens.includes("domisili") || tokens.includes("address")) {
+    if (tokens.includes("kantor") || tokens.includes("perusahaan") || tokens.includes("instansi") || tokens.includes("kerja")) {
+      return "work_address";
+    }
+    return "address";
+  }
+
+  // 8. Nama Lengkap Pemohon (Exclude kampus, sekolah, perusahaan, kantor, usaha, ibu, ayah, darurat)
   if (tokens.includes("nama") || tokens.includes("name") || tokens.includes("fullname")) {
-    if (!tokens.includes("instansi") && !tokens.includes("perusahaan") && !tokens.includes("sekolah") && !tokens.includes("ibu") && !tokens.includes("ayah") && !tokens.includes("ortu")) {
+    if (
+      !tokens.includes("instansi") && !tokens.includes("perusahaan") && !tokens.includes("sekolah") &&
+      !tokens.includes("kampus") && !tokens.includes("universitas") && !tokens.includes("kantor") &&
+      !tokens.includes("usaha") && !tokens.includes("ibu") && !tokens.includes("ayah") &&
+      !tokens.includes("ortu") && !tokens.includes("darurat") && !tokens.includes("kontak")
+    ) {
       return "full_name";
     }
   }
-  if (tokens.includes("alamat") || tokens.includes("domisili") || tokens.includes("address")) {
-    return "address";
-  }
-  if (tokens.includes("instansi") || tokens.includes("organisasi") || tokens.includes("perusahaan")) {
-    return "organization";
-  }
-  if (tokens.includes("pekerjaan") || tokens.includes("profesi") || tokens.includes("jabatan")) {
-    return "occupation";
-  }
-  if (tokens.includes("pendidikan")) {
-    return "education_level";
-  }
+
+  // 9. NIK / Identitas
   if (tokens.includes("nik") || tokens.includes("identitas") || tokens.includes("noktp")) {
     return "nik";
   }
 
-  // Phase 3: Substring search bertingkat
+  // 10. NISN
+  if (tokens.includes("nisn")) {
+    return "nisn";
+  }
+
+  // 11. NIM / NIP / NRP
+  if (tokens.includes("nim") || tokens.includes("nip") || tokens.includes("nrp")) {
+    return "student_id";
+  }
+
+  // 12. Pendidikan
+  if (tokens.includes("pendidikan") || tokens.includes("jenjang")) {
+    return "education_level";
+  }
+
+  // Phase 3: Substring search bertingkat (HANYA untuk kata kunci panjang >= 4 karakter, cegah false positive dari 'wa', 'hp', dll)
   for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
     for (const kw of keywords) {
+      if (SHORT_KEYWORDS.has(kw) || kw.length <= 3) continue;
       if (combined.includes(kw)) {
         return profileKey;
       }
@@ -1081,6 +1180,18 @@ function showOneClickFloatingToast(result) {
           type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
           oneClickMode: msg.isOneClick
         }, "*");
+      }
+    });
+
+    // Dengarkan notifikasi pembaruan profil dari web dashboard
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "GOVCONNECT_PROFILE_UPDATED") {
+        try {
+          chrome.runtime.sendMessage({
+            action: "PROFILE_UPDATED",
+            profile: event.data.profile
+          }).catch(() => {});
+        } catch {}
       }
     });
   }

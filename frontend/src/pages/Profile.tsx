@@ -571,6 +571,15 @@ export function ProfilePage() {
       const res = await profileApi.update(payload);
       setProfile(res.data);
       setHasUnsavedChanges(false);
+      
+      // Beritahu ekstensi GovConnect bahwa profil telah diperbarui
+      try {
+        localStorage.setItem('govconnect_profile_updated_at', Date.now().toString());
+        window.postMessage({ type: 'GOVCONNECT_PROFILE_UPDATED', profile: res.data }, '*');
+      } catch (storageErr) {
+        console.warn('Gagal sinkronisasi event ekstensi:', storageErr);
+      }
+
       setMessage({ type: 'success', text: 'Semua data profil, berkas foto, dan kolom kustom berhasil disimpan!' });
       setTimeout(() => setMessage(null), 4000);
     } catch (err: any) {

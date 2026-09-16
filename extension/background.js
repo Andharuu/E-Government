@@ -366,6 +366,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === "PROFILE_UPDATED") {
+    if (message.profile) {
+      chrome.storage.local.set({ govconnect_cached_profile: message.profile });
+    }
+    return false;
+  }
+
   if (message.action === "OPEN_SIDEPANEL") {
     const tabId = message.tabId || sender.tab?.id;
     if (tabId) {
