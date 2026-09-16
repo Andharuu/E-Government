@@ -1,15 +1,54 @@
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
-import { Loader2, Save, Key, CheckCircle, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, Save, Key, CheckCircle, AlertCircle, Wifi, WifiOff, Zap, Sliders, Check } from 'lucide-react';
 
 export function SettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, isExtensionConnected } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [oneClickMode, setOneClickMode] = useState(() => {
+    return localStorage.getItem('govconnect_one_click_mode') !== 'false';
+  });
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && typeof event.data === 'object') {
+        if (event.data.type === 'GOVCONNECT_EXTENSION_READY' || event.data.type === 'GOVCONNECT_EXTENSION_PONG') {
+          if (typeof event.data.oneClickMode === 'boolean') {
+            setOneClickMode(event.data.oneClickMode);
+            localStorage.setItem('govconnect_one_click_mode', String(event.data.oneClickMode));
+          }
+        }
+        if (event.data.type === 'GOVCONNECT_ONE_CLICK_MODE_UPDATED') {
+          if (typeof event.data.oneClickMode === 'boolean') {
+            setOneClickMode(event.data.oneClickMode);
+            localStorage.setItem('govconnect_one_click_mode', String(event.data.oneClickMode));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.postMessage({ type: 'GOVCONNECT_PING_EXTENSION' }, '*');
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleToggleOneClickMode = (enabled: boolean) => {
+    setOneClickMode(enabled);
+    localStorage.setItem('govconnect_one_click_mode', String(enabled));
+    window.postMessage({
+      type: 'GOVCONNECT_SET_ONE_CLICK_MODE',
+      enabled: enabled
+    }, '*');
+    setSyncStatusMsg(enabled ? '⚡ Mode 1-Klik Instan aktif! Menekan tombol ekstensi di toolbar akan langsung mengisi form.' : '📋 Mode Panel Samping aktif! Menekan tombol ekstensi akan membuka panel.');
+    setTimeout(() => setSyncStatusMsg(null), 3500);
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,25 +169,150 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {/* Extension Autofill Mode Settings */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Mode Pengisian Ekstensi (Autofill)</h2>
+              <p className="text-xs text-slate-500">Tentukan perilaku saat Anda menekan tombol ekstensi di browser toolbar</p>
+            </div>
+          </div>
+          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
+            oneClickMode
+              ? 'bg-blue-50 text-blue-700 border-blue-200'
+              : 'bg-slate-100 text-slate-700 border-slate-200'
+          }`}>
+            {oneClickMode ? '⚡ Mode 1-Klik Aktif' : '📋 Mode Panel Aktif'}
+          </span>
+        </div>
+
+        {syncStatusMsg && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            {syncStatusMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Opsi 1: Mode 1-Klik Instan */}
+          <button
+            type="button"
+            onClick={() => handleToggleOneClickMode(true)}
+            className={`p-4 rounded-xl border-2 text-left transition-all relative flex flex-col justify-between ${
+              oneClickMode
+                ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    oneClickMode ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-900">Mode 1-Klik Instan</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                  Rekomendasi
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Cukup klik 1 kali pada tombol ekstensi di toolbar browser, form pada tab aktif <b>langsung terisi otomatis seketika</b> tanpa perlu membuka panel atau konfirmasi lagi.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium flex items-center gap-1">
+                <Check className="w-3.5 h-3.5 text-blue-600" /> Cepat & Seketika
+              </span>
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                oneClickMode ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
+              }`}>
+                {oneClickMode && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+            </div>
+          </button>
+
+          {/* Opsi 2: Mode Panel Samping (Manual) */}
+          <button
+            type="button"
+            onClick={() => handleToggleOneClickMode(false)}
+            className={`p-4 rounded-xl border-2 text-left transition-all relative flex flex-col justify-between ${
+              !oneClickMode
+                ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    !oneClickMode ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-900">Mode Panel Samping</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                  Manual
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Menekan tombol ekstensi di toolbar akan membuka <b>Side Panel</b> untuk meninjau formulir terdeteksi dan memilih kolom secara manual sebelum diisi.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium flex items-center gap-1">
+                <Check className="w-3.5 h-3.5 text-slate-600" /> Pratinjau Manual
+              </span>
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                !oneClickMode ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
+              }`}>
+                {!oneClickMode && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Extension Section */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <Wifi className="w-5 h-5 text-slate-500" />
-          Extension
+          Status Koneksi Ekstensi
         </h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <div className={`w-2.5 h-2.5 rounded-full ${isExtensionConnected ? 'bg-green-500 animate-pulse' : 'bg-blue-500'}`} />
               <div>
-                <p className="font-medium text-slate-900">Connection Status</p>
-                <p className="text-sm text-slate-500">Connected to GovConnect</p>
+                <p className="font-medium text-slate-900">Status Koneksi Ekstensi</p>
+                <p className="text-sm text-slate-500">
+                  {isExtensionConnected
+                    ? 'Ekstensi Chrome aktif dan tersinkronisasi'
+                    : 'Ekstensi siap digunakan'}
+                </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Active</span>
+            <span
+              className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                isExtensionConnected
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}
+            >
+              {isExtensionConnected ? 'Tersinkron' : 'Siap'}
+            </span>
           </div>
           <p className="text-sm text-slate-500">
-            Extension Anda terhubung ke akun ini. Gunakan popup extension untuk membuka Side Panel autofill.
+            Ekstensi GovConnect mendeteksi sesi login Anda secara otomatis melalui content script. Saat Anda mengisi formulir publik dengan ekstensi, hasil dan log aktivitas akan langsung tercatat pada dashboard ini.
           </p>
         </div>
       </div>

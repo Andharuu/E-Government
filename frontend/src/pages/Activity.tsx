@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { activityApi, Activity } from '../services/api';
-import { Loader2, Calendar, Globe, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { activityApi, type Activity } from '../services/api';
+import { Calendar, Globe, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 
 const statusConfig = {
   success: { label: 'Success', color: 'bg-green-100 text-green-700', icon: CheckCircle },

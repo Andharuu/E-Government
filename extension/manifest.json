@@ -3,14 +3,18 @@
   "name": "GovConnect Autofill Assistant",
   "version": "2.0.0",
   "description": "Asisten pengisian formulir layanan publik otomatis berbasis data profil kependudukan.",
-  "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
-  "host_permissions": ["http://127.0.0.1:8000/*"],
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage", "tabs", "contextMenus"],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:5173/*",
+    "http://localhost:5173/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "GovConnect",
-    "default_popup": "popup.html"
+    "default_title": "GovConnect Autofill (⚡ 1-Klik)"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

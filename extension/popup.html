@@ -3,233 +3,527 @@
 <head>
   <meta charset="UTF-8">
   <title>GovConnect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      width: 300px;
-      background: #0f172a;
-      color: #f8fafc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 320px;
+      background: #F8FAFC;
+      color: #0F172A;
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-x: hidden;
     }
 
-    /* ---- SHARED LAYOUT ---- */
-    .screen { display: none; flex-direction: column; }
-    .screen.active { display: flex; }
+    /* ---- HEADER ---- */
+    .app-header {
+      background: #FFFFFF;
+      padding: 14px 16px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-    .logo-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 18px 20px 14px;
-      border-bottom: 1px solid #1e293b;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .logo-icon {
-      width: 30px; height: 30px; border-radius: 8px;
-      background: linear-gradient(135deg, #2563eb, #38bdf8);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 15px; color: #fff;
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 15px;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     }
-    .logo-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
-    .logo-tagline { font-size: 10px; color: #64748b; }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: #64748B;
+    }
+
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      background: #F0FDF4;
+      color: #16A34A;
+      border: 1px solid #DCFCE7;
+    }
+
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #16A34A;
+    }
+
+    /* ---- SCREENS ---- */
+    .screen {
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    .screen.active {
+      display: flex;
+    }
 
     /* ---- AUTH SCREEN ---- */
-    #authScreen { padding: 20px; gap: 14px; }
-
-    .auth-title { font-size: 13px; color: #94a3b8; text-align: center; margin-bottom: 4px; }
-
-    .field { display: flex; flex-direction: column; gap: 4px; }
-    .field label { font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
-    .field input {
-      background: #1e293b; border: 1px solid #334155;
-      border-radius: 7px; padding: 9px 11px;
-      color: #f8fafc; font-size: 13px; outline: none;
-      transition: border-color 0.15s;
+    .auth-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .field input:focus { border-color: #2563eb; }
+
+    .auth-heading {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0F172A;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 9px 12px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #0F172A;
+      outline: none;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .field input:focus {
+      background: #FFFFFF;
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
 
     .btn-primary {
-      width: 100%; padding: 10px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #fff; border: none; border-radius: 8px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
-    .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
-
-    .toggle-link {
-      font-size: 11px; text-align: center; color: #64748b; margin-top: 2px;
-    }
-    .toggle-link span {
-      color: #38bdf8; cursor: pointer; text-decoration: underline;
-    }
-
-    #authError {
-      font-size: 11px; color: #f87171; text-align: center;
-      min-height: 14px; display: none;
+      width: 100%;
+      padding: 10px 14px;
+      background: #2563EB;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: inherit;
     }
 
-    /* ---- LOGGED-IN SCREEN ---- */
-    #mainScreen { padding: 16px 20px; gap: 12px; }
-
-    .status-row {
-      display: flex; align-items: center; justify-content: space-between;
+    .btn-primary:hover {
+      background: #1D4ED8;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
     }
-    .check-pill {
-      font-size: 10px; font-weight: 600; padding: 3px 9px;
-      border-radius: 999px; background: #064e3b; color: #6ee7b7;
-      border: 1px solid #059669;
-    }
-    .user-email { font-size: 11px; color: #64748b; }
 
+    .btn-primary:active {
+      transform: scale(0.99);
+    }
+
+    .btn-primary:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .auth-toggle {
+      text-align: center;
+      font-size: 11px;
+      color: #64748B;
+      margin-top: 4px;
+    }
+
+    .auth-toggle-btn {
+      color: #2563EB;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0;
+      margin-left: 3px;
+    }
+
+    .auth-toggle-btn:hover {
+      text-decoration: underline;
+    }
+
+    .alert-box {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: none;
+      text-align: center;
+    }
+
+    .alert-error {
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FEE2E2;
+    }
+
+    /* ---- MAIN SCREEN (LOGGED IN) ---- */
     .profile-card {
-      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
-      padding: 12px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-    .profile-card-title {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px;
-    }
-    .profile-row { margin-bottom: 6px; }
-    .profile-row:last-child { margin-bottom: 0; }
-    .profile-label { font-size: 10px; color: #475569; }
-    .profile-value { font-size: 12px; color: #e2e8f0; font-weight: 600; }
 
-    .completion-row {
-      display: flex; align-items: center; justify-content: space-between;
+    .profile-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .completion-label { font-size: 11px; color: #64748b; }
-    .completion-val { font-size: 11px; font-weight: 700; color: #38bdf8; }
-    .progress-bar {
-      height: 4px; background: #1e293b; border-radius: 999px;
+
+    .avatar-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #EFF6FF;
+      color: #2563EB;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #DBEAFE;
+      flex-shrink: 0;
+    }
+
+    .profile-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .profile-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-email {
+      font-size: 11px;
+      color: #64748B;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-data-list {
+      background: #F8FAFC;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid #F1F5F9;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .data-label {
+      color: #64748B;
+    }
+
+    .data-val {
+      color: #0F172A;
+      font-weight: 600;
+    }
+
+    /* Progress bar */
+    .meter-section {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .meter-title {
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .meter-pct {
+      font-weight: 700;
+      color: #2563EB;
+    }
+
+    .meter-track {
+      height: 6px;
+      background: #E2E8F0;
+      border-radius: 999px;
       overflow: hidden;
     }
-    .progress-fill {
+
+    .meter-fill {
       height: 100%;
-      background: linear-gradient(90deg, #2563eb, #38bdf8);
-      border-radius: 999px; transition: width 0.4s;
+      background: #2563EB;
+      border-radius: 999px;
+      transition: width 0.4s ease;
     }
 
-    .actions { display: flex; flex-direction: column; gap: 7px; }
-    .btn-open-panel {
-      width: 100%; padding: 10px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #fff; border: none; border-radius: 8px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: all 0.15s;
+    /* Action buttons */
+    .actions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .btn-open-panel:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
 
-    .btn-row { display: flex; gap: 6px; }
-    .btn-sec {
-      flex: 1; padding: 7px;
-      background: transparent; color: #94a3b8;
-      border: 1px solid #334155; border-radius: 7px;
-      font-size: 11px; font-weight: 500; cursor: pointer;
-      transition: all 0.15s; text-align: center;
+    .btn-sidepanel {
+      width: 100%;
+      padding: 11px 14px;
+      background: #2563EB;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+      font-family: inherit;
     }
-    .btn-sec:hover { background: #1e293b; color: #e2e8f0; border-color: #475569; }
 
-    #statusMsg {
-      font-size: 11px; text-align: center;
-      color: #94a3b8; min-height: 14px;
+    .btn-sidepanel:hover {
+      background: #1D4ED8;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    }
+
+    .secondary-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-outline {
+      padding: 8px 10px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-outline:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    .btn-logout {
+      color: #DC2626;
+    }
+
+    .btn-logout:hover {
+      background: #FEF2F2;
+      border-color: #FEE2E2;
+      color: #B91C1C;
     }
   </style>
 </head>
 <body>
 
-  <!-- ===================== AUTH SCREEN ===================== -->
-  <div id="authScreen" class="screen active">
-    <div class="logo-bar">
-      <div class="logo-icon">G</div>
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">G</div>
       <div>
-        <div class="logo-name">GovConnect</div>
-        <div class="logo-tagline">Fill forms faster. Keep control of your data.</div>
+        <div class="brand-title">GovConnect</div>
+        <div class="brand-sub">Asisten Formulir Publik</div>
       </div>
     </div>
+    <div class="sync-badge" id="syncStatusBadge">
+      <span class="sync-dot"></span>
+      <span id="syncStatusText">Tersinkron</span>
+    </div>
+  </header>
 
-    <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-      <p class="auth-title" id="authTitle">Masuk ke akun Anda</p>
+  <!-- ================= AUTH SCREEN ================= -->
+  <main id="authScreen" class="screen active">
+    <div class="auth-card">
+      <h2 class="auth-heading" id="authTitle">Masuk ke GovConnect</h2>
 
       <div class="field">
-        <label>Email</label>
-        <input type="email" id="inputEmail" placeholder="email@example.com">
+        <label for="inputEmail">Email</label>
+        <input type="email" id="inputEmail" placeholder="nama@email.com" autocomplete="username">
       </div>
+
       <div class="field">
-        <label>Password</label>
-        <input type="password" id="inputPassword" placeholder="••••••••">
+        <label for="inputPassword">Password</label>
+        <input type="password" id="inputPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
 
-      <!-- Confirm Password — hanya tampil di mode Register -->
-      <div class="field" id="confirmField" style="display:none;">
-        <label>Konfirmasi Password</label>
-        <input type="password" id="inputConfirm" placeholder="••••••••">
+      <div class="field" id="confirmField" style="display: none;">
+        <label for="inputConfirm">Konfirmasi Password</label>
+        <input type="password" id="inputConfirm" placeholder="••••••••" autocomplete="new-password">
       </div>
 
-      <div id="authError"></div>
+      <div id="authError" class="alert-box alert-error"></div>
 
       <button class="btn-primary" id="btnSubmitAuth">Masuk</button>
 
-      <div class="toggle-link">
+      <div class="auth-toggle">
         <span id="toggleText">Belum punya akun?</span>
-        <span id="toggleLink" onclick="toggleMode()"> Daftar</span>
+        <button type="button" class="auth-toggle-btn" id="btnToggleMode">Daftar Akun</button>
       </div>
     </div>
-  </div>
+  </main>
 
-  <!-- ===================== MAIN SCREEN ===================== -->
-  <div id="mainScreen" class="screen">
-    <div class="logo-bar">
-      <div class="logo-icon">G</div>
-      <div>
-        <div class="logo-name">GovConnect</div>
-        <div class="logo-tagline" id="userEmail">...</div>
+  <!-- ================= MAIN SCREEN ================= -->
+  <main id="mainScreen" class="screen">
+    <!-- Active Profile Card -->
+    <div class="profile-card">
+      <div class="profile-top">
+        <div class="avatar-circle" id="userAvatar">U</div>
+        <div class="profile-info">
+          <div class="profile-name" id="profName">Memuat...</div>
+          <div class="profile-email" id="userEmail">-</div>
+        </div>
       </div>
-      <div style="margin-left: auto;">
-        <span class="check-pill">✓ Login</span>
+
+      <div class="profile-data-list">
+        <div class="data-row">
+          <span class="data-label">NIK</span>
+          <span class="data-val" id="profNik">-</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Nomor Telepon</span>
+          <span class="data-val" id="profPhone">-</span>
+        </div>
       </div>
     </div>
 
-    <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
-      <!-- Profile card -->
-      <div class="profile-card">
-        <div class="profile-card-title">Profil Aktif</div>
-        <div class="profile-row">
-          <div class="profile-label">Nama Lengkap</div>
-          <div class="profile-value" id="profName">-</div>
-        </div>
-        <div class="profile-row">
-          <div class="profile-label">NIK</div>
-          <div class="profile-value" id="profNik">-</div>
-        </div>
-        <div class="profile-row">
-          <div class="profile-label">Telepon</div>
-          <div class="profile-value" id="profPhone">-</div>
-        </div>
+    <!-- Completion Meter -->
+    <div class="meter-section">
+      <div class="meter-header">
+        <span class="meter-title">Kelengkapan Profil</span>
+        <span class="meter-pct" id="completionPct">0%</span>
       </div>
-
-      <!-- Profile completion -->
-      <div>
-        <div class="completion-row">
-          <span class="completion-label">Profile Completion</span>
-          <span class="completion-val" id="completionPct">0%</span>
-        </div>
-        <div class="progress-bar" style="margin-top: 5px;">
-          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-        </div>
+      <div class="meter-track">
+        <div class="meter-fill" id="progressFill" style="width: 0%;"></div>
       </div>
-
-      <!-- Actions -->
-      <div class="actions">
-        <button class="btn-open-panel" id="btnOpenPanel">⚡ Buka Side Panel Autofill</button>
-        <div class="btn-row">
-          <button class="btn-sec" id="btnDashboard">⚙ Dashboard</button>
-          <button class="btn-sec" id="btnLogout">↩ Logout</button>
-        </div>
-      </div>
-
-      <div id="statusMsg"></div>
     </div>
-  </div>
+
+    <!-- Actions -->
+    <div class="actions-grid">
+      <button class="btn-sidepanel" id="btnPopupQuickFill" style="background: #16A34A; color: #FFFFFF; border: none; margin-bottom: 4px;">
+        <span>⚡</span> Isi Form Halaman Ini (1-Klik)
+      </button>
+
+      <button class="btn-sidepanel" id="btnOpenPanel">
+        <span>📋</span> Buka Side Panel Lengkap
+      </button>
+
+      <!-- Mode 1-Klik Toolbar Setting -->
+      <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; margin-top: 2px;">
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #0F172A;">Mode 1-Klik Toolbar</div>
+          <div style="font-size: 10px; color: #64748B;">Klik ikon toolbar langsung isi form</div>
+        </div>
+        <input type="checkbox" id="popupToggleOneClick" style="width: 16px; height: 16px; accent-color: #2563EB; cursor: pointer;">
+      </div>
+
+      <div class="secondary-row" style="margin-top: 4px;">
+        <button class="btn-outline" id="btnDashboard">
+          <span>📊</span> Dashboard
+        </button>
+        <button class="btn-outline btn-logout" id="btnLogout">
+          <span>🚪</span> Logout
+        </button>
+      </div>
+    </div>
+  </main>
 
   <script src="popup.js"></script>
 </body>

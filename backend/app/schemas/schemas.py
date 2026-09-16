@@ -27,6 +27,15 @@ class ProfileBase(BaseModel):
     birth_place: Optional[str] = None
     birth_date: Optional[str] = None
     gender: Optional[str] = None
+    religion: Optional[str] = None
+    marital_status: Optional[str] = None
+    blood_type: Optional[str] = None
+
+    # Family & Emergency
+    mother_name: Optional[str] = None
+    father_name: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
 
     # Address
     address: Optional[str] = None
@@ -46,9 +55,20 @@ class ProfileBase(BaseModel):
     education_level: Optional[str] = None
     student_id: Optional[str] = None
 
-    # Additional
+    # Additional & Employment
     occupation: Optional[str] = None
     organization: Optional[str] = None
+    work_address: Optional[str] = None
+
+    # Official Documents
+    npwp: Optional[str] = None
+    bpjs_number: Optional[str] = None
+
+    # Custom User-Defined Fields (JSON string)
+    custom_fields: Optional[str] = None
+
+    # Document & Photo Files (JSON string with base64)
+    document_photos: Optional[str] = None
 
 class ProfileCreate(ProfileBase):
     pass
@@ -77,6 +97,8 @@ class MappingResponse(MappingBase):
     class Config:
         from_attributes = True
 
+from typing import Optional, List
+
 # --- ACTIVITY SCHEMAS ---
 class ActivityCreate(BaseModel):
     target_url: str
@@ -85,6 +107,7 @@ class ActivityCreate(BaseModel):
     fields_detected: int = 0
     fields_filled: int = 0
     status: str = "success"
+    filled_fields_summary: Optional[str] = None
 
 class ActivityResponse(BaseModel):
     id: int
@@ -95,7 +118,33 @@ class ActivityResponse(BaseModel):
     fields_detected: int
     fields_filled: int
     status: str
+    filled_fields_summary: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class DailyActivityItem(BaseModel):
+    date: str
+    autofill: int
+
+class WebsiteCountItem(BaseModel):
+    name: str
+    count: int
+
+class FieldCountItem(BaseModel):
+    name: str
+    count: int
+
+class AnalyticsResponse(BaseModel):
+    total_autofill: int
+    success_count: int
+    partial_count: int
+    failed_count: int
+    success_rate: float
+    estimated_time_saved_seconds: int
+    profile_completion: float
+    daily_trend: List[DailyActivityItem]
+    by_website: List[WebsiteCountItem]
+    most_used_fields: List[FieldCountItem]
+    recent_activities: List[ActivityResponse]

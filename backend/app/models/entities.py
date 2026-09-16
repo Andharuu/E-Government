@@ -26,6 +26,15 @@ class Profile(Base):
     birth_place = Column(String(100), nullable=True)
     birth_date = Column(String(50), nullable=True)
     gender = Column(String(20), nullable=True)
+    religion = Column(String(50), nullable=True)
+    marital_status = Column(String(50), nullable=True)
+    blood_type = Column(String(10), nullable=True)
+
+    # Family & Emergency
+    mother_name = Column(String(255), nullable=True)
+    father_name = Column(String(255), nullable=True)
+    emergency_contact_name = Column(String(255), nullable=True)
+    emergency_contact_phone = Column(String(50), nullable=True)
 
     # Address
     address = Column(Text, nullable=True)
@@ -45,9 +54,18 @@ class Profile(Base):
     education_level = Column(String(50), nullable=True)
     student_id = Column(String(50), nullable=True)
 
-    # Additional
+    # Employment & Documents
     occupation = Column(String(100), nullable=True)
     organization = Column(String(255), nullable=True)
+    work_address = Column(Text, nullable=True)
+    npwp = Column(String(50), nullable=True)
+    bpjs_number = Column(String(50), nullable=True)
+
+    # Custom User-Defined Data (stored as JSON string)
+    custom_fields = Column(Text, nullable=True)
+
+    # Document & Photo Files (stored as JSON with base64/metadata)
+    document_photos = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -85,6 +103,7 @@ class Activity(Base):
 
     # Status: success / partial / failed — sesuai PRD §19
     status = Column(String(20), default="success")
+    filled_fields_summary = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="activities")

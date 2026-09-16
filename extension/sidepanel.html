@@ -3,13 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>GovConnect Side Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #F8FAFC;
+      color: #0F172A;
+      font-size: 13px;
+      line-height: 1.4;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -17,180 +26,697 @@
 
     /* ---- HEADER ---- */
     .header {
-      display: flex; align-items: center; gap: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       padding: 14px 16px;
-      border-bottom: 1px solid #1e293b;
-      position: sticky; top: 0;
-      background: #0f172a; z-index: 10;
+      border-bottom: 1px solid #E2E8F0;
+      position: sticky;
+      top: 0;
+      background: #FFFFFF;
+      z-index: 10;
     }
+
     .logo-icon {
-      width: 28px; height: 28px; border-radius: 7px;
-      background: linear-gradient(135deg, #2563eb, #38bdf8);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: #FFFFFF;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     }
-    .header-text { flex: 1; min-width: 0; }
-    .header-title { font-size: 14px; font-weight: 700; }
+
+    .header-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: -0.2px;
+    }
+
     .header-sub {
-      font-size: 10px; color: #64748b;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 11px;
+      color: #64748B;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
+
     .badge {
-      font-size: 9px; font-weight: 700; padding: 2px 7px;
-      border-radius: 999px; flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
     }
-    .badge-connected { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
-    .badge-error { background: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+
+    .badge-connected {
+      background: #F0FDF4;
+      color: #16A34A;
+      border: 1px solid #DCFCE7;
+    }
+
+    .badge-warning {
+      background: #FFFBEB;
+      color: #D97706;
+      border: 1px solid #FEF3C7;
+    }
+
+    .badge-error {
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FEE2E2;
+    }
 
     /* ---- SCREENS ---- */
-    .screen { display: none; flex-direction: column; flex: 1; padding: 14px 16px; gap: 12px; }
-    .screen.active { display: flex; }
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 16px;
+      gap: 14px;
+    }
 
-    /* ---- UNSUPPORTED STATE ---- */
+    .screen.active {
+      display: flex;
+    }
+
+    /* ---- STATE: AUTH REQUIRED ---- */
+    .auth-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .auth-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      text-align: center;
+    }
+
+    .auth-subtitle {
+      font-size: 12px;
+      color: #64748B;
+      text-align: center;
+      line-height: 1.4;
+      margin-top: -4px;
+      margin-bottom: 4px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 9px 12px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #0F172A;
+      outline: none;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .field input:focus {
+      background: #FFFFFF;
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .auth-alert {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FEE2E2;
+      display: none;
+      text-align: center;
+    }
+
+    .btn-sync-quick {
+      width: 100%;
+      padding: 9px 12px;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-sync-quick:hover {
+      background: #DBEAFE;
+    }
+
+    /* ---- STATE: UNSUPPORTED ---- */
     #screenUnsupported {
-      justify-content: center; align-items: center; text-align: center; gap: 10px;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 28px 16px;
+      gap: 12px;
     }
-    .unsupported-icon { font-size: 32px; color: #475569; }
-    .unsupported-title { font-size: 14px; font-weight: 700; color: #94a3b8; }
-    .unsupported-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
 
-    /* ---- FIELD SELECTION STATE ---- */
-    .section-title {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;
+    .unsupported-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 24px 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
     }
+
+    .unsupported-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #64748B;
+    }
+
+    .unsupported-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .unsupported-desc {
+      font-size: 12px;
+      color: #64748B;
+      line-height: 1.5;
+    }
+
+    /* ---- STATE: FIELD SELECTION ---- */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748B;
+      margin-bottom: 6px;
+    }
+
     .detect-summary {
-      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
-      padding: 10px 12px;
-      display: flex; align-items: center; justify-content: space-between;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
-    .detect-count { font-size: 12px; font-weight: 700; color: #38bdf8; }
-    .detect-label { font-size: 11px; color: #64748b; }
+
+    .detect-count {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2563EB;
+    }
+
+    .detect-label {
+      font-size: 11px;
+      color: #64748B;
+    }
 
     .field-list {
-      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
       overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+
     .field-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px; border-bottom: 1px solid #0f172a; cursor: pointer;
-      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #F1F5F9;
+      cursor: pointer;
+      transition: background 0.12s ease;
     }
-    .field-item:last-child { border-bottom: none; }
-    .field-item:hover { background: #263143; }
-    .field-item input[type=checkbox] { accent-color: #2563eb; width: 14px; height: 14px; flex-shrink: 0; }
-    .field-name { font-size: 12px; font-weight: 600; flex: 1; }
-    .field-profile { font-size: 10px; color: #64748b; }
+
+    .field-item:last-child {
+      border-bottom: none;
+    }
+
+    .field-item:hover {
+      background: #F8FAFC;
+    }
+
+    .field-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #2563EB;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .field-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .field-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .field-profile {
+      font-size: 11px;
+      color: #64748B;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .field-badge {
-      font-size: 9px; padding: 2px 6px; border-radius: 999px; font-weight: 600;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+      flex-shrink: 0;
     }
-    .fb-matched { background: #14532d; color: #86efac; }
-    .fb-notfound { background: #1e293b; color: #64748b; border: 1px solid #334155; }
 
-    /* ---- RESULT STATE ---- */
-    .result-summary {
-      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
-      padding: 12px;
+    .fb-matched {
+      background: #F0FDF4;
+      color: #16A34A;
+      border: 1px solid #DCFCE7;
     }
-    .result-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-    .result-row:last-child { margin-bottom: 0; }
-    .result-label { font-size: 12px; color: #94a3b8; }
-    .result-val { font-size: 12px; font-weight: 700; }
-    .val-success { color: #34d399; }
-    .val-partial { color: #fbbf24; }
-    .val-failed { color: #f87171; }
-    .val-neutral { color: #94a3b8; }
 
-    .result-fields { display: flex; flex-direction: column; gap: 4px; }
+    .fb-notfound {
+      background: #F8FAFC;
+      color: #94A3B8;
+      border: 1px solid #E2E8F0;
+    }
+
+    /* ---- STATE: RESULT ---- */
+    .result-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .result-label {
+      color: #64748B;
+    }
+
+    .result-val {
+      font-weight: 700;
+    }
+
+    .val-success {
+      color: #16A34A;
+    }
+
+    .val-partial {
+      color: #F59E0B;
+    }
+
+    .val-failed {
+      color: #DC2626;
+    }
+
+    .val-neutral {
+      color: #64748B;
+    }
+
+    .result-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
     .rfield {
-      display: flex; align-items: center; gap: 8px;
-      background: #1e293b; border: 1px solid #334155; border-radius: 6px;
-      padding: 7px 10px; font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
     }
-    .rfield-icon { font-size: 12px; flex-shrink: 0; }
-    .rfield-name { flex: 1; font-weight: 600; color: #e2e8f0; }
-    .rfield-status { font-size: 10px; font-weight: 600; }
-    .rs-filled { color: #34d399; }
-    .rs-skipped { color: #64748b; }
-    .rs-notfound { color: #94a3b8; }
+
+    .rfield-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .rfield-name {
+      flex: 1;
+      font-weight: 600;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rfield-status {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+
+    .rs-filled {
+      background: #F0FDF4;
+      color: #16A34A;
+    }
+
+    .rs-skipped {
+      background: #FFFBEB;
+      color: #D97706;
+    }
+
+    .rs-notfound {
+      background: #F8FAFC;
+      color: #64748B;
+    }
 
     .review-notice {
-      background: #1e3a5f; border: 1px solid #2563eb; border-radius: 8px;
-      padding: 10px 12px; font-size: 11px; color: #93c5fd; text-align: center;
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #1D4ED8;
+      text-align: center;
       line-height: 1.5;
     }
 
     /* ---- BUTTONS ---- */
     .btn-primary {
-      width: 100%; padding: 10px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #fff; border: none; border-radius: 8px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: all 0.15s;
+      width: 100%;
+      padding: 11px 14px;
+      background: #2563EB;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: inherit;
     }
-    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); transform: translateY(-1px); }
-    .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; transform: none; }
+
+    .btn-primary:hover {
+      background: #1D4ED8;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-primary:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
 
     .btn-ghost {
-      width: 100%; padding: 8px;
-      background: transparent; color: #64748b;
-      border: 1px solid #334155; border-radius: 7px;
-      font-size: 11px; cursor: pointer; transition: all 0.15s;
+      width: 100%;
+      padding: 9px 12px;
+      background: #FFFFFF;
+      color: #475569;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
-    .btn-ghost:hover { background: #1e293b; color: #94a3b8; }
+
+    .btn-ghost:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
 
     #statusMsg {
-      font-size: 11px; text-align: center; color: #64748b; min-height: 14px;
+      font-size: 11px;
+      text-align: center;
+      color: #64748B;
+      min-height: 14px;
+    }
+
+    /* ---- MODE 1-KLIK BAR ---- */
+    .mode-bar {
+      background: #FFFFFF;
+      padding: 10px 16px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .mode-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mode-icon {
+      font-size: 15px;
+    }
+    .mode-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+    .mode-desc {
+      font-size: 10px;
+      color: #64748B;
+      line-height: 1.2;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #CBD5E1;
+      transition: .2s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #2563EB;
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px);
     }
   </style>
 </head>
 <body>
 
-  <div class="header">
+  <!-- Sticky Header -->
+  <header class="header">
     <div class="logo-icon">G</div>
     <div class="header-text">
       <div class="header-title">GovConnect</div>
       <div class="header-sub" id="pageTitle">Mendeteksi halaman...</div>
     </div>
     <span class="badge badge-connected" id="apiStatus">Online</span>
+  </header>
+
+  <!-- Mode 1-Klik / Auto Switch Bar -->
+  <div class="mode-bar" id="modeBar">
+    <div class="mode-info">
+      <span class="mode-icon" id="modeIcon">⚡</span>
+      <div>
+        <div class="mode-title" id="modeTitle">Mode 1-Klik: Aktif</div>
+        <div class="mode-desc" id="modeDesc">Klik ikon di toolbar langsung mengisi form</div>
+      </div>
+    </div>
+    <label class="switch" title="Aktifkan / Nonaktifkan Mode 1-Klik Instan">
+      <input type="checkbox" id="toggleOneClick" checked>
+      <span class="slider"></span>
+    </label>
   </div>
 
-  <!-- ====== STATE 1: UNSUPPORTED ====== -->
+  <!-- ====== SCREEN: AUTH REQUIRED ====== -->
+  <div id="screenAuth" class="screen">
+    <div class="auth-card">
+      <h2 class="auth-title" id="sideAuthTitle">Masuk ke GovConnect</h2>
+      <p class="auth-subtitle">Masuk untuk mengisi formulir publik dengan data profil kependudukan Anda.</p>
+
+      <button type="button" class="btn-sync-quick" id="btnAutoSyncTab">
+        ⚡ Sinkronkan dari Dashboard Aktif
+      </button>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;">
+        <span style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">atau login</span>
+        <hr style="flex: 1; border: none; border-top: 1px solid #E2E8F0;">
+      </div>
+
+      <div class="field">
+        <label for="sideEmail">Email</label>
+        <input type="email" id="sideEmail" placeholder="nama@email.com">
+      </div>
+
+      <div class="field">
+        <label for="sidePassword">Password</label>
+        <input type="password" id="sidePassword" placeholder="••••••••">
+      </div>
+
+      <div id="sideAuthAlert" class="auth-alert"></div>
+
+      <button class="btn-primary" id="btnSideLogin">Masuk</button>
+
+      <div style="text-align: center; font-size: 11px; color: #64748B; margin-top: 2px;">
+        <a href="http://localhost:5173/login" target="_blank" style="color: #2563EB; text-decoration: none; font-weight: 600;">
+          Buka Halaman Web Login ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: UNSUPPORTED ====== -->
   <div id="screenUnsupported" class="screen">
-    <div class="unsupported-icon">○</div>
-    <div class="unsupported-title">Website belum didukung</div>
-    <div class="unsupported-desc">GovConnect belum dapat mengenali<br>form pada halaman ini.</div>
+    <div class="unsupported-card">
+      <div class="unsupported-icon">📋</div>
+      <div class="unsupported-title">Belum Mendeteksi Formulir</div>
+      <div class="unsupported-desc">
+        GovConnect belum mengenali form input pada halaman aktif ini. Buka halaman formulir publik untuk mulai pengisian otomatis.
+      </div>
+      <button class="btn-ghost" id="btnRetryDetect" style="margin-top: 6px;">
+        🔄 Pindai Ulang Halaman
+      </button>
+      <a href="http://localhost:5173/test-page/dummy_form.html" target="_blank" class="btn-primary" style="margin-top: 4px; text-decoration: none; font-size: 12px; padding: 8px 12px;">
+        📄 Buka Form Pengujian
+      </a>
+    </div>
   </div>
 
-  <!-- ====== STATE 2: FIELD SELECTION ====== -->
+  <!-- ====== SCREEN: FIELD SELECTION ====== -->
   <div id="screenDetect" class="screen">
     <div>
-      <div class="section-title">Formulir Terdeteksi</div>
+      <div class="section-label">Formulir Terdeteksi</div>
       <div class="detect-summary">
         <div>
           <div class="detect-count" id="detectCount">0 field</div>
-          <div class="detect-label">siap untuk diisi</div>
+          <div class="detect-label">siap diisi secara otomatis</div>
         </div>
-        <div style="font-size: 20px;">📋</div>
+        <div style="font-size: 22px;">⚡</div>
       </div>
+    </div>
+
+    <div id="dynamicFormNotice" style="display: none; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #1E40AF; line-height: 1.4;">
+      💡 <b>Formulir Bersyarat:</b> Halaman ini menyembunyikan sebagian kolom. Silakan pilih opsi pada formulir web (seperti <i>Program Bantuan</i>) untuk menampilkan kolom isian di layar.
     </div>
 
     <div>
-      <div class="section-title">Pilih Field</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <span class="section-label" style="margin-bottom: 0;">Pilih Field yang Akan Diisi</span>
+        <label style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+          <input type="checkbox" id="toggleShowHidden" style="width: 13px; height: 13px; accent-color: #2563EB;">
+          <span>Tampilkan semua</span>
+        </label>
+      </div>
       <div class="field-list" id="fieldList">
-        <!-- diisi JS -->
+        <!-- Diisi secara dinamis oleh JavaScript -->
       </div>
     </div>
 
-    <button class="btn-primary" id="btnFill" disabled>⚡ Fill Selected Fields</button>
+    <button class="btn-primary" id="btnFill" disabled>
+      ⚡ Isi Formulir Otomatis
+    </button>
     <div id="statusMsg"></div>
   </div>
 
-  <!-- ====== STATE 3: RESULT ====== -->
+  <!-- ====== SCREEN: RESULT ====== -->
   <div id="screenResult" class="screen">
-    <div class="result-summary">
+    <div class="result-card">
       <div class="result-row">
-        <span class="result-label">Status</span>
+        <span class="result-label">Status Keseluruhan</span>
         <span class="result-val" id="resultStatus">-</span>
       </div>
       <div class="result-row">
@@ -198,22 +724,25 @@
         <span class="result-val val-success" id="resultFilled">0</span>
       </div>
       <div class="result-row">
-        <span class="result-label">Tidak Ditemukan</span>
+        <span class="result-label">Dilewati / Tidak Ada Data</span>
         <span class="result-val val-neutral" id="resultSkipped">0</span>
       </div>
     </div>
 
     <div>
-      <div class="section-title">Detail Per Field</div>
+      <div class="section-label">Rincian Per Field</div>
       <div class="result-fields" id="resultFields"></div>
     </div>
 
     <div class="review-notice">
-      ✓ Periksa hasil autofill sebelum submit.<br>
+      ✓ Harap tinjau formulir sebelum dikirim.<br>
       GovConnect tidak mengirim formulir secara otomatis.
     </div>
 
-    <button class="btn-ghost" id="btnRefill">↩ Isi Ulang</button>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <button class="btn-ghost" id="btnRefill">↩ Isi Ulang Field</button>
+      <button class="btn-primary" id="btnGoDashboard">📊 Buka Dashboard Analitik</button>
+    </div>
   </div>
 
   <script src="sidepanel.js"></script>

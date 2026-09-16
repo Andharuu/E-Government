@@ -42,8 +42,21 @@ export interface Profile {
   student_id: string | null;
   occupation: string | null;
   organization: string | null;
+  work_address?: string | null;
+  religion?: string | null;
+  marital_status?: string | null;
+  blood_type?: string | null;
+  mother_name?: string | null;
+  father_name?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  npwp?: string | null;
+  bpjs_number?: string | null;
+  custom_fields?: string | null;
+  document_photos?: string | null;
   created_at: string;
   updated_at: string;
+  [key: string]: any;
 }
 
 export interface Activity {
@@ -68,6 +81,28 @@ export interface ActivityStats {
   profile_completion: number;
 }
 
+export interface DailyActivityItem {
+  date: string;
+  autofill: number;
+}
+
+export interface WebsiteCountItem {
+  name: string;
+  count: number;
+}
+
+export interface FieldCountItem {
+  name: string;
+  count: number;
+}
+
+export interface ActivityAnalytics extends ActivityStats {
+  daily_trend: DailyActivityItem[];
+  by_website: WebsiteCountItem[];
+  most_used_fields: FieldCountItem[];
+  recent_activities: Activity[];
+}
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<User>('/auth/register', { email, password }),
@@ -90,6 +125,7 @@ export const profileApi = {
 export const activityApi = {
   get: (limit = 10) => api.get<Activity[]>(`/activities?limit=${limit}`),
   getStats: () => api.get<ActivityStats>('/activities/stats'),
+  getAnalytics: () => api.get<ActivityAnalytics>('/activities/analytics'),
   log: (data: Omit<Activity, 'id' | 'user_id' | 'created_at'>) =>
     api.post<Activity>('/activities', data),
 };
