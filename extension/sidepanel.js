@@ -648,6 +648,7 @@ async function executeAutofill() {
     // Catat log aktivitas ke API (background async, tidak memblokir UI)
     const token = await getToken();
     if (token) {
+      try {
         let domain = "";
         if (currentTab?.url) {
           try {
