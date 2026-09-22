@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovConnect — Pusat Pengujian & Benchmark Formulir Autofill</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 70%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 960px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .badge-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+
+    h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 40%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      text-align: left;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #3b82f6;
+      box-shadow: 0 12px 24px -10px rgba(37, 99, 235, 0.3);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+
+    .icon-egov {
+      background: rgba(37, 99, 235, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+    }
+
+    .icon-roboform {
+      background: rgba(22, 163, 74, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #4ade80;
+    }
+
+    .icon-demoqa {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title .arrow {
+      font-size: 16px;
+      transition: transform 0.2s;
+    }
+    .card:hover .card-title .arrow {
+      transform: translateX(4px);
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .footer-note {
+      margin-top: 48px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .footer-note a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="badge-pill">
+      <span class="dot"></span>
+      GovConnect Autofill Testing Suite v2.0
+    </div>
+
+    <h1>Pusat Benchmark & Validasi Formulir</h1>
+    <p class="subtitle">
+      Pilih formulir standar di bawah untuk menguji keandalan engine GovConnect dalam mendeteksi dan mengisikan data kependudukan secara otomatis.
+    </p>
+
+    <div class="cards-grid">
+      <!-- Card 1: Indonesia e-Gov Standard -->
+      <a href="dummy_form.html" class="card">
+        <div class="card-icon icon-egov">🏛️</div>
+        <div class="card-title">
+          <span>Portal Resmi e-Gov RI</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="card-desc">
+          Formulir komprehensif layanan publik Indonesia. Menguji 25+ atribut pokok kependudukan, dropdown PrimeNG CoreTax DJP, alamat lengkap, dan upload foto berkas KTP/KK/Ijazah.
+        </p>
+        <div class="card-tags">
+          <span class="tag">NIK & KK</span>
+          <span class="tag">PrimeNG Dropdown</span>
+          <span class="tag">Upload Dokumen</span>
+          <span class="tag">e-Gov RI</span>
+        </div>
+      </a>
+
+      <!-- Card 2: RoboForm Standard -->
+      <a href="roboform_standard.html" class="card">
+        <div class="card-icon icon-roboform">🤖</div>
+        <div class="card-title">
+          <span>RoboForm Benchmark</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="card-desc">
+          Standar emas form filler internasional. Menguji pemecahan First/Last Name, 3-dropdown terpisah tanggal lahir (Month/Day/Year), kontak kantor/rumah, Sex, dan field negara.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Split Name</span>
+          <span class="tag">Split Date (M/D/Y)</span>
+          <span class="tag">International</span>
+          <span class="tag">RoboForm Ref</span>
+        </div>
+      </a>
+
+      <!-- Card 3: DemoQA ToolsQA Standard -->
+      <a href="demoqa_standard.html" class="card">
+        <div class="card-icon icon-demoqa">⚡</div>
+        <div class="card-title">
+          <span>ToolsQA DemoQA Form</span>
+          <span class="arrow">→</span>
+        </div>
+        <p class="card-desc">
+          Formulir standar industri pengujian otomasi QA. Menguji Radio Button Gender, Checkboxes Hobbies, Native Date Picker, File Upload, Textarea, dan Cascading State-City.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Radio Buttons</span>
+          <span class="tag">Checkboxes</span>
+          <span class="tag">Cascading Dropdown</span>
+          <span class="tag">DemoQA Ref</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="footer-note">
+      GovConnect Autofill Assistant — <a href="http://127.0.0.1:5173" target="_blank">Buka Web App Dashboard GovConnect (Port 5173)</a>
+    </div>
+  </div>
+
+</body>
+</html>

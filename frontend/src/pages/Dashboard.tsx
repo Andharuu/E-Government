@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { activityApi, type ActivityAnalytics } from '../services/api';
+import { activityApi, profileApi, type ActivityAnalytics, type Profile } from '../services/api';
 import {
   LayoutDashboard,
   CheckCircle,
@@ -13,7 +13,17 @@ import {
   RotateCw,
   ExternalLink,
   Sparkles,
-  Inbox
+  Inbox,
+  Bot,
+  Save,
+  CheckCircle2,
+  User,
+  MapPin,
+  Phone,
+  Briefcase,
+  Check,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import {
   LineChart,
@@ -36,6 +46,14 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Profile & RoboForm Suite State
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [customFields, setCustomFields] = useState<any[]>([]);
+  const [roboTab, setRoboTab] = useState<'personal' | 'address' | 'contact' | 'career'>('personal');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [hasUnsavedRobo, setHasUnsavedRobo] = useState(false);
+
   const fetchAnalytics = async () => {
     try {
       const res = await activityApi.getAnalytics();
@@ -48,14 +66,256 @@ export function Dashboard() {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const res = await profileApi.get();
+      setProfile(res.data);
+      if (res.data.custom_fields) {
+        try {
+          const parsed = typeof res.data.custom_fields === 'string'
+            ? JSON.parse(res.data.custom_fields)
+            : res.data.custom_fields;
+          if (Array.isArray(parsed?.fields)) {
+            setCustomFields(parsed.fields);
+          } else if (Array.isArray(parsed)) {
+            setCustomFields(parsed);
+          }
+        } catch (e) {
+          console.error('Error parsing custom_fields:', e);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAnalytics();
+    fetchProfile();
   }, []);
 
   const handleRefresh = () => {
     setRefreshing(true);
     fetchAnalytics();
+    fetchProfile();
   };
+
+  const getFieldVal = (key: string, defaultVal: string = '') => {
+    if (profile && (profile as any)[key] !== undefined && (profile as any)[key] !== null && String((profile as any)[key]).trim() !== '') {
+      return String((profile as any)[key]);
+    }
+    const cf = customFields.find((f: any) => f.key === key);
+    return cf?.value !== undefined && cf?.value !== null ? String(cf.value) : defaultVal;
+  };
+
+  const handleRoboFieldChange = (key: string, value: string, category: string = 'identity') => {
+    setProfile(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, [key]: value };
+      if (key === 'first_name' || key === 'last_name') {
+        const fn = key === 'first_name' ? value : (updated.first_name || '');
+        const ln = key === 'last_name' ? value : (updated.last_name || '');
+        const mi = getFieldVal('middle_initial');
+        if (fn || ln) {
+          updated.full_name = [fn, mi ? `${mi}.` : '', ln].filter(Boolean).join(' ');
+        }
+      } else if (key === 'full_name' && value.trim()) {
+        const parts = value.trim().split(/\s+/);
+        if (!updated.first_name) updated.first_name = parts[0] || '';
+        if (!updated.last_name) updated.last_name = parts.slice(1).join(' ') || parts[0] || '';
+      }
+      return updated;
+    });
+
+    const extendedKeys = ['title', 'middle_initial', 'address_line_2', 'home_phone', 'work_telephone', 'fax', 'comments'];
+    if (extendedKeys.includes(key)) {
+      setCustomFields(prev => {
+        const exists = prev.some((f: any) => f.key === key);
+        if (exists) {
+          return prev.map((f: any) => f.key === key ? { ...f, value } : f);
+        } else {
+          return [
+            ...prev,
+            {
+              id: `cf_${key}_${Date.now()}`,
+              category,
+              key,
+              label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              value,
+              type: key === 'comments' ? 'textarea' : 'text'
+            }
+          ];
+        }
+      });
+    }
+
+    setHasUnsavedRobo(true);
+  };
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? String(age) : '';
+  };
+
+  const fillSampleRoboformData = () => {
+    const sample = {
+      title: 'Mr',
+      first_name: 'Ahmad',
+      middle_initial: 'N',
+      last_name: 'Hidayat',
+      full_name: 'Ahmad N. Hidayat',
+      gender: 'Laki-laki',
+      birth_date: '1995-04-23',
+      birth_place: 'Yogyakarta',
+      address: 'Jl. Malioboro No. 45',
+      address_line_2: 'Kavling 12',
+      city: 'Kota Yogyakarta',
+      province: 'DI Yogyakarta',
+      country: 'Indonesia',
+      postal_code: '55271',
+      phone: '081298765432',
+      home_phone: '0215551234',
+      work_telephone: '0215559876',
+      fax: '0215559877',
+      email: profile?.email || user?.email || 'ahmad.hidayat@example.com',
+      website: 'https://govconnect.id',
+      organization: 'PT GovConnect Solusi Bangsa',
+      occupation: 'Full Stack Engineer',
+      income: '15000000',
+      driver_license: '3515-8899-0123',
+      comments: 'Pengisian benchmark formulir standar internasional RoboForm berhasil diuji oleh GovConnect.'
+    };
+
+    setProfile(prev => prev ? { ...prev, ...sample } : ({ ...sample } as any));
+
+    const extraKeys: Record<string, { cat: string; label: string; type: string }> = {
+      title: { cat: 'identity', label: 'Title / Gelar', type: 'text' },
+      middle_initial: { cat: 'identity', label: 'Middle Initial', type: 'text' },
+      address_line_2: { cat: 'address', label: 'Address Line 2', type: 'text' },
+      home_phone: { cat: 'contact', label: 'Telepon Rumah', type: 'text' },
+      work_telephone: { cat: 'contact', label: 'Telepon Kantor', type: 'text' },
+      fax: { cat: 'contact', label: 'Nomor Fax', type: 'text' },
+      comments: { cat: 'documents', label: 'Comments', type: 'textarea' },
+    };
+
+    setCustomFields(prev => {
+      let updated = [...prev];
+      Object.entries(extraKeys).forEach(([k, meta]) => {
+        const val = (sample as any)[k];
+        const idx = updated.findIndex((f: any) => f.key === k);
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], value: val };
+        } else {
+          updated.push({
+            id: `cf_${k}_${Date.now()}`,
+            category: meta.cat,
+            key: k,
+            label: meta.label,
+            value: val,
+            type: meta.type
+          });
+        }
+      });
+      return updated;
+    });
+
+    setHasUnsavedRobo(true);
+    setSaveMessage({ type: 'success', text: 'Template contoh RoboForm berhasil diterapkan! Klik "Simpan Perubahan" untuk menyinkronkan.' });
+    setTimeout(() => setSaveMessage(null), 4000);
+  };
+
+  const handleSaveRoboProfile = async () => {
+    if (savingProfile || !profile) return;
+    setSavingProfile(true);
+    setSaveMessage(null);
+
+    try {
+      const payload: Partial<Profile> = {
+        ...profile,
+        custom_fields: JSON.stringify({
+          fields: customFields,
+        }),
+      };
+
+      const res = await profileApi.update(payload);
+      setProfile(res.data);
+      setHasUnsavedRobo(false);
+
+      // Notifikasi ke ekstensi browser
+      try {
+        localStorage.setItem('govconnect_profile_updated_at', Date.now().toString());
+        window.postMessage({ type: 'GOVCONNECT_PROFILE_UPDATED', profile: res.data }, '*');
+      } catch (e) {
+        console.warn('Sync notification error:', e);
+      }
+
+      setSaveMessage({ type: 'success', text: 'Data profil standar RoboForm berhasil disimpan! Ekstensi siap mengisi formulir benchmark.' });
+      setTimeout(() => setSaveMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Save error:', err);
+      setSaveMessage({ type: 'error', text: err?.response?.data?.detail || 'Gagal menyimpan profil.' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const roboTrackedKeys = useMemo(() => [
+    { key: 'first_name', label: 'First Name', cat: 'personal' },
+    { key: 'last_name', label: 'Last Name', cat: 'personal' },
+    { key: 'title', label: 'Title', cat: 'personal' },
+    { key: 'middle_initial', label: 'Middle Initial', cat: 'personal' },
+    { key: 'gender', label: 'Sex', cat: 'personal' },
+    { key: 'birth_date', label: 'Date of Birth', cat: 'personal' },
+    { key: 'birth_place', label: 'Birth Place', cat: 'personal' },
+    { key: 'address', label: 'Address Line 1', cat: 'address' },
+    { key: 'address_line_2', label: 'Address Line 2', cat: 'address' },
+    { key: 'city', label: 'City', cat: 'address' },
+    { key: 'province', label: 'State / Province', cat: 'address' },
+    { key: 'country', label: 'Country', cat: 'address' },
+    { key: 'postal_code', label: 'Zip Code', cat: 'address' },
+    { key: 'phone', label: 'Cell Phone', cat: 'contact' },
+    { key: 'home_phone', label: 'Home Phone', cat: 'contact' },
+    { key: 'work_telephone', label: 'Work Telephone', cat: 'contact' },
+    { key: 'fax', label: 'Fax', cat: 'contact' },
+    { key: 'email', label: 'Email', cat: 'contact' },
+    { key: 'website', label: 'Web Site', cat: 'contact' },
+    { key: 'organization', label: 'Company', cat: 'career' },
+    { key: 'occupation', label: 'Job Title', cat: 'career' },
+    { key: 'income', label: 'Income', cat: 'career' },
+    { key: 'driver_license', label: 'Driver License', cat: 'career' },
+    { key: 'comments', label: 'Comments', cat: 'career' },
+  ], []);
+
+  const roboStats = useMemo(() => {
+    let filled = 0;
+    const catFilled: Record<string, { filled: number; total: number }> = {
+      personal: { filled: 0, total: 0 },
+      address: { filled: 0, total: 0 },
+      contact: { filled: 0, total: 0 },
+      career: { filled: 0, total: 0 },
+    };
+
+    roboTrackedKeys.forEach(item => {
+      catFilled[item.cat].total++;
+      const val = getFieldVal(item.key);
+      if (val && val.trim() !== '') {
+        filled++;
+        catFilled[item.cat].filled++;
+      }
+    });
+
+    const total = roboTrackedKeys.length;
+    const pct = Math.round((filled / total) * 100);
+    return { filled, total, pct, catFilled };
+  }, [profile, customFields, roboTrackedKeys]);
 
   const kpiCards = [
     {
@@ -183,6 +443,566 @@ export function Dashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* ROBOFORM BENCHMARK & PROFILE DATA SUITE WIDGET */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        {/* Widget Top Header */}
+        <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
+                <Bot className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg font-bold text-white tracking-tight">RoboForm Benchmark & Data Suite</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-full">
+                    International Benchmark
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  Lengkapi data tolok ukur RoboForm (24 Kolom) agar ekstensi GovConnect dapat mengisi 100% formulir standar global secara instan.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={fillSampleRoboformData}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-100 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl transition-all shadow-xs cursor-pointer"
+                title="Isi cepat dengan data contoh standar RoboForm"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Isi Data Contoh</span>
+              </button>
+
+              <a
+                href="/test-page/roboform_standard.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-blue-200 bg-blue-600/30 hover:bg-blue-600/40 border border-blue-400/40 rounded-xl transition-all shadow-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Uji di Benchmark</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleSaveRoboProfile}
+                disabled={savingProfile}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {savingProfile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{savingProfile ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Readiness Progress Bar */}
+          <div className="mt-5 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1.5 flex-1 max-w-xl">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  Kesiapan Autofill RoboForm:
+                  <span className="font-bold text-white ml-1">{roboStats.filled} dari {roboStats.total} kolom terisi</span>
+                </span>
+                <span className="font-bold text-emerald-400">{roboStats.pct}% Siap</span>
+              </div>
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 via-indigo-400 to-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${roboStats.pct}%` }}
+                />
+              </div>
+            </div>
+
+            {hasUnsavedRobo && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300 bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-400/30 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                Ada perubahan belum disimpan
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Save Message Notification */}
+        {saveMessage && (
+          <div
+            className={`p-3.5 px-6 border-b flex items-center gap-2.5 text-xs font-semibold ${
+              saveMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border-rose-200'
+            }`}
+          >
+            {saveMessage.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            )}
+            <span>{saveMessage.text}</span>
+          </div>
+        )}
+
+        {/* Tab Selector */}
+        <div className="border-b border-slate-200 bg-slate-50/75 p-2 flex items-center gap-2 overflow-x-auto">
+          {[
+            { id: 'personal', label: 'Identitas & Personal', icon: User, catKey: 'personal' },
+            { id: 'address', label: 'Alamat & Domisili', icon: MapPin, catKey: 'address' },
+            { id: 'contact', label: 'Kontak & Web', icon: Phone, catKey: 'contact' },
+            { id: 'career', label: 'Karir & Dokumen', icon: Briefcase, catKey: 'career' },
+          ].map(tab => {
+            const countInfo = (roboStats.catFilled as any)[tab.catKey];
+            const isActive = roboTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setRoboTab(tab.id as any)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <tab.icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                    isActive ? 'bg-blue-50 text-blue-700 font-bold' : 'bg-slate-200/70 text-slate-600'
+                  }`}
+                >
+                  {countInfo ? `${countInfo.filled}/${countInfo.total}` : ''}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Contents */}
+        <div className="p-5 sm:p-6 bg-white">
+          {/* TAB 1: IDENTITAS & PERSONAL */}
+          {roboTab === 'personal' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Title */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Title / Sapaan</label>
+                  {getFieldVal('title') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('title')}
+                  onChange={e => handleRoboFieldChange('title', e.target.value, 'identity')}
+                  placeholder="Mr / Mrs / Ms / Dr"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* First Name */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">First Name (Nama Depan)</label>
+                  {getFieldVal('first_name') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('first_name')}
+                  onChange={e => handleRoboFieldChange('first_name', e.target.value, 'identity')}
+                  placeholder="Ahmad"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Middle Initial */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Middle Initial (Inisial)</label>
+                  {getFieldVal('middle_initial') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  maxLength={2}
+                  value={getFieldVal('middle_initial')}
+                  onChange={e => handleRoboFieldChange('middle_initial', e.target.value, 'identity')}
+                  placeholder="N"
+                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Last Name */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Last Name (Nama Belakang)</label>
+                  {getFieldVal('last_name') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('last_name')}
+                  onChange={e => handleRoboFieldChange('last_name', e.target.value, 'identity')}
+                  placeholder="Hidayat"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Full Name */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Full Name (Nama Lengkap)</label>
+                  {getFieldVal('full_name') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('full_name')}
+                  onChange={e => handleRoboFieldChange('full_name', e.target.value, 'identity')}
+                  placeholder="Ahmad N. Hidayat"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Sex / Gender */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Sex / Gender</label>
+                  {getFieldVal('gender') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <select
+                  value={getFieldVal('gender')}
+                  onChange={e => handleRoboFieldChange('gender', e.target.value, 'identity')}
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="">-- Pilih Sex --</option>
+                  <option value="Male">Male / Laki-laki</option>
+                  <option value="Female">Female / Perempuan</option>
+                </select>
+              </div>
+
+              {/* Date of Birth & Age */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Date of Birth (Tgl Lahir)</label>
+                  {getFieldVal('birth_date') && (
+                    <span className="text-[10px] text-blue-700 bg-blue-50 font-semibold px-1.5 py-0.5 rounded">
+                      Usia: {calculateAge(getFieldVal('birth_date'))} thn
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={getFieldVal('birth_date')}
+                  onChange={e => handleRoboFieldChange('birth_date', e.target.value, 'identity')}
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Birth Place */}
+              <div className="space-y-1 md:col-span-2 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Birth Place (Tempat Lahir)</label>
+                  {getFieldVal('birth_place') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('birth_place')}
+                  onChange={e => handleRoboFieldChange('birth_place', e.target.value, 'identity')}
+                  placeholder="Yogyakarta"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: ALAMAT & DOMISILI */}
+          {roboTab === 'address' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Address Line 1 */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Address Line 1 (Jalan & Nomor)</label>
+                  {getFieldVal('address') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('address')}
+                  onChange={e => handleRoboFieldChange('address', e.target.value, 'address')}
+                  placeholder="Jl. Malioboro No. 45"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Address Line 2 */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Address Line 2 (Gedung/Kavling)</label>
+                  {getFieldVal('address_line_2') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('address_line_2')}
+                  onChange={e => handleRoboFieldChange('address_line_2', e.target.value, 'address')}
+                  placeholder="Kavling 12 / Suite 3A"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* City */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">City (Kota / Kabupaten)</label>
+                  {getFieldVal('city') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('city')}
+                  onChange={e => handleRoboFieldChange('city', e.target.value, 'address')}
+                  placeholder="Kota Yogyakarta"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* State / Province */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">State / Province</label>
+                  {getFieldVal('province') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('province')}
+                  onChange={e => handleRoboFieldChange('province', e.target.value, 'address')}
+                  placeholder="DI Yogyakarta"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Country */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Country (Negara)</label>
+                  {getFieldVal('country') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('country', 'Indonesia')}
+                  onChange={e => handleRoboFieldChange('country', e.target.value, 'address')}
+                  placeholder="Indonesia"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Zip / Postal Code */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Zip / Postal Code</label>
+                  {getFieldVal('postal_code') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={getFieldVal('postal_code')}
+                  onChange={e => handleRoboFieldChange('postal_code', e.target.value, 'address')}
+                  placeholder="55271"
+                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: KONTAK & WEB */}
+          {roboTab === 'contact' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Cell Phone */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Cell Phone (HP / WhatsApp)</label>
+                  {getFieldVal('phone') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="tel"
+                  value={getFieldVal('phone')}
+                  onChange={e => handleRoboFieldChange('phone', e.target.value, 'contact')}
+                  placeholder="081298765432"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Home Phone */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Home Phone (Telepon Rumah)</label>
+                  {getFieldVal('home_phone') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="tel"
+                  value={getFieldVal('home_phone')}
+                  onChange={e => handleRoboFieldChange('home_phone', e.target.value, 'contact')}
+                  placeholder="0215551234"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Work Telephone */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Work Telephone (Kantor)</label>
+                  {getFieldVal('work_telephone') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="tel"
+                  value={getFieldVal('work_telephone')}
+                  onChange={e => handleRoboFieldChange('work_telephone', e.target.value, 'contact')}
+                  placeholder="0215559876"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Fax */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Fax</label>
+                  {getFieldVal('fax') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="tel"
+                  value={getFieldVal('fax')}
+                  onChange={e => handleRoboFieldChange('fax', e.target.value, 'contact')}
+                  placeholder="0215559877"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Email Address</label>
+                  {getFieldVal('email') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="email"
+                  value={getFieldVal('email')}
+                  onChange={e => handleRoboFieldChange('email', e.target.value, 'contact')}
+                  placeholder="user@example.com"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Web Site */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Web Site (URL)</label>
+                  {getFieldVal('website') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="url"
+                  value={getFieldVal('website')}
+                  onChange={e => handleRoboFieldChange('website', e.target.value, 'contact')}
+                  placeholder="https://govconnect.id"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: KARIR & DOKUMEN */}
+          {roboTab === 'career' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Company */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Company (Instansi / Perusahaan)</label>
+                  {getFieldVal('organization') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('organization')}
+                  onChange={e => handleRoboFieldChange('organization', e.target.value, 'career')}
+                  placeholder="PT GovConnect Solusi Bangsa"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Job Title */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Job Title (Profesi / Posisi)</label>
+                  {getFieldVal('occupation') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('occupation')}
+                  onChange={e => handleRoboFieldChange('occupation', e.target.value, 'career')}
+                  placeholder="Full Stack Engineer"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Income */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Income (Penghasilan / Bulan)</label>
+                  {getFieldVal('income') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('income')}
+                  onChange={e => handleRoboFieldChange('income', e.target.value, 'career')}
+                  placeholder="15000000"
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Driver License */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Driver License (Nomor SIM)</label>
+                  {getFieldVal('driver_license') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <input
+                  type="text"
+                  value={getFieldVal('driver_license')}
+                  onChange={e => handleRoboFieldChange('driver_license', e.target.value, 'documents')}
+                  placeholder="3515-8899-0123"
+                  className="w-full px-3 py-2 text-xs font-mono bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Comments */}
+              <div className="space-y-1 md:col-span-2 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">Comments (Catatan RoboForm)</label>
+                  {getFieldVal('comments') && <Check className="w-3 h-3 text-emerald-600" />}
+                </div>
+                <textarea
+                  rows={2}
+                  value={getFieldVal('comments')}
+                  onChange={e => handleRoboFieldChange('comments', e.target.value, 'documents')}
+                  placeholder="Pengisian benchmark formulir standar internasional RoboForm berhasil diuji oleh GovConnect."
+                  className="w-full px-3 py-2 text-xs bg-slate-50/60 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Quick Info & Profile Link */}
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              Semua field disinkronisasikan otomatis dengan ekstensi GovConnect untuk pengisian benchmark global.
+            </span>
+            <a
+              href="/profile"
+              className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              <span>Buka Profil Lengkap & Foto Dokumen</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Main Activity Line Chart (Full Width) */}

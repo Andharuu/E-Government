@@ -2,162 +2,1324 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Simulasi Portal Layanan Publik — Pengajuan Bantuan Sosial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Pengujian Resmi GovConnect — Formulir Dummy Lengkap</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --border-focus: #3b82f6;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-sub: #475569;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: #F8FAFC;
-      color: #0F172A;
-      padding: 40px 20px;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* Top Navigation / Header */
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid #dbeafe;
+      margin-bottom: 12px;
+    }
+
+    .badge-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Stat Banner */
+    .stat-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-group {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
-    .container {
-      max-width: 560px;
-      width: 100%;
-    }
-    .header-banner {
-      margin-bottom: 24px;
-      text-align: center;
-    }
-    .badge-gov {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #EFF6FF;
-      color: #2563EB;
+
+    .stat-label {
       font-size: 11px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      border: 1px solid #DBEAFE;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
-    h1 {
+
+    .stat-value {
       font-size: 20px;
-      font-weight: 700;
-      color: #0F172A;
+      font-weight: 800;
+      color: var(--text-main);
     }
-    p.subtitle {
+
+    .stat-value.highlight {
+      color: var(--primary);
+    }
+
+    .progress-track {
+      flex: 1;
+      min-width: 180px;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      width: 0%;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .actions-top {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
       font-size: 13px;
-      color: #64748B;
-      margin-top: 4px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
     }
-    .card {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
-      padding: 28px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    .btn-secondary:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: var(--text-main);
     }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s;
+    }
+
+    .section-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .section-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Form Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px 20px;
+    }
+
+    .col-span-2 {
+      grid-column: span 2;
+    }
+
+    .col-span-full {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .col-span-2 {
+        grid-column: span 1;
+      }
+    }
+
+    /* Form Inputs */
     .form-group {
-      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
     }
+
     label {
-      display: block;
-      margin-bottom: 6px;
       font-size: 13px;
       font-weight: 600;
       color: #334155;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    input, textarea, select {
+
+    label .req {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    .field-key {
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: var(--text-muted);
+      font-weight: 500;
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    select,
+    textarea {
       width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #CBD5E1;
+      padding: 9px 12px;
+      border: 1px solid #cbd5e1;
       border-radius: 8px;
-      font-size: 14px;
-      color: #0F172A;
-      background: #FFFFFF;
+      font-size: 13px;
+      color: var(--text-main);
+      background: #ffffff;
       font-family: inherit;
       outline: none;
-      transition: all 0.15s ease;
+      transition: all 0.15s ease-in-out;
     }
-    input:focus, textarea:focus, select:focus {
-      border-color: #2563EB;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
-    .btn-submit {
+
+    input::placeholder, textarea::placeholder {
+      color: #94a3b8;
+    }
+
+    /* Dropdown Styling */
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 16px;
+      padding-right: 32px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
+    /* PrimeNG Dropdown Styling (Simulasi CoreTax DJP) */
+    p-dropdown {
+      display: block;
+      position: relative;
+    }
+    .p-dropdown {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       width: 100%;
-      background: #2563EB;
+      height: 38px;
+      padding: 0 12px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      box-sizing: border-box;
+      transition: all 0.2s;
+    }
+    .p-dropdown:hover {
+      border-color: #94a3b8;
+    }
+    .p-dropdown-label {
+      font-size: 13px;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .p-dropdown-label.p-placeholder {
+      color: #94a3b8;
+    }
+    .p-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      margin-left: 8px;
+    }
+    .p-dropdown-panel {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .p-dropdown-panel.p-dropdown-open {
+      display: block;
+    }
+    .p-dropdown-items {
+      list-style: none;
+      margin: 0;
+      padding: 4px;
+    }
+    .p-dropdown-item {
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #334155;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .p-dropdown-item:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    /* File upload */
+    .file-dropzone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .file-dropzone:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .file-dropzone input[type="file"] {
+      display: block;
+      width: 100%;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* Highlight Banner for CoreTax */
+    .coretax-highlight {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      color: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid #334155;
+    }
+
+    .coretax-highlight h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .coretax-highlight p {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-top: 4px;
+    }
+
+    /* Submit Area */
+    .submit-bar {
+      position: sticky;
+      bottom: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow-lg);
+      margin-top: 32px;
+      z-index: 100;
+    }
+
+    .submit-bar-info {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .submit-bar-info b {
+      color: var(--text-main);
+    }
+
+    .submit-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
       color: white;
       border: none;
-      padding: 12px 16px;
+      padding: 10px 20px;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+      transition: all 0.15s;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-reset {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 10px;
-      transition: background 0.15s ease;
+      transition: all 0.15s;
     }
-    .btn-submit:hover {
-      background: #1D4ED8;
+
+    .btn-reset:hover {
+      background: #fecaca;
     }
-    .helper-tip {
-      margin-top: 20px;
-      padding: 12px 14px;
-      background: #F1F5F9;
+
+    /* Modal Result Preview */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 640px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 20px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+    }
+
+    pre.json-viewer {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 16px;
       border-radius: 8px;
       font-size: 12px;
-      color: #475569;
-      line-height: 1.5;
+      font-family: ui-monospace, monospace;
+      overflow-x: auto;
+      max-height: 400px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header-banner">
-      <span class="badge-gov">Portal Layanan Terpadu</span>
-      <h1>Formulir Pengajuan Bantuan Sosial</h1>
-      <p class="subtitle">Simulasi halaman publik untuk pengujian autofill GovConnect</p>
+
+<div class="container">
+  <!-- Header -->
+  <header class="header">
+    <div class="badge-pill">
+      <span class="dot"></span>
+      Simulator Form Pengujian Terpadu — 29+ Profil Field
     </div>
+    <h1>Portal Simulasi Layanan Publik Indonesia</h1>
+    <p class="subtitle">
+      Formulir uji coba komprehensif untuk validasi ekstensi <b>GovConnect</b>. Dilengkapi dukungan input text, textarea, dropdown semantik, upload berkas, dan struktur CoreTax DJP.
+    </p>
+  </header>
 
-    <div class="card">
-      <form id="bansosForm">
-        <div class="form-group">
-          <label for="nik">Nomor Induk Kependudukan (NIK):</label>
-          <input type="text" id="nik" name="nik" placeholder="Masukkan 16 digit NIK" autocomplete="off">
-        </div>
-
-        <div class="form-group">
-          <label for="nama">Nama Lengkap Pemohon:</label>
-          <input type="text" id="nama" name="nama" placeholder="Sesuai KTP" autocomplete="name">
-        </div>
-
-        <div class="form-group">
-          <label for="tgl_lahir">Tanggal Lahir:</label>
-          <input type="date" id="tgl_lahir" name="tgl_lahir">
-        </div>
-
-        <div class="form-group">
-          <label for="alamat">Alamat Domisili:</label>
-          <textarea id="alamat" name="alamat" rows="2" placeholder="Nama jalan, RT/RW, kelurahan"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="telepon">Nomor Telepon / WhatsApp:</label>
-          <input type="tel" id="telepon" name="telepon" placeholder="08xxxxxxxxxx" autocomplete="tel">
-        </div>
-
-        <div class="form-group">
-          <label for="foto_ktp">Unggah Berkas / Foto e-KTP Pemohon:</label>
-          <input type="file" id="foto_ktp" name="foto_ktp" accept="image/*">
-        </div>
-
-        <div class="form-group">
-          <label for="pasfoto">Unggah Pasfoto Formal (3x4 / 4x6):</label>
-          <input type="file" id="pasfoto" name="pasfoto" accept="image/*">
-        </div>
-
-        <button type="button" class="btn-submit" onclick="alert('Formulir berhasil disubmit secara manual!')">Kirim Pengajuan</button>
-      </form>
-
-      <div class="helper-tip">
-        💡 <b>Uji Coba Autofill:</b> Buka Side Panel atau klik ekstensi <b>GovConnect</b> di browser Anda pada halaman ini, lalu klik <b>"Isi Formulir Otomatis"</b>.
+  <!-- Live Statistics Banner -->
+  <div class="stat-banner">
+    <div class="stat-group">
+      <div class="stat-item">
+        <span class="stat-label">Total Input Form</span>
+        <span class="stat-value" id="statTotal">35</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Terisi</span>
+        <span class="stat-value highlight" id="statFilled">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Kelengkapan</span>
+        <span class="stat-value" id="statPercent">0%</span>
       </div>
     </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="actions-top">
+      <button type="button" class="btn-secondary" onclick="fillQuickSample()">
+        ⚡ Contoh Sampel Manual
+      </button>
+    </div>
   </div>
+
+  <form id="masterTestForm" autocomplete="off">
+    <!-- SECTION 1: Identitas Pribadi -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">👤</div>
+        <div>
+          <h2 class="section-title">1. Identitas Pribadi Pemohon</h2>
+          <p class="section-desc">Data dasar kependudukan sesuai e-KTP dan Kartu Keluarga</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="nik">
+            <span>Nomor Induk Kependudukan (NIK)<span class="req">*</span></span>
+            <span class="field-key">nik</span>
+          </label>
+          <input type="text" id="nik" name="nomor_identitas" placeholder="16 digit NIK e-KTP" maxlength="16">
+        </div>
+
+        <div class="form-group">
+          <label for="full_name">
+            <span>Nama Lengkap Pemohon<span class="req">*</span></span>
+            <span class="field-key">full_name</span>
+          </label>
+          <input type="text" id="full_name" name="nama_lengkap" placeholder="Nama lengkap sesuai e-KTP">
+        </div>
+
+        <div class="form-group">
+          <label for="birth_place">
+            <span>Tempat Lahir</span>
+            <span class="field-key">birth_place</span>
+          </label>
+          <input type="text" id="birth_place" name="tempat_lahir" placeholder="Kota / Kabupaten Lahir">
+        </div>
+
+        <div class="form-group">
+          <label for="birth_date">
+            <span>Tanggal Lahir</span>
+            <span class="field-key">birth_date</span>
+          </label>
+          <input type="date" id="birth_date" name="tanggal_lahir">
+        </div>
+
+        <!-- Dropdown: Gender -->
+        <div class="form-group">
+          <label for="gender">
+            <span>Jenis Kelamin (Dropdown Semantik)<span class="req">*</span></span>
+            <span class="field-key">gender</span>
+          </label>
+          <select id="gender" name="jenis_kelamin">
+            <option value="">-- Pilih Jenis Kelamin --</option>
+            <option value="1">1 - Pria (Laki-laki)</option>
+            <option value="2">2 - Wanita (Perempuan)</option>
+          </select>
+        </div>
+
+        <!-- Dropdown: Religion -->
+        <div class="form-group">
+          <label for="religion">
+            <span>Agama / Kepercayaan (Dropdown Semantik)</span>
+            <span class="field-key">religion</span>
+          </label>
+          <select id="religion" name="agama">
+            <option value="">-- Pilih Agama --</option>
+            <option value="islam">ISLAM</option>
+            <option value="kristen">KRISTEN PROTESTAN</option>
+            <option value="katolik">KATOLIK</option>
+            <option value="hindu">HINDU</option>
+            <option value="buddha">BUDDHA</option>
+            <option value="konghucu">KONGHUCU</option>
+          </select>
+        </div>
+
+        <!-- Dropdown: Marital Status -->
+        <div class="form-group">
+          <label for="marital_status">
+            <span>Status Perkawinan (Dropdown Semantik)</span>
+            <span class="field-key">marital_status</span>
+          </label>
+          <select id="marital_status" name="status_perkawinan">
+            <option value="">-- Pilih Status Perkawinan --</option>
+            <option value="single">Single / Belum Menikah</option>
+            <option value="married">Menikah (Kawin)</option>
+            <option value="divorced">Cerai Hidup (Duda / Janda)</option>
+            <option value="widowed">Cerai Mati</option>
+          </select>
+        </div>
+
+        <!-- Dropdown: Blood Type -->
+        <div class="form-group">
+          <label for="blood_type">
+            <span>Golongan Darah (Dropdown Semantik)</span>
+            <span class="field-key">blood_type</span>
+          </label>
+          <select id="blood_type" name="golongan_darah">
+            <option value="">-- Pilih Golongan Darah --</option>
+            <option value="A">Golongan Darah A</option>
+            <option value="B">Golongan Darah B</option>
+            <option value="AB">Golongan Darah AB</option>
+            <option value="O">Golongan Darah O</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Keluarga & Orang Tua (Collision Test Area) -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">👨‍👩‍👦</div>
+        <div>
+          <h2 class="section-title">2. Keluarga & Orang Tua Kandung (Area Uji Anti-Collision)</h2>
+          <p class="section-desc">Mencegah tabrakan nama ibu/ayah dengan nama lengkap pemohon</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="mother_name">
+            <span>Nama Lengkap Ibu Kandung<span class="req">*</span></span>
+            <span class="field-key">mother_name</span>
+          </label>
+          <input type="text" id="mother_name" name="nama_ibu_kandung" placeholder="Nama ibu kandung tanpa gelar">
+        </div>
+
+        <div class="form-group">
+          <label for="father_name">
+            <span>Nama Lengkap Ayah Kandung</span>
+            <span class="field-key">father_name</span>
+          </label>
+          <input type="text" id="father_name" name="nama_ayah_kandung" placeholder="Nama ayah kandung">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Kontak & Komunikasi -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">📱</div>
+        <div>
+          <h2 class="section-title">3. Informasi Kontak & Darurat</h2>
+          <p class="section-desc">Pembedaan nomor kontak pribadi dan nomor kontak darurat keluarga</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="phone">
+            <span>Nomor Telepon / WhatsApp<span class="req">*</span></span>
+            <span class="field-key">phone</span>
+          </label>
+          <input type="tel" id="phone" name="no_telepon" placeholder="Contoh: 081234567890">
+        </div>
+
+        <div class="form-group">
+          <label for="email">
+            <span>Alamat Email Aktif<span class="req">*</span></span>
+            <span class="field-key">email</span>
+          </label>
+          <input type="email" id="email" name="surel" placeholder="user@domain.com">
+        </div>
+
+        <div class="form-group">
+          <label for="emergency_contact_name">
+            <span>Nama Kontak Darurat</span>
+            <span class="field-key">emergency_contact_name</span>
+          </label>
+          <input type="text" id="emergency_contact_name" name="nama_kontak_darurat" placeholder="Nama kerabat / keluarga">
+        </div>
+
+        <div class="form-group">
+          <label for="emergency_contact_phone">
+            <span>Nomor Telepon Darurat</span>
+            <span class="field-key">emergency_contact_phone</span>
+          </label>
+          <input type="tel" id="emergency_contact_phone" name="no_kontak_darurat" placeholder="Nomor telepon darurat">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Alamat & Wilayah Domisili -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">🏠</div>
+        <div>
+          <h2 class="section-title">4. Alamat Tempat Tinggal & Domisili</h2>
+          <p class="section-desc">Pembedaan alamat domisili pribadi vs alamat kantor perusahaan</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group col-span-2">
+          <label for="address">
+            <span>Alamat Domisili KTP Lengkap<span class="req">*</span></span>
+            <span class="field-key">address</span>
+          </label>
+          <textarea id="address" name="alamat_domisili" rows="2" placeholder="Nama Jalan, RT/RW, Dusun"></textarea>
+        </div>
+
+        <!-- Dropdown: Province -->
+        <div class="form-group">
+          <label for="province">
+            <span>Provinsi (Dropdown NLP Wilayah)</span>
+            <span class="field-key">province</span>
+          </label>
+          <select id="province" name="provinsi">
+            <option value="">-- Pilih Provinsi --</option>
+            <option value="31">DKI JAKARTA</option>
+            <option value="32">JAWA BARAT</option>
+            <option value="33">JAWA TENGAH</option>
+            <option value="34">DAERAH ISTIMEWA YOGYAKARTA</option>
+            <option value="35">JAWA TIMUR</option>
+            <option value="51">BALI</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="city">
+            <span>Kota / Kabupaten</span>
+            <span class="field-key">city</span>
+          </label>
+          <input type="text" id="city" name="kota" placeholder="Kabupaten / Kota">
+        </div>
+
+        <div class="form-group">
+          <label for="district">
+            <span>Kecamatan</span>
+            <span class="field-key">district</span>
+          </label>
+          <input type="text" id="district" name="kecamatan" placeholder="Kecamatan">
+        </div>
+
+        <div class="form-group">
+          <label for="village">
+            <span>Kelurahan / Desa</span>
+            <span class="field-key">village</span>
+          </label>
+          <input type="text" id="village" name="kelurahan" placeholder="Kelurahan / Desa">
+        </div>
+
+        <div class="form-group">
+          <label for="postal_code">
+            <span>Kode Pos</span>
+            <span class="field-key">postal_code</span>
+          </label>
+          <input type="text" id="postal_code" name="kode_pos" placeholder="5 digit kode pos" maxlength="5">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: Pendidikan & Pekerjaan (Collision Test Area) -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">💼</div>
+        <div>
+          <h2 class="section-title">5. Pendidikan & Pekerjaan (Area Uji Collision Akademik vs Karir)</h2>
+          <p class="section-desc">Pembedaan instansi kampus vs perusahaan, NIM vs NIK, dan jabatan vs perusahaan</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Dropdown: Education Level -->
+        <div class="form-group">
+          <label for="education_level">
+            <span>Jenjang Pendidikan Terakhir</span>
+            <span class="field-key">education_level</span>
+          </label>
+          <select id="education_level" name="pendidikan_terakhir">
+            <option value="">-- Pilih Jenjang Pendidikan --</option>
+            <option value="SD">Sekolah Dasar (SD / Sederajat)</option>
+            <option value="SMP">SMP / MTs / Sederajat</option>
+            <option value="SMA">SMA / SMK / MA / Sederajat</option>
+            <option value="D3">Diploma 3 (D-3)</option>
+            <option value="S1">Sarjana (S-1 / Strata 1)</option>
+            <option value="S2">Magister (S-2 / Master)</option>
+            <option value="S3">Doktor (S-3 / Ph.D)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="institution">
+            <span>Nama Institusi / Kampus / Sekolah</span>
+            <span class="field-key">institution</span>
+          </label>
+          <input type="text" id="institution" name="nama_universitas" placeholder="Nama universitas / kampus / sekolah">
+        </div>
+
+        <div class="form-group">
+          <label for="student_id">
+            <span>Nomor Induk Mahasiswa (NIM)</span>
+            <span class="field-key">student_id</span>
+          </label>
+          <input type="text" id="student_id" name="nomor_induk_mahasiswa" placeholder="NIM Mahasiswa (Bukan NIK)">
+        </div>
+
+        <div class="form-group">
+          <label for="nisn">
+            <span>Nomor Induk Siswa Nasional (NISN)</span>
+            <span class="field-key">nisn</span>
+          </label>
+          <input type="text" id="nisn" name="nisn" placeholder="10 digit NISN">
+        </div>
+
+        <div class="form-group">
+          <label for="organization">
+            <span>Nama Perusahaan Tempat Bekerja</span>
+            <span class="field-key">organization</span>
+          </label>
+          <input type="text" id="organization" name="nama_perusahaan" placeholder="PT / CV / Instansi Tempat Kerja">
+        </div>
+
+        <div class="form-group">
+          <label for="occupation">
+            <span>Jabatan / Posisi Pekerjaan</span>
+            <span class="field-key">occupation</span>
+          </label>
+          <input type="text" id="occupation" name="posisi_di_perusahaan" placeholder="Contoh: Software Engineer, Staf Keuangan">
+        </div>
+
+        <div class="form-group col-span-2">
+          <label for="work_address">
+            <span>Alamat Kantor / Perusahaan</span>
+            <span class="field-key">work_address</span>
+          </label>
+          <textarea id="work_address" name="alamat_kantor" rows="2" placeholder="Alamat lengkap tempat bekerja"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: Pajak & Jaminan Sosial -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">📑</div>
+        <div>
+          <h2 class="section-title">6. Nomor Perpajakan & Asuransi Sosial</h2>
+          <p class="section-desc">Nomor pokok wajib pajak dan BPJS</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="npwp">
+            <span>Nomor Pokok Wajib Pajak (NPWP)</span>
+            <span class="field-key">npwp</span>
+          </label>
+          <input type="text" id="npwp" name="nomor_npwp" placeholder="15 atau 16 digit NPWP">
+        </div>
+
+        <div class="form-group">
+          <label for="bpjs_number">
+            <span>Nomor Kartu BPJS Kesehatan / Ketenagakerjaan</span>
+            <span class="field-key">bpjs_number</span>
+          </label>
+          <input type="text" id="bpjs_number" name="nomor_bpjs" placeholder="13 digit kartu BPJS">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 7: Simulasi Khusus CoreTax Portal DJP -->
+    <div class="coretax-highlight">
+      <h3>🏛️ Simulasi Form Portal CoreTax DJP (reginput-*)</h3>
+      <p>Pengujian selektor khusus Angular / PrimeNG DJP dengan komponen custom &lt;p-dropdown&gt;</p>
+      
+      <div class="grid-3" style="margin-top: 16px;">
+        <div class="form-group">
+          <label for="reginput_taxpayername" style="color: #94a3b8;">
+            <span>Nama Wajib Pajak</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">full_name</span>
+          </label>
+          <input type="text" id="reginput_taxpayername" name="reginput_taxpayername" placeholder="reginput_taxpayername">
+        </div>
+
+        <div class="form-group">
+          <label for="reginput_mothersname" style="color: #94a3b8;">
+            <span>Nama Ibu Kandung WP</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">mother_name</span>
+          </label>
+          <input type="text" id="reginput_mothersname" name="reginput_mothersname" placeholder="reginput_mothersname">
+        </div>
+
+        <div class="form-group">
+          <label for="reginput_fathersname" style="color: #94a3b8;">
+            <span>Nama Ayah Kandung WP</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">father_name</span>
+          </label>
+          <input type="text" id="reginput_fathersname" name="reginput_fathersname" placeholder="reginput_fathersname">
+        </div>
+
+        <!-- PrimeNG Dropdown: Jenis Kelamin -->
+        <div class="form-group">
+          <label for="reginput_gender" style="color: #94a3b8;">
+            <span>Jenis Kelamin (PrimeNG CoreTax)</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">gender</span>
+          </label>
+          <p-dropdown id="reginput_gender" formcontrolname="reginput-gender" class="p-element p-inputwrapper">
+            <div class="p-dropdown p-component" tabindex="0">
+              <span class="p-dropdown-label p-inputtext p-placeholder ng-star-inserted">Pilih Jenis Kelamin</span>
+              <div class="p-dropdown-trigger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div class="p-dropdown-panel p-component">
+              <ul class="p-dropdown-items" role="listbox">
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Pria" aria-selected="false"><span class="ng-star-inserted">Pria</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Wanita" aria-selected="false"><span class="ng-star-inserted">Wanita</span></li>
+              </ul>
+            </div>
+          </p-dropdown>
+        </div>
+
+        <!-- PrimeNG Dropdown: Status Perkawinan -->
+        <div class="form-group">
+          <label for="reginput_maritalstatus" style="color: #94a3b8;">
+            <span>Status Perkawinan (PrimeNG CoreTax)</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">marital_status</span>
+          </label>
+          <p-dropdown id="reginput_maritalstatus" formcontrolname="reginput-maritalStatus" class="p-element p-inputwrapper">
+            <div class="p-dropdown p-component" tabindex="0">
+              <span class="p-dropdown-label p-inputtext p-placeholder ng-star-inserted">Pilih Status Perkawinan</span>
+              <div class="p-dropdown-trigger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div class="p-dropdown-panel p-component">
+              <ul class="p-dropdown-items" role="listbox">
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Belum Kawin" aria-selected="false"><span class="ng-star-inserted">Belum Kawin</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Kawin" aria-selected="false"><span class="ng-star-inserted">Kawin</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Cerai Hidup" aria-selected="false"><span class="ng-star-inserted">Cerai Hidup</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Cerai Mati" aria-selected="false"><span class="ng-star-inserted">Cerai Mati</span></li>
+              </ul>
+            </div>
+          </p-dropdown>
+        </div>
+
+        <!-- PrimeNG Dropdown: Agama -->
+        <div class="form-group">
+          <label for="reginput_religion" style="color: #94a3b8;">
+            <span>Agama (PrimeNG CoreTax)</span>
+            <span class="field-key" style="background: #334155; color: #38bdf8;">religion</span>
+          </label>
+          <p-dropdown id="reginput_religion" formcontrolname="reginput-religion" class="p-element p-inputwrapper">
+            <div class="p-dropdown p-component" tabindex="0">
+              <span class="p-dropdown-label p-inputtext p-placeholder ng-star-inserted">Pilih Agama</span>
+              <div class="p-dropdown-trigger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div class="p-dropdown-panel p-component">
+              <ul class="p-dropdown-items" role="listbox">
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Islam" aria-selected="false"><span class="ng-star-inserted">Islam</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Kristen" aria-selected="false"><span class="ng-star-inserted">Kristen</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Katolik" aria-selected="false"><span class="ng-star-inserted">Katolik</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Hindu" aria-selected="false"><span class="ng-star-inserted">Hindu</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Buddha" aria-selected="false"><span class="ng-star-inserted">Buddha</span></li>
+                <li role="option" class="p-ripple p-element p-dropdown-item" aria-label="Khonghucu" aria-selected="false"><span class="ng-star-inserted">Khonghucu</span></li>
+              </ul>
+            </div>
+          </p-dropdown>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 8: Unggah Berkas & Dokumen -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">📎</div>
+        <div>
+          <h2 class="section-title">8. Berkas & Lampiran Dokumen Digital</h2>
+          <p class="section-desc">Pengujian fitur autofill konversi base64 ke File Object browser</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="foto_ktp">
+            <span>Foto / Scan e-KTP Pemohon</span>
+            <span class="field-key">foto_ktp</span>
+          </label>
+          <div class="file-dropzone">
+            <input type="file" id="foto_ktp" name="scan_ktp" accept="image/*,.pdf">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="foto_kk">
+            <span>Foto / Scan Kartu Keluarga (KK)</span>
+            <span class="field-key">foto_kk</span>
+          </label>
+          <div class="file-dropzone">
+            <input type="file" id="foto_kk" name="berkas_kk" accept="image/*,.pdf">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="pasfoto">
+            <span>Pasfoto Formal Resmi</span>
+            <span class="field-key">pasfoto</span>
+          </label>
+          <div class="file-dropzone">
+            <input type="file" id="pasfoto" name="pas_foto" accept="image/*">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="foto_npwp">
+            <span>Foto / Scan Kartu NPWP</span>
+            <span class="field-key">foto_npwp</span>
+          </label>
+          <div class="file-dropzone">
+            <input type="file" id="foto_npwp" name="scan_npwp" accept="image/*,.pdf">
+          </div>
+        </div>
+
+        <div class="form-group col-span-2">
+          <label for="foto_ijazah">
+            <span>Foto / Scan Ijazah Pendidikan Terakhir</span>
+            <span class="field-key">foto_ijazah</span>
+          </label>
+          <div class="file-dropzone">
+            <input type="file" id="foto_ijazah" name="dokumen_ijazah" accept="image/*,.pdf">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky Bottom Submit Bar -->
+    <div class="submit-bar">
+      <div class="submit-bar-info">
+        💡 Buka ekstensi <b>GovConnect</b> di browser Anda pada halaman ini untuk menguji autofill.
+      </div>
+      <div class="submit-buttons">
+        <button type="button" class="btn-reset" onclick="resetAllFields()">
+          🗑️ Bersihkan Form
+        </button>
+        <button type="button" class="btn-primary" onclick="showSubmitPreview()">
+          💾 Simpan & Periksa Data (JSON)
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Modal Preview JSON -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span>Hasil Inspeksi Data Formulir</span>
+      <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+      Data berikut diekstrak dari seluruh input, dropdown, dan file yang saat ini terisi di formulir:
+    </p>
+    <pre class="json-viewer" id="jsonOutput">{}</pre>
+    <div style="margin-top: 16px; text-align: right;">
+      <button type="button" class="btn-primary" onclick="closeModal()">Tutup Jendela</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Real-time Field Progress Counter
+  function updateStats() {
+    const inputs = document.querySelectorAll('#masterTestForm input, #masterTestForm select, #masterTestForm textarea');
+    let total = 0;
+    let filled = 0;
+
+    inputs.forEach(el => {
+      if (el.type === 'button' || el.type === 'submit') return;
+      total++;
+      if (el.type === 'file') {
+        if (el.files && el.files.length > 0) filled++;
+      } else if (el.value && el.value.trim() !== '') {
+        filled++;
+      }
+    });
+
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statFilled').textContent = filled;
+    const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+    document.getElementById('statPercent').textContent = pct + '%';
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  // Event Listeners for live update
+  document.getElementById('masterTestForm').addEventListener('input', updateStats);
+  document.getElementById('masterTestForm').addEventListener('change', updateStats);
+  window.addEventListener('DOMContentLoaded', updateStats);
+
+  // Bersihkan form
+  function resetAllFields() {
+    if (confirm("Kosongkan semua isian form ini?")) {
+      document.getElementById('masterTestForm').reset();
+      updateStats();
+    }
+  }
+
+  // Isi contoh sampel data manual
+  function fillQuickSample() {
+    document.getElementById('nik').value = "3171012304950001";
+    document.getElementById('full_name').value = "Ahmad Nur Hidayat";
+    document.getElementById('birth_place').value = "Yogyakarta";
+    document.getElementById('birth_date').value = "1995-04-23";
+    document.getElementById('gender').value = "1";
+    document.getElementById('religion').value = "islam";
+    document.getElementById('marital_status').value = "single";
+    document.getElementById('blood_type').value = "O";
+    document.getElementById('mother_name').value = "Siti Aminah";
+    document.getElementById('father_name').value = "Bambang Prasetyo";
+    document.getElementById('phone').value = "081298765432";
+    document.getElementById('email').value = "ahmad.hidayat@example.com";
+    document.getElementById('emergency_contact_name').value = "Bambang Prasetyo";
+    document.getElementById('emergency_contact_phone').value = "081311223344";
+    document.getElementById('address').value = "Jl. Malioboro No. 45, Sosromenduran, Gedong Tengen";
+    document.getElementById('province').value = "34";
+    document.getElementById('city').value = "Kota Yogyakarta";
+    document.getElementById('district').value = "Gedong Tengen";
+    document.getElementById('village').value = "Sosromenduran";
+    document.getElementById('postal_code').value = "55271";
+    document.getElementById('education_level').value = "S1";
+    document.getElementById('institution').value = "Universitas Gadjah Mada";
+    document.getElementById('student_id').value = "21/478912/TK/52110";
+    document.getElementById('nisn').value = "0051234567";
+    document.getElementById('organization').value = "PT GovConnect Solusi Bangsa";
+    document.getElementById('occupation').value = "Full Stack Engineer";
+    document.getElementById('work_address').value = "Gedung Cyber 2 Lantai 15, Jl. HR Rasuna Said, Jakarta";
+    document.getElementById('npwp').value = "81.234.567.8-012.000";
+    document.getElementById('bpjs_number').value = "0001234567890";
+    document.getElementById('reginput_taxpayername').value = "Ahmad Nur Hidayat";
+    document.getElementById('reginput_mothersname').value = "Siti Aminah";
+    document.getElementById('reginput_fathersname').value = "Bambang Prasetyo";
+    updateStats();
+  }
+
+  // Modal preview
+  function showSubmitPreview() {
+    const inputs = document.querySelectorAll('#masterTestForm input, #masterTestForm select, #masterTestForm textarea');
+    const data = {};
+    inputs.forEach(el => {
+      if (el.type === 'button' || el.type === 'submit') return;
+      const key = el.id || el.name;
+      if (el.type === 'file') {
+        data[key] = el.files && el.files[0] ? el.files[0].name + ' (' + Math.round(el.files[0].size / 1024) + ' KB)' : null;
+      } else {
+        data[key] = el.value;
+      }
+    });
+
+    document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+    document.getElementById('previewModal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('previewModal').classList.remove('active');
+  }
+
+  // PrimeNG Dropdown Interactivity Simulation
+  document.querySelectorAll('p-dropdown').forEach(pDrop => {
+    const trigger = pDrop.querySelector('.p-dropdown');
+    const panel = pDrop.querySelector('.p-dropdown-panel');
+    const labelSpan = pDrop.querySelector('.p-dropdown-label');
+    const items = pDrop.querySelectorAll('.p-dropdown-item');
+
+    if (!trigger || !panel) return;
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = panel.classList.contains('p-dropdown-open');
+      document.querySelectorAll('.p-dropdown-panel.p-dropdown-open').forEach(p => p.classList.remove('p-dropdown-open'));
+      if (!isOpen) {
+        panel.classList.add('p-dropdown-open');
+      }
+    });
+
+    items.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const text = item.getAttribute('aria-label') || item.textContent.trim();
+        labelSpan.textContent = text;
+        labelSpan.classList.remove('p-placeholder');
+        items.forEach(i => i.setAttribute('aria-selected', 'false'));
+        item.setAttribute('aria-selected', 'true');
+        panel.classList.remove('p-dropdown-open');
+        pDrop.dispatchEvent(new Event('change', { bubbles: true }));
+        updateStats();
+      });
+    });
+  });
+
+  // Tutup panel dropdown jika klik di luar
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.p-dropdown-panel.p-dropdown-open').forEach(p => p.classList.remove('p-dropdown-open'));
+  });
+</script>
+
 </body>
 </html>

@@ -8,6 +8,8 @@ venv/
 env/
 ENV/
 __pycache__/
+**/__pycache__/**
+*.pyc
 *.py[cod]
 *$py.class
 *.so
@@ -35,6 +37,7 @@ lerna-debug.log*
 
 # --- Database & Docker Local Data ---
 *.sqlite3
+*.db
 mysql_data/
 
 # --- IDE & Editor Specific ---

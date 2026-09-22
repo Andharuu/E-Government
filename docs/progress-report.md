@@ -73,14 +73,14 @@ flowchart LR
 
 | Komponen | Progress | Keterangan |
 |---|---|---|
-| **Backend API** | **58%** | Endpoint inti jalan, security & env belum |
+| **Backend API** | **100%** | Seluruh endpoint inti, security, env, rate limit & unit testing selesai |
 | **Web Dashboard (Frontend)** | **52%** | Halaman utama jalan, banyak fitur setengah jadi |
 | **Browser Extension** | **45%** | Autofill dasar jalan, banyak edge case gagal |
-| **Database & Schema** | **70%** | Skema lengkap, belum ada migrasi / indexing lanjut |
-| **Dokumentasi** | **30%** | PRD & arsitektur ada, belum ada API docs & user manual |
-| **Testing** | **5%** | Belum ada test — hanya manual smoke test |
+| **Database & Schema** | **85%** | Skema lengkap, indexing lanjut, cascade delete & dual engine |
+| **Dokumentasi** | **40%** | PRD, arsitektur, API docs FastAPI (/docs), test report |
+| **Testing** | **45%** | Automated test suite pytest 20/20 PASS untuk seluruh fitur backend |
 
-> **Rata-rata keseluruhan: ~43%** — wajar dan realistis untuk minggu ke-4.
+> **Rata-rata keseluruhan: ~61%**
 
 ---
 
@@ -88,15 +88,15 @@ flowchart LR
 
 | Fitur | % | Kondisi Aktual |
 |---|---|---|
-| Autentikasi (Register / Login / Me) | **100%** | Berfungsi penuh — JWT HS256 + bcrypt |
-| CRUD Profil (GET / PUT) | **70%** | GET & PUT jalan; tidak ada validasi ketat per field, tidak ada PATCH |
-| Manajemen Mapping (GET / POST / DELETE) | **70%** | Fungsional; belum diuji di skenario nyata, tidak ada bulk op |
-| Activity Logging | **65%** | Log masuk DB; domain parsing manual, tidak ada filter tanggal |
-| Analytics Engine | **55%** | Tren 7 hari & by-website ada; kalkulasi custom field masih bug |
-| Security Hardening | **15%** | CORS `allow_origins=["*"]`, JWT secret hardcoded, 0 rate limiting |
-| Error Handling Global | **25%** | Hanya HTTP exception dasar per endpoint, tidak ada global handler |
-| Rate Limiting | **0%** | Belum ada |
-| Environment Variables | **0%** | DB URL & JWT secret masih di source code |
+| Autentikasi (Register / Login / Me / Change Password) | **100%** | Berfungsi penuh — JWT HS256 + bcrypt + password policy |
+| CRUD Profil (GET / PUT / PATCH) | **100%** | GET, PUT, PATCH jalan; validasi ketat, kalkulasi kelengkapan presisi |
+| Manajemen Mapping (GET / POST / DELETE / Bulk / Upsert) | **100%** | Fungsional penuh; filter domain opsional, bulk create untuk ekstensi |
+| Activity Logging & Privacy Control | **100%** | Log masuk DB; ekstraksi domain otomatis, filter status/domain, clear all log |
+| Analytics Engine & KPI | **100%** | Tren harian, by-website, most used fields; BUG-006 fixed |
+| Security Hardening | **100%** | CORS terkonfigurasi & origin regex aman (BUG-007 fixed), JWT dari .env |
+| Error Handling Global | **100%** | Handler terpusat untuk RequestValidationError, HTTPException, dan unhandled 500 |
+| Rate Limiting | **100%** | In-memory sliding window rate limiter pada endpoint login & registrasi |
+| Environment Variables & Dual DB Engine | **100%** | .env & .env.example terpusat, mendukung MySQL produksi & SQLite test |
 
 ---
 
@@ -437,7 +437,7 @@ sequenceDiagram
 
 ---
 
-### 3.8 Smart Field Detection Algorithm
+### 3.8 Smart Field Detection Algorithm (NLP Hybrid Similarity Engine)
 
 ```mermaid
 flowchart TD
@@ -449,27 +449,32 @@ flowchart TD
 
     Step1 --> Step2
 
-    subgraph Step2_Box["2. Pembersihan & Normalisasi Teks"]
-        Step2["Normalisasi String:<br/>• .toLowerCase()<br/>• .replace(/[-_]/g, ' ')<br/>• .trim()<br/>• Tokenisasi per kata"]
+    subgraph Step2_Box["2. Pembersihan & Tokenisasi Vektor Teks"]
+        Step2["Normalisasi & Tokenisasi:<br/>• .toLowerCase()<br/>• Tokenisasi per kata (Term Frequency)<br/>• Deteksi token modifier: 'ibu', 'ayah', 'kantor', 'darurat'"]
     end
 
     Step2 --> Step3
 
-    subgraph Step3_Box["3. Evaluasi & Pembobotan Skor Multi-Level"]
-        Step3["Iterasi 150+ Pola Kata Kunci:<br/><br/><b>Keyword Pendek (<= 4 Karakter):</b><br/>• Contoh: 'wa', 'hp', 'nim', 'zip', 'nik'<br/>• WAJIB exact token match (mencegah 'alamat' memicu 'wa')<br/><br/><b>Keyword Panjang (> 4 Karakter):</b><br/>• Substring matching (.includes)<br/>• Kata kunci spesifik = Skor +3<br/>• Kata kunci umum = Skor +1"]
+    subgraph Step3_Box["3. Evaluasi NLP Hybrid Similarity"]
+        Step3["Perhitungan Skor Matematis (Argmax):<br/><br/><b>A. Cosine Similarity (Bobot 70%):</b><br/>• cos(&theta;) = (A &middot; B) / (||A|| &times; ||B||)<br/>• Mengukur kelengkapan konteks kata majemuk<br/>• Mencegah 'nama lengkap ibu' tertukar 'full_name'<br/><br/><b>B. Normalized Levenshtein Distance (Bobot 30%):</b><br/>• Mengukur edit distance karakter terkecil<br/>• Toleransi salah ketik / typo ('nma_lengkap')<br/><br/><b>C. Context Modifier & Penalty:</b><br/>• Token 'ibu' memblokir 'full_name' & mem-boost 'mother_name'"]
     end
 
     Step3 --> Step4
 
-    subgraph Step4_Box["4. Seleksi Key Profil Pemenang"]
-        Step4{"Apakah skor tertinggi melebihi batas minimum?"}
-        Step4 -- "Ya (Match Ditemukan)" --> MatchFound["Kaitkan dengan Profile Key Terbaik<br/>(Contoh: Label 'No. HP / WA' -> key: phone)"]
+    subgraph Step4_Box["4. Seleksi Key Profil Pemenang (Argmax)"]
+        Step4{"Apakah skor tertinggi &ge; 0.58?"}
+        Step4 -- "Ya (Skor Tertinggi Memenuhi)" --> MatchFound["Kaitkan dengan Profile Key Terbaik<br/>(Contoh: 'Nama Lengkap Ibu' -> mother_name)"]
         Step4 -- "Tidak (Di bawah threshold)" --> Unmatched["Tandai sebagai Field Tidak Dikenali / Skip"]
     end
 
     MatchFound --> Finish(["Output: Pemetaan Field Siap Diisi"])
     Unmatched --> Finish
 ```
+
+> [!TIP]
+> **Dukungan Dropdown Semantik (`<select>`) & Collision Protection:**
+> - **Dropdown NLP Autofill:** Mengisi dropdown secara cerdas dengan memetakan nilai profil ke opsi formulir melalui kamus sinonim semantik (`DROPDOWN_VALUE_MAP`) seperti `gender` ("Laki-laki" $\rightarrow$ "Pria"/"1"), `religion`, `marital_status`, `education_level`, serta skoring Cosine + Levenshtein untuk opsi bebas/wilayah.
+> - **Collision Resolution:** Proteksi diskualifikasi silang mencegah tabrakan pada pasangan field serupa: `institution` vs `organization`, `occupation` vs `organization`, `address` vs `work_address`, serta `student_id` vs `nik`.
 
 ---
 
@@ -522,19 +527,24 @@ flowchart TD
 
 ## 5. Progress Backend (FastAPI)
 
-**Stack**: FastAPI • SQLAlchemy • PyMySQL • Uvicorn • Pydantic • Bcrypt • PyJWT
+**Stack**: FastAPI • SQLAlchemy • PyMySQL • Uvicorn • Pydantic • Bcrypt • PyJWT • Pytest
 
 | Endpoint | Method | Fungsi | Status |
 |---|---|---|---|
 | `/api/v1/auth/register` | POST | Registrasi pengguna baru dengan email & password | ✅ Selesai |
 | `/api/v1/auth/login` | POST | Otentikasi & pembuatan JWT access token | ✅ Selesai |
 | `/api/v1/auth/me` | GET | Mendapatkan data profil pengguna yang sedang login | ✅ Selesai |
+| `/api/v1/auth/change-password` | POST | Mengubah kata sandi akun pengguna | ✅ Selesai |
 | `/api/v1/profile/me` | GET | Mengambil profil lengkap 29+ field kependudukan | ✅ Selesai |
-| `/api/v1/profile/me` | PUT | Memperbarui informasi profil pengguna | ✅ Selesai |
-| `/api/v1/mappings` | GET / POST / DELETE | Manajemen mapping custom per-domain website | 🟡 Sebagian |
-| `/api/v1/activities` | GET / POST | Pencatatan dan pembacaan log autofill | ✅ Selesai |
+| `/api/v1/profile/me` | PUT | Memperbarui keseluruhan informasi profil | ✅ Selesai |
+| `/api/v1/profile/me` | PATCH | Pembaruan parsial field profil pengguna | ✅ Selesai |
+| `/api/v1/mappings` | GET / POST / DELETE | Manajemen mapping custom per-domain website & all mappings | ✅ Selesai |
+| `/api/v1/mappings/bulk` | POST | Sinkronisasi batch daftar field mapping dari ekstensi | ✅ Selesai |
+| `/api/v1/mappings/{id}` | PUT / DELETE | Pembaruan dan penghapusan mapping spesifik | ✅ Selesai |
+| `/api/v1/activities` | GET / POST / DELETE | Pencatatan, pembacaan, dan pembersihan log autofill | ✅ Selesai |
+| `/api/v1/activities/{id}` | GET / DELETE | Detail dan penghapusan satu log aktivitas | ✅ Selesai |
 | `/api/v1/activities/stats` | GET | Statistik ringkas total pengisian & efisiensi | ✅ Selesai |
-| `/api/v1/activities/analytics` | GET | Analitik tren harian dan distribusi domain | 🟡 Sebagian |
+| `/api/v1/activities/analytics` | GET | Analitik tren harian, distribusi domain & top fields | ✅ Selesai |
 
 ---
 
@@ -545,13 +555,13 @@ flowchart TD
 | Fitur | Deskripsi | Status |
 |---|---|---|
 | Background Service Worker | Context menu, toggle mode, dan message relay hub | ✅ Selesai |
-| Smart Field Detection Engine | 150+ keyword pattern matching dengan multi-level scoring | 🟡 Sebagian (Perlu optimasi SPA) |
+| Smart Field Detection Engine | 150+ keyword pattern matching dengan multi-level scoring | ✅ Selesai |
 | Side Panel Interaktif | Layar login, preview field interaktif, dan tombol eksekusi | ✅ Selesai |
 | Checkbox Select / Deselect | Memilih atau mengecualikan field tertentu sebelum autofill | ✅ Selesai (Fixed) |
-| Mode 1-Klik Instan | Autofill otomatis langsung dari klik ikon ekstensi | 🟡 Sebagian |
+| Mode 1-Klik Instan | Autofill otomatis langsung dari klik ikon ekstensi | ✅ Selesai |
 | Activity Logging Otomatis | Mengirim ringkasan pengisian ke backend secara otomatis | ✅ Selesai |
-| SPA Support (MutationObserver) | Deteksi dinamis form pada aplikasi React/Vue/Angular | 📅 Terencana (Minggu 8) |
-| Token Refresh & Expiry Notice | Penanganan masa berlaku token JWT secara otomatis | 📅 Terencana (Minggu 10) |
+| SPA Support (MutationObserver) | Deteksi dinamis form pada aplikasi React/Vue/Angular | ✅ Selesai (Fixed BUG-004) |
+| Token Expiry Notice & Auto-Clean | Penanganan masa berlaku token JWT secara aman dan notifikasi sesi | ✅ Selesai (Fixed BUG-005) |
 
 ---
 
@@ -564,15 +574,14 @@ flowchart TD
 | **BUG-001** | 🔴 Kritis | Field Alamat salah terisi dengan nomor HP | Penerapan `SHORT_KEYWORDS` + exact token matching | ✅ Selesai |
 | **BUG-002** | 🔴 Kritis | Data update di dashboard tidak sinkron ke extension | Fresh API fetch setiap panel dibuka + koreksi key mapping | ✅ Selesai |
 | **BUG-003** | 🟡 Medium | Checkbox deselect di preview tidak berfungsi | Binding event listener langsung per elemen checkbox | ✅ Selesai |
+| **BUG-004** | 🟡 Medium | Race condition deteksi field pada Single Page Application (SPA) | Implementasi `startMutationObserver` dengan fallback `DOMContentLoaded` dan `documentElement` | ✅ Selesai |
+| **BUG-005** | 🟡 Medium | Extension diam tanpa notifikasi saat token JWT kedaluwarsa | Pembersihan token lokal otomatis pada response 401 dan rendering banner notifikasi sesi kedaluwarsa | ✅ Selesai |
+| **BUG-006** | 🟢 Low | Persentase kelengkapan profil pada custom fields belum presisi | Normalisasi validasi JSON parsing (array & dict) serta dokumen pada backend | ✅ Selesai |
+| **BUG-007** | 🟢 Low | Konfigurasi CORS `allow_origins=["*"]` belum aman untuk production | Pembatasan origin via `.env` dan regex aman `chrome-extension://` | ✅ Selesai |
 
 ### 7.2 Open Bugs (Backlog)
 
-| ID Bug | Tingkat Urgensi | Masalah | Rencana Solusi | Status |
-|---|---|---|---|---|
-| **BUG-004** | 🟡 Medium | Race condition deteksi field pada Single Page Application (SPA) | Implementasi MutationObserver pada content script (Minggu 8) | ⏳ Open |
-| **BUG-005** | 🟡 Medium | Extension diam tanpa notifikasi saat token JWT kedaluwarsa | Implementasi refresh token atau redirect login notice (Minggu 10) | ⏳ Open |
-| **BUG-006** | 🟢 Low | Persentase kelengkapan profil pada custom fields belum presisi | Normalisasi validasi JSON parsing pada backend | ⏳ Open |
-| **BUG-007** | 🟢 Low | Konfigurasi CORS `allow_origins=["*"]` belum aman untuk production | Pembatasan origin hanya ke dashboard dan ekstensi resmi | ⏳ Open |
+*Semua bug yang teridentifikasi dalam audit proyek saat ini telah diperbaiki secara tuntas (0 open bugs).*
 
 ---
 

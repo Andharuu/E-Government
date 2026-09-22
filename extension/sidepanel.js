@@ -99,6 +99,11 @@ async function refreshProfile() {
         await chrome.storage.local.remove(["govconnect_token", "govconnect_email", "govconnect_cached_profile"]);
         showScreen("screenAuth");
         setupAuthListeners();
+        const alertEl = document.getElementById("sideAuthAlert");
+        if (alertEl) {
+          alertEl.textContent = "Sesi Anda telah kedaluwarsa. Silakan masuk kembali.";
+          alertEl.style.display = "block";
+        }
         return null;
       }
       throw new Error("Gagal mengambil profil terbaru");
@@ -209,8 +214,10 @@ async function tryAutoSyncFromOpenTabs() {
 async function initAuthenticatedSession(token) {
   const profile = await refreshProfile();
   if (!profile) {
-    setApiStatus("error");
-    showStatus("Gagal memuat profil. Periksa koneksi backend.");
+    if (currentActiveScreen !== "screenAuth") {
+      setApiStatus("error");
+      showStatus("Gagal memuat profil. Periksa koneksi backend.");
+    }
     return;
   }
 
@@ -663,7 +670,7 @@ function renderFieldList() {
       <input type="checkbox" id="chk_${i}" data-index="${i}" data-uid="${uid}" ${isChecked ? "checked" : ""} ${!hasValue ? "disabled" : ""}>
       <label for="chk_${i}" class="field-info" style="cursor: pointer; flex: 1; min-width: 0;">
         <div class="field-name">
-          ${field.name || field.id || "(field)"}
+          ${field.name || field.id || formatFieldLabel(field.profileKey) || "(field)"}
           ${!isVis ? `<span style="font-size: 9px; color: #D97706; margin-left: 4px; font-weight: 500;">(Tersembunyi di Web)</span>` : ""}
         </div>
         <div class="field-profile">${formatFieldLabel(field.profileKey)} ${hasValue ? `→ <b>${truncate(profileValue, 22)}</b>` : "— belum ada di profil"}</div>
@@ -785,7 +792,7 @@ async function executeAutofill() {
       action: "EXECUTE_AUTOFILL",
       profile: selectedProfile,
       targetFields: targetFields
-    }, 4000);
+    }, 15000);
 
     if (!result) throw new Error("Tidak ada respons dari halaman");
 

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToolsQA DemoQA Practice Form Benchmark — GovConnect Test Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #007bff;
+      --primary-hover: #0056b3;
+      --bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --border: #ced4da;
+      --text: #212529;
+      --sidebar-bg: #5a6268;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    /* Top Navigation Header */
+    .top-header {
+      background: #ffffff;
+      border-bottom: 1px solid #dee2e6;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      font-size: 20px;
+      font-weight: 800;
+      color: #343a40;
+    }
+    .brand-logo span.highlight {
+      color: #007bff;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .nav-links a {
+      color: #495057;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .nav-links a:hover {
+      color: #007bff;
+    }
+
+    .main-layout {
+      max-width: 1080px;
+      margin: 32px auto;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 24px;
+      padding: 0 16px;
+    }
+
+    @media (max-width: 820px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar { display: none; }
+    }
+
+    /* Simulated Sidebar */
+    .sidebar {
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      padding: 16px 0;
+      height: fit-content;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .sidebar-category {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #495057;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f8f9fa;
+    }
+    .sidebar-category.active {
+      background: #e9ecef;
+      color: #007bff;
+    }
+    .sidebar-item {
+      padding: 8px 24px;
+      font-size: 13px;
+      color: #6c757d;
+      cursor: pointer;
+    }
+    .sidebar-item.selected {
+      background: #007bff;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Form Container */
+    .form-wrapper {
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.03);
+      padding: 32px 40px;
+    }
+
+    .form-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #343a40;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .form-subtitle {
+      font-size: 16px;
+      font-weight: 600;
+      color: #6c757d;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .form-row label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #495057;
+      text-align: left;
+    }
+
+    .name-split-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 9px 14px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      color: #212529;
+      background: #ffffff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #80bdff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    }
+
+    /* Bootstrap-style Custom Radio Buttons */
+    .custom-radio-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .custom-control {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .custom-control-input {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      accent-color: #007bff;
+    }
+    .custom-control-label {
+      font-size: 13px;
+      color: #212529;
+      cursor: pointer;
+    }
+
+    /* Bootstrap-style Checkboxes */
+    .custom-checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* Cascading Selects */
+    .cascading-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* React-Select Simulation */
+    .react-select-wrapper {
+      position: relative;
+    }
+    .react-select__control {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: 4px 10px;
+      min-height: 38px;
+      cursor: pointer;
+      background: #ffffff;
+    }
+    .react-select__placeholder {
+      color: #6c757d;
+      font-size: 13px;
+    }
+    .react-select__indicators {
+      color: #6c757d;
+      font-size: 11px;
+    }
+
+    .btn-submit {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 28px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      display: block;
+      margin-left: auto;
+      transition: background 0.15s;
+    }
+    .btn-submit:hover {
+      background: #0069d9;
+    }
+
+    .info-footer {
+      margin-top: 28px;
+      background: #e8f4fd;
+      border: 1px solid #b8daff;
+      border-radius: 6px;
+      padding: 14px 20px;
+      font-size: 12px;
+      color: #004085;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="top-header">
+    <a href="index.html" class="brand-logo">
+      <span>TOOLS</span><span class="highlight">QA</span>
+      <span style="font-size: 12px; font-weight: 500; color: #6c757d; margin-left: 8px;">DemoQA Practice Form Benchmark</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">← Kembali ke Hub</a>
+      <a href="roboform_standard.html">Buka RoboForm Form</a>
+      <a href="dummy_form.html">Buka Dummy e-Gov Form</a>
+      <span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 9999px; font-weight: 600;">⚡ GovConnect Active</span>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Sidebar Simulasi ToolsQA -->
+    <aside class="sidebar">
+      <div class="sidebar-category">Elements <span>▼</span></div>
+      <div class="sidebar-category active">Forms <span>▲</span></div>
+      <div class="sidebar-item selected">Practice Form</div>
+      <div class="sidebar-category">Alerts, Frame & Windows <span>▼</span></div>
+      <div class="sidebar-category">Widgets <span>▼</span></div>
+      <div class="sidebar-category">Interactions <span>▼</span></div>
+    </aside>
+
+    <!-- Formulir Utama DemoQA -->
+    <main class="form-wrapper">
+      <h1 class="form-title">Practice Form</h1>
+      <h2 class="form-subtitle">Student Registration Form</h2>
+
+      <form id="userForm" onsubmit="event.preventDefault(); alert('Pendaftaran siswa berhasil divalidasi!');">
+        
+        <!-- Name: First Name & Last Name -->
+        <div class="form-row">
+          <label>Name</label>
+          <div class="name-split-row">
+            <input type="text" id="firstName" name="firstName" class="form-control" placeholder="First Name" required>
+            <input type="text" id="lastName" name="lastName" class="form-control" placeholder="Last Name" required>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="form-row">
+          <label for="userEmail">Email</label>
+          <input type="email" id="userEmail" name="userEmail" class="form-control" placeholder="name@example.com" required>
+        </div>
+
+        <!-- Gender: Radio Buttons -->
+        <div class="form-row">
+          <label>Gender</label>
+          <div class="custom-radio-group">
+            <label class="custom-control" for="gender-radio-1">
+              <input type="radio" id="gender-radio-1" name="gender" class="custom-control-input" value="Male">
+              <span class="custom-control-label">Male</span>
+            </label>
+            <label class="custom-control" for="gender-radio-2">
+              <input type="radio" id="gender-radio-2" name="gender" class="custom-control-input" value="Female">
+              <span class="custom-control-label">Female</span>
+            </label>
+            <label class="custom-control" for="gender-radio-3">
+              <input type="radio" id="gender-radio-3" name="gender" class="custom-control-input" value="Other">
+              <span class="custom-control-label">Other</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Mobile: 10 Digits -->
+        <div class="form-row">
+          <label for="userNumber">Mobile(10 Digits)</label>
+          <input type="tel" id="userNumber" name="userNumber" class="form-control" placeholder="Mobile Number" maxlength="15" required>
+        </div>
+
+        <!-- Date of Birth: Native Date Input -->
+        <div class="form-row">
+          <label for="dateOfBirthInput">Date of Birth</label>
+          <input type="date" id="dateOfBirthInput" name="dateOfBirth" class="form-control">
+        </div>
+
+        <!-- Subjects -->
+        <div class="form-row">
+          <label for="subjectsInput">Subjects</label>
+          <input type="text" id="subjectsInput" name="subjects" class="form-control" placeholder="Contoh: Math, Science, Computer">
+        </div>
+
+        <!-- Hobbies: Checkbox -->
+        <div class="form-row">
+          <label>Hobbies</label>
+          <div class="custom-checkbox-group">
+            <label class="custom-control" for="hobbies-checkbox-1">
+              <input type="checkbox" id="hobbies-checkbox-1" name="hobbies" value="Sports" class="custom-control-input">
+              <span class="custom-control-label">Sports</span>
+            </label>
+            <label class="custom-control" for="hobbies-checkbox-2">
+              <input type="checkbox" id="hobbies-checkbox-2" name="hobbies" value="Reading" class="custom-control-input">
+              <span class="custom-control-label">Reading</span>
+            </label>
+            <label class="custom-control" for="hobbies-checkbox-3">
+              <input type="checkbox" id="hobbies-checkbox-3" name="hobbies" value="Music" class="custom-control-input">
+              <span class="custom-control-label">Music</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Picture: File Upload -->
+        <div class="form-row">
+          <label for="uploadPicture">Picture</label>
+          <input type="file" id="uploadPicture" name="uploadPicture" class="form-control" accept="image/*">
+        </div>
+
+        <!-- Current Address: Textarea -->
+        <div class="form-row">
+          <label for="currentAddress">Current Address</label>
+          <textarea id="currentAddress" name="currentAddress" class="form-control" rows="3" placeholder="Alamat tempat tinggal saat ini"></textarea>
+        </div>
+
+        <!-- State and City: Dropdowns (Didukung Native & React-Select) -->
+        <div class="form-row">
+          <label>State and City</label>
+          <div class="cascading-row">
+            <select id="state" name="state" class="form-control">
+              <option value="">Select State</option>
+              <option value="DKI Jakarta">DKI Jakarta</option>
+              <option value="Jawa Barat">Jawa Barat</option>
+              <option value="Jawa Tengah">Jawa Tengah</option>
+              <option value="Jawa Timur">Jawa Timur</option>
+              <option value="NCR">NCR</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Rajasthan">Rajasthan</option>
+            </select>
+
+            <select id="city" name="city" class="form-control">
+              <option value="">Select City</option>
+              <option value="Jakarta Pusat">Jakarta Pusat</option>
+              <option value="Jakarta Selatan">Jakarta Selatan</option>
+              <option value="Bandung">Bandung</option>
+              <option value="Semarang">Semarang</option>
+              <option value="Surabaya">Surabaya</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Gurgaon">Gurgaon</option>
+              <option value="Noida">Noida</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Submit and Simulation Buttons -->
+        <div style="margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <button type="submit" id="submit" class="btn-submit">Submit</button>
+          <button type="button" class="btn-submit" style="background: #28a745;" onclick="fillDemoQASimulation()">⚡ Uji Simulasi Autofill</button>
+          <button type="button" class="btn-submit" style="background: #6c757d;" onclick="resetDemoQAForm()">Reset</button>
+          <div id="demoqaStatsBadge" style="margin-left: auto; font-size: 13px; font-weight: 700; color: #004085; background: #cce5ff; padding: 6px 14px; border-radius: 9999px;">
+            0 / 10 Kolom Terisi (0%)
+          </div>
+        </div>
+      </form>
+
+      <div class="info-footer">
+        <strong>💡 Standar Pengujian DemoQA (ToolsQA):</strong> Mereplikasi persis form 
+        <code>https://demoqa.com/automation-practice-form</code>. Mendukung pendeteksian First/Last Name split, Radio Button Gender (Male/Female), Mobile Phone, Date of Birth, File Upload, Textarea Alamat, serta Dropdown State & City.
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Preview -->
+  <div id="previewModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #ffffff; border-radius: 12px; max-width: 600px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div style="padding: 16px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 16px; font-weight: 700; color: #212529;">Student Registration Data (JSON)</h3>
+        <button type="button" onclick="closeModal()" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>
+      </div>
+      <div style="padding: 20px; overflow-y: auto;">
+        <pre id="jsonOutput" style="background: #212529; color: #38bdf8; padding: 14px; border-radius: 8px; font-size: 12px; overflow-x: auto; font-family: monospace;"></pre>
+      </div>
+      <div style="padding: 12px 20px; border-top: 1px solid #dee2e6; text-align: right;">
+        <button type="button" onclick="closeModal()" class="btn-submit" style="background: #6c757d; width: auto; padding: 6px 16px;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function updateDemoQAStats() {
+      const form = document.getElementById('userForm');
+      let filled = 0;
+      let total = 8; // firstName, lastName, email, gender, mobile, dob, address, state/city
+
+      if (document.getElementById('firstName')?.value.trim()) filled++;
+      if (document.getElementById('lastName')?.value.trim()) filled++;
+      if (document.getElementById('userEmail')?.value.trim()) filled++;
+      if (document.querySelector('input[name="gender"]:checked')) filled++;
+      if (document.getElementById('userNumber')?.value.trim()) filled++;
+      if (document.getElementById('dateOfBirthInput')?.value.trim()) filled++;
+      if (document.getElementById('currentAddress')?.value.trim()) filled++;
+      if (document.getElementById('state')?.value.trim() || document.getElementById('city')?.value.trim()) filled++;
+
+      const pct = Math.round((filled / total) * 100);
+      const badge = document.getElementById('demoqaStatsBadge');
+      if (badge) {
+        badge.textContent = `${filled} / ${total} Bagian Terisi (${pct}%)`;
+        badge.style.background = pct > 70 ? '#d4edda' : pct > 30 ? '#fff3cd' : '#e2e3e5';
+        badge.style.color = pct > 70 ? '#155724' : pct > 30 ? '#856404' : '#383d41';
+      }
+    }
+
+    function resetDemoQAForm() {
+      document.getElementById('userForm').reset();
+      updateDemoQAStats();
+    }
+
+    function fillDemoQASimulation() {
+      document.getElementById('firstName').value = "Ahmad";
+      document.getElementById('lastName').value = "Hidayat";
+      document.getElementById('userEmail').value = "ahmad.hidayat@example.com";
+      
+      const maleRadio = document.getElementById('gender-radio-1');
+      if (maleRadio) {
+        maleRadio.checked = true;
+        maleRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      document.getElementById('userNumber').value = "0812987654";
+      document.getElementById('dateOfBirthInput').value = "23 Apr 1995";
+
+      const sportHobby = document.getElementById('hobbies-checkbox-1');
+      if (sportHobby) sportHobby.checked = true;
+      const readHobby = document.getElementById('hobbies-checkbox-2');
+      if (readHobby) readHobby.checked = true;
+
+      document.getElementById('currentAddress').value = "Jl. Malioboro No. 45, Sosromenduran, Yogyakarta";
+
+      const stateSelect = document.getElementById('state');
+      if (stateSelect) stateSelect.value = "DKI Jakarta";
+
+      const citySelect = document.getElementById('city');
+      if (citySelect) citySelect.value = "Jakarta Pusat";
+
+      // Dispatch event
+      ['firstName', 'lastName', 'userEmail', 'userNumber', 'dateOfBirthInput', 'currentAddress', 'state', 'city'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+
+      updateDemoQAStats();
+    }
+
+    document.getElementById('userForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        firstName: document.getElementById('firstName')?.value,
+        lastName: document.getElementById('lastName')?.value,
+        email: document.getElementById('userEmail')?.value,
+        gender: document.querySelector('input[name="gender"]:checked')?.value,
+        mobileNumber: document.getElementById('userNumber')?.value,
+        dateOfBirth: document.getElementById('dateOfBirthInput')?.value,
+        hobbies: Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value),
+        currentAddress: document.getElementById('currentAddress')?.value,
+        state: document.getElementById('state')?.value,
+        city: document.getElementById('city')?.value
+      };
+      document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('previewModal').style.display = 'flex';
+    });
+
+    function closeModal() {
+      document.getElementById('previewModal').style.display = 'none';
+    }
+
+    document.querySelectorAll('#userForm input, #userForm select, #userForm textarea').forEach(el => {
+      el.addEventListener('input', updateDemoQAStats);
+      el.addEventListener('change', updateDemoQAStats);
+    });
+
+    updateDemoQAStats();
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Key, CheckCircle, AlertCircle, Wifi, WifiOff, Zap, Sliders, Check } from 'lucide-react';
+import { Loader2, Save, Key, CheckCircle, AlertCircle, Wifi, WifiOff, Zap, Sliders, Check, Trash2 } from 'lucide-react';
+import { authApi, activityApi } from '../services/api';
 
 export function SettingsPage() {
   const { user, logout, isExtensionConnected } = useAuth();
@@ -50,6 +51,29 @@ export function SettingsPage() {
     setTimeout(() => setSyncStatusMsg(null), 3500);
   };
 
+  const [clearingActivity, setClearingActivity] = useState(false);
+  const [clearActivityMsg, setClearActivityMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleClearActivities = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus SELURUH riwayat aktivitas autofill? Tindakan ini tidak dapat dibatalkan.')) {
+      return;
+    }
+    setClearingActivity(true);
+    setClearActivityMsg(null);
+    try {
+      const res = await activityApi.clearAll();
+      setClearActivityMsg({
+        type: 'success',
+        text: res.data.detail || 'Seluruh riwayat aktivitas berhasil dibersihkan.'
+      });
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Gagal membersihkan riwayat aktivitas';
+      setClearActivityMsg({ type: 'error', text: detail });
+    } finally {
+      setClearingActivity(false);
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
@@ -63,15 +87,14 @@ export function SettingsPage() {
     }
     setSaving(true);
     try {
-      // In a real app, call API to change password
-      // For now just simulate
-      await new Promise(r => setTimeout(r, 1000));
-      setMessage({ type: 'success', text: 'Password berhasil diubah' });
+      const res = await authApi.changePassword(currentPassword, newPassword);
+      setMessage({ type: 'success', text: res.data.detail || 'Password berhasil diperbarui!' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch {
-      setMessage({ type: 'error', text: 'Gagal mengubah password' });
+    } catch (err: any) {
+      const detail = err.response?.data?.detail || 'Gagal mengubah password';
+      setMessage({ type: 'error', text: detail });
     } finally {
       setSaving(false);
     }
@@ -318,18 +341,50 @@ export function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-red-200 p-6 space-y-5">
+        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-red-500" />
           Danger Zone
         </h2>
-        <button
-          onClick={logout}
-          className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 font-medium rounded-lg hover:bg-red-100 flex items-center justify-center gap-2"
-        >
-          <WifiOff className="w-4 h-4" />
-          Logout
-        </button>
+
+        {clearActivityMsg && (
+          <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${
+            clearActivityMsg.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {clearActivityMsg.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+            <span>{clearActivityMsg.text}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-red-50/50 border border-red-100">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Bersihkan Riwayat Aktivitas</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Hapus seluruh riwayat aktivitas autofill untuk perlindungan privasi data pribadi (PRD §23).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearActivities}
+            disabled={clearingActivity}
+            className="shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+          >
+            {clearingActivity ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            {clearingActivity ? 'Membersihkan...' : 'Hapus Semua Riwayat'}
+          </button>
+        </div>
+
+        <div className="pt-2 border-t border-slate-100">
+          <button
+            onClick={logout}
+            className="w-full py-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+          >
+            <WifiOff className="w-4 h-4 text-slate-500" />
+            Keluar dari Akun (Logout)
+          </button>
+        </div>
       </div>
     </div>
   );

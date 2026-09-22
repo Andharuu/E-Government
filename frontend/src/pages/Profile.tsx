@@ -8,212 +8,29 @@ import {
   FileCheck2, ChevronDown
 } from 'lucide-react';
 
-export type CustomFieldType = 'text' | 'image' | 'date' | 'textarea';
+import type {
+  CustomFieldType,
+  CustomFieldItem,
+  UserCategory,
+  DocumentPhoto,
+  DocumentPhotosMap,
+} from '../types/profile';
+import {
+  STANDARD_CATEGORIES,
+  PHOTO_DOCUMENT_SLOTS,
+  RICH_CATEGORY_PRESETS,
+  type RichPreset,
+} from '../constants/profilePresets';
+import { compressImage } from '../utils/image';
 
-export interface CustomFieldItem {
-  id: string;
-  category: string;
-  key: string;
-  label: string;
-  value: string;
-  type?: CustomFieldType;
-  photoData?: string;
-  photoName?: string;
-  photoSize?: number;
-}
-
-export interface UserCategory {
-  id: string;
-  title: string;
-  description: string;
-  icon?: string;
-}
-
-export interface DocumentPhoto {
-  name: string;
-  type: string;
-  data: string; // Base64 data URL
-  size: number;
-  uploadedAt?: string;
-}
-
-export type DocumentPhotosMap = Record<string, DocumentPhoto>;
-
-const STANDARD_CATEGORIES = [
-  { id: 'identity', title: 'Identitas & Kependudukan', icon: User, desc: 'Sesuai KTP resmi' },
-  { id: 'address', title: 'Alamat & Domisili', icon: MapPin, desc: 'Tempat tinggal saat ini' },
-  { id: 'contact', title: 'Kontak Pribadi', icon: Phone, desc: 'Nomor HP dan email' },
-  { id: 'education', title: 'Pendidikan & Akademik', icon: GraduationCap, desc: 'Riwayat sekolah & kampus' },
-  { id: 'career', title: 'Pekerjaan & Karir', icon: Briefcase, desc: 'Profesi dan instansi kerja' },
-  { id: 'family', title: 'Keluarga & Kontak Darurat', icon: HeartHandshake, desc: 'Orang tua dan kontak darurat' },
-  { id: 'documents', title: 'Dokumen Resmi & Berkas Foto', icon: FileText, desc: 'NPWP, BPJS & Foto KTP/KK' },
-];
-
-const PHOTO_DOCUMENT_SLOTS = [
-  {
-    id: 'ktp',
-    title: 'Foto e-KTP Asli',
-    desc: 'Foto KTP tampak depan, tulisan & NIK terbaca jelas.',
-    icon: User,
-    fieldKey: 'foto_ktp',
-    badge: 'Autofill Berkas KTP'
-  },
-  {
-    id: 'kk',
-    title: 'Foto / Scan Kartu Keluarga',
-    desc: 'Lembar Kartu Keluarga tampak penuh dan jelas.',
-    icon: HeartHandshake,
-    fieldKey: 'foto_kk',
-    badge: 'Autofill Berkas KK'
-  },
-  {
-    id: 'pasfoto',
-    title: 'Pasfoto Formal Diri',
-    desc: 'Foto wajah resmi 3x4 / 4x6 latar merah atau biru.',
-    icon: Camera,
-    fieldKey: 'pasfoto',
-    badge: 'Autofill Pasfoto'
-  },
-  {
-    id: 'npwp_card',
-    title: 'Foto Kartu NPWP',
-    desc: 'Foto fisik kartu NPWP atau bukti cetak resmi.',
-    icon: FileText,
-    fieldKey: 'foto_npwp',
-    badge: 'Autofill NPWP'
-  },
-  {
-    id: 'ijazah',
-    title: 'Foto Ijazah / Dokumen Akademik',
-    desc: 'Ijazah terakhir atau surat keterangan lulus.',
-    icon: GraduationCap,
-    fieldKey: 'foto_ijazah',
-    badge: 'Autofill Ijazah'
-  },
-];
-
-// Koleksi preset saran yang kaya untuk setiap kategori dan tipe data
-interface RichPreset {
-  label: string;
-  key: string;
-  type: CustomFieldType;
-  placeholder?: string;
-  badge?: string;
-}
-
-const RICH_CATEGORY_PRESETS: Record<string, RichPreset[]> = {
-  identity: [
-    { label: 'Nama Panggilan', key: 'nama_panggilan', type: 'text', placeholder: 'Raffi' },
-    { label: 'Suku Bangsa', key: 'suku_bangsa', type: 'text', placeholder: 'Jawa / Sunda / Batak' },
-    { label: 'Kewarganegaraan Asal', key: 'kewarganegaraan_asal', type: 'text', placeholder: 'Indonesia' },
-    { label: 'Gelar Akademik', key: 'gelar_akademik', type: 'text', placeholder: 'S.Kom., M.Cs.' },
-    { label: 'Foto Tanda Tangan Digital', key: 'foto_ttd', type: 'image', placeholder: 'Foto tanda tangan' },
-  ],
-  address: [
-    { label: 'Nama Komplek / Perumahan', key: 'nama_komplek', type: 'text', placeholder: 'Griya Indah Asri Blok B No. 12' },
-    { label: 'Nomor RT / RW', key: 'rt_rw', type: 'text', placeholder: 'RT 003 / RW 005' },
-    { label: 'Patokan Alamat', key: 'patokan_alamat', type: 'textarea', placeholder: 'Depan Masjid Al-Ikhlas / sebelah Indomaret' },
-    { label: 'Foto Rumah / Tempat Tinggal', key: 'foto_rumah', type: 'image', placeholder: 'Foto tampak depan rumah' },
-  ],
-  contact: [
-    { label: 'Nomor Telepon Rumah', key: 'telepon_rumah', type: 'text', placeholder: '031-8912345' },
-    { label: 'Username Telegram', key: 'telegram_username', type: 'text', placeholder: '@username' },
-    { label: 'Email Alternatif / Kantor', key: 'email_kantor', type: 'text', placeholder: 'work@company.com' },
-    { label: 'Nomor WhatsApp Darurat', key: 'wa_darurat', type: 'text', placeholder: '081298765432' },
-  ],
-  education: [
-    { label: 'Fakultas / Program Studi', key: 'jurusan', type: 'text', placeholder: 'Informatika' },
-    { label: 'Tahun Kelulusan', key: 'tahun_lulus', type: 'text', placeholder: '2024' },
-    { label: 'Nilai IPK Terakhir', key: 'ipk', type: 'text', placeholder: '3.85' },
-    { label: 'Nomor Ijazah Nasional', key: 'nomor_ijazah', type: 'text', placeholder: '12345/UN/2024' },
-    { label: 'Foto Transkrip Nilai', key: 'foto_transkrip', type: 'image', placeholder: 'Foto transkrip nilai' },
-  ],
-  career: [
-    { label: 'Nomor Induk Pegawai (NIP)', key: 'nip', type: 'text', placeholder: '199001012020121001' },
-    { label: 'Divisi / Departemen', key: 'departemen', type: 'text', placeholder: 'Direktorat Sistem Informasi' },
-    { label: 'Tanggal Mulai Bekerja', key: 'tgl_mulai_kerja', type: 'date' },
-    { label: 'Nama Atasan Langsung', key: 'nama_atasan', type: 'text', placeholder: 'Nama Manajer / Kepala Dinas' },
-    { label: 'Foto Kartu Pegawai (ID Card)', key: 'foto_id_card', type: 'image', placeholder: 'Foto ID Card kerja' },
-  ],
-  family: [
-    { label: 'Jumlah Tanggungan Anak', key: 'jumlah_tanggungan', type: 'text', placeholder: '2 orang' },
-    { label: 'Nama Pasangan (Suami/Istri)', key: 'nama_pasangan', type: 'text', placeholder: 'Nama lengkap pasangan' },
-    { label: 'NIK Pasangan', key: 'nik_pasangan', type: 'text', placeholder: '16 digit NIK pasangan' },
-    { label: 'Foto Buku Nikah / Akta Cerai', key: 'foto_buku_nikah', type: 'image', placeholder: 'Scan buku nikah' },
-    { label: 'Foto Akta Kelahiran Anak', key: 'foto_akta_kelahiran', type: 'image', placeholder: 'Scan akta lahir' },
-  ],
-  documents: [
-    { label: 'Nomor Paspor', key: 'nomor_paspor', type: 'text', placeholder: 'A 1234567' },
-    { label: 'Masa Berlaku Paspor', key: 'paspor_expired', type: 'date' },
-    { label: 'Foto Halaman Paspor', key: 'foto_paspor', type: 'image', placeholder: 'Foto identitas paspor' },
-    { label: 'Nomor SIM (Surat Izin Mengemudi)', key: 'nomor_sim', type: 'text', placeholder: '1234-5678-9012' },
-    { label: 'Foto Fisik SIM', key: 'foto_sim', type: 'image', placeholder: 'Foto SIM A / C' },
-    { label: 'Nomor Rekening Bank', key: 'nomor_rekening', type: 'text', placeholder: '123-456-7890' },
-    { label: 'Nama Bank', key: 'nama_bank', type: 'text', placeholder: 'Bank Mandiri / BCA / BNI' },
-    { label: 'Foto Buku Tabungan', key: 'foto_buku_tabungan', type: 'image', placeholder: 'Foto nomor rekening' },
-  ],
-  other: [
-    { label: 'Plat Nomor Kendaraan', key: 'plat_nomor', type: 'text', placeholder: 'B 1234 ABC' },
-    { label: 'Foto STNK Kendaraan', key: 'foto_stnk', type: 'image', placeholder: 'Scan STNK asli' },
-    { label: 'Nomor Polis Asuransi', key: 'nomor_polis', type: 'text', placeholder: 'POLIS-998877' },
-    { label: 'Foto Kartu Asuransi', key: 'foto_asuransi', type: 'image', placeholder: 'Foto kartu asuransi' },
-    { label: 'Tautan Profil LinkedIn', key: 'linkedin_url', type: 'text', placeholder: 'https://linkedin.com/in/...' },
-  ]
+export type {
+  CustomFieldType,
+  CustomFieldItem,
+  UserCategory,
+  DocumentPhoto,
+  DocumentPhotosMap,
+  RichPreset,
 };
-
-// Helper kompresi gambar client-side (maks 1200px, ~150-250KB JPEG)
-function compressImage(file: File): Promise<DocumentPhoto> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const maxDim = 1200;
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve({
-            name: file.name,
-            type: file.type || 'image/jpeg',
-            data: e.target?.result as string,
-            size: file.size,
-            uploadedAt: new Date().toISOString(),
-          });
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        resolve({
-          name: file.name,
-          type: 'image/jpeg',
-          data: dataUrl,
-          size: Math.round((dataUrl.length * 3) / 4),
-          uploadedAt: new Date().toISOString(),
-        });
-      };
-      img.onerror = reject;
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -258,6 +75,8 @@ export function ProfilePage() {
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const modalPhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const isSavingRef = useRef(false);
+  const lastSaveTimestampRef = useRef<number>(0);
 
   const slugify = (text: string) => {
     return text
@@ -331,7 +150,63 @@ export function ProfilePage() {
   }, []);
 
   const handleChange = (key: string, value: string) => {
-    setProfile(prev => prev ? { ...prev, [key]: value } : null);
+    setProfile(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, [key]: value };
+      // Auto-sync First Name & Last Name jika Full Name berubah dan belum diset
+      if (key === 'full_name' && value.trim()) {
+        const parts = value.trim().split(/\s+/);
+        if (!updated.first_name) updated.first_name = parts[0] || '';
+        if (!updated.last_name) updated.last_name = parts.slice(1).join(' ') || parts[0] || '';
+      }
+      return updated;
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const getExtendedField = (key: string, defaultVal: string = '') => {
+    if (profile && (profile as any)[key] !== undefined && (profile as any)[key] !== null && String((profile as any)[key]).trim() !== '') {
+      return String((profile as any)[key]);
+    }
+    const cf = customFields.find(f => f.key === key);
+    return cf?.value !== undefined && cf?.value !== null ? cf.value : defaultVal;
+  };
+
+  const handleExtendedChange = (key: string, value: string, category: string, label: string, type: CustomFieldType = 'text') => {
+    setProfile(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, [key]: value };
+      // Sinkronkan nama lengkap jika first_name atau last_name diedit
+      if (key === 'first_name' || key === 'last_name') {
+        const fn = key === 'first_name' ? value : (updated.first_name || '');
+        const ln = key === 'last_name' ? value : (updated.last_name || '');
+        const mi = getExtendedField('middle_initial');
+        if (fn || ln) {
+          updated.full_name = [fn, mi ? `${mi}.` : '', ln].filter(Boolean).join(' ');
+        }
+      }
+      return updated;
+    });
+
+    setCustomFields(prev => {
+      const exists = prev.some(f => f.key === key);
+      if (exists) {
+        return prev.map(f => f.key === key ? { ...f, value } : f);
+      } else {
+        return [
+          ...prev,
+          {
+            id: `cf_${key}_${Date.now()}`,
+            category,
+            key,
+            label,
+            value,
+            type,
+          }
+        ];
+      }
+    });
+
     setHasUnsavedChanges(true);
   };
 
@@ -552,7 +427,17 @@ export function ProfilePage() {
 
   // Simpan Seluruh Profil ke Backend
   const handleSave = useCallback(async () => {
-    if (!profile) return;
+    // 1. Guard konkurensi: cegah eksekusi berulang jika proses simpan sedang berjalan
+    if (isSavingRef.current || !profile) return;
+
+    // 2. Cooldown guard: minimal jeda 800ms antar panggilan simpan
+    const now = Date.now();
+    if (now - lastSaveTimestampRef.current < 800 && lastSaveTimestampRef.current !== 0) {
+      return;
+    }
+
+    lastSaveTimestampRef.current = now;
+    isSavingRef.current = true;
     setSaving(true);
     setMessage(null);
 
@@ -586,15 +471,22 @@ export function ProfilePage() {
       console.error('Error saving profile:', err);
       setMessage({ type: 'error', text: err?.response?.data?.detail || 'Gagal menyimpan profil. Silakan coba lagi.' });
     } finally {
+      isSavingRef.current = false;
       setSaving(false);
     }
   }, [profile, customFields, userCategories, documentPhotos]);
 
-  // Keyboard shortcut: Ctrl+S
+  // Keyboard shortcut: Ctrl+S (dengan proteksi key-hold e.repeat & status saving)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
+
+        // Cegah eksekusi jika tombol ditahan (auto-repeat OS) atau sedang menyimpan
+        if (e.repeat || isSavingRef.current) {
+          return;
+        }
+
         handleSave();
       }
     };
@@ -1013,6 +905,63 @@ export function ProfilePage() {
             />
           </div>
 
+          {/* Title / Sapaan */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Title / Sapaan (RoboForm)
+            </label>
+            <input
+              type="text"
+              value={getExtendedField('title')}
+              onChange={e => handleExtendedChange('title', e.target.value, 'identity', 'Title / Sapaan')}
+              placeholder="Mr / Mrs / Ms / Dr"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          {/* Nama Depan (First Name) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Nama Depan (First Name)
+            </label>
+            <input
+              type="text"
+              value={profile?.first_name || getExtendedField('first_name')}
+              onChange={e => handleExtendedChange('first_name', e.target.value, 'identity', 'Nama Depan')}
+              placeholder="Contoh: Andharu"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          {/* Inisial Tengah (Middle Initial) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Inisial Tengah (Middle Initial)
+            </label>
+            <input
+              type="text"
+              maxLength={2}
+              value={getExtendedField('middle_initial')}
+              onChange={e => handleExtendedChange('middle_initial', e.target.value, 'identity', 'Inisial Tengah')}
+              placeholder="R"
+              className="w-full px-3.5 py-2.5 text-sm font-mono bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          {/* Nama Belakang (Last Name) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Nama Belakang (Last Name)
+            </label>
+            <input
+              type="text"
+              value={profile?.last_name || getExtendedField('last_name')}
+              onChange={e => handleExtendedChange('last_name', e.target.value, 'identity', 'Nama Belakang')}
+              placeholder="Contoh: Pratama"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
           {/* NIK */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -1156,13 +1105,39 @@ export function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <div className="space-y-1.5 lg:col-span-3">
             <label className="block text-xs font-semibold text-slate-700">
-              Alamat Jalan / RT / RW / No. Rumah <span className="text-rose-500">*</span>
+              Alamat Jalan / RT / RW / No. Rumah (Address Line 1) <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={2}
               value={profile?.address || ''}
               onChange={e => handleChange('address', e.target.value)}
               placeholder="Contoh: Jl. Pahlawan No. 45 RT 02 / RW 03"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5 lg:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700">
+              Alamat Baris 2 / Gedung / Kavling (Address Line 2)
+            </label>
+            <input
+              type="text"
+              value={getExtendedField('address_line_2')}
+              onChange={e => handleExtendedChange('address_line_2', e.target.value, 'address', 'Address Line 2')}
+              placeholder="Contoh: Gedung Graha Lantai 4, Kavling 12"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Negara (Country)
+            </label>
+            <input
+              type="text"
+              value={profile?.country || getExtendedField('country', 'Indonesia')}
+              onChange={e => handleExtendedChange('country', e.target.value, 'address', 'Negara')}
+              placeholder="Indonesia"
               className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
@@ -1260,9 +1235,9 @@ export function ProfilePage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700">Nomor Telepon / WhatsApp</label>
+            <label className="block text-xs font-semibold text-slate-700">Nomor Telepon / WhatsApp <span className="text-rose-500">*</span></label>
             <input
               type="tel"
               value={profile?.phone || ''}
@@ -1273,12 +1248,56 @@ export function ProfilePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700">Alamat Email Aktif</label>
+            <label className="block text-xs font-semibold text-slate-700">Alamat Email Aktif <span className="text-rose-500">*</span></label>
             <input
               type="email"
               value={profile?.email || ''}
               onChange={e => handleChange('email', e.target.value)}
               placeholder="Contoh: user@email.com"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Situs Web (Website / URL)</label>
+            <input
+              type="url"
+              value={profile?.website || getExtendedField('website')}
+              onChange={e => handleExtendedChange('website', e.target.value, 'contact', 'Website')}
+              placeholder="https://govconnect.id"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Telepon Rumah (Home Phone)</label>
+            <input
+              type="tel"
+              value={getExtendedField('home_phone')}
+              onChange={e => handleExtendedChange('home_phone', e.target.value, 'contact', 'Telepon Rumah')}
+              placeholder="Contoh: 021-5551234"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Telepon Kantor (Work Phone)</label>
+            <input
+              type="tel"
+              value={getExtendedField('work_telephone')}
+              onChange={e => handleExtendedChange('work_telephone', e.target.value, 'contact', 'Telepon Kantor')}
+              placeholder="Contoh: 021-5559876"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Nomor Fax</label>
+            <input
+              type="tel"
+              value={getExtendedField('fax')}
+              onChange={e => handleExtendedChange('fax', e.target.value, 'contact', 'Nomor Fax')}
+              placeholder="Contoh: 021-5559877"
               className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
@@ -1426,6 +1445,17 @@ export function ProfilePage() {
               className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Penghasilan / Gaji per Bulan (Income)</label>
+            <input
+              type="text"
+              value={profile?.income || getExtendedField('income')}
+              onChange={e => handleExtendedChange('income', e.target.value, 'career', 'Penghasilan')}
+              placeholder="Contoh: 15000000"
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
         </div>
 
         {/* Custom Fields in Career */}
@@ -1537,8 +1567,8 @@ export function ProfilePage() {
           </button>
         </div>
 
-        {/* Text Numbers: NPWP & BPJS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Text Numbers: NPWP, BPJS, Driver License */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700">NPWP (Nomor Pokok Wajib Pajak)</label>
             <input
@@ -1557,6 +1587,17 @@ export function ProfilePage() {
               value={profile?.bpjs_number || ''}
               onChange={e => handleChange('bpjs_number', e.target.value)}
               placeholder="Contoh: 0001234567890"
+              className="w-full px-3.5 py-2.5 text-sm font-mono bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Nomor SIM / Driver License (RoboForm)</label>
+            <input
+              type="text"
+              value={profile?.driver_license || getExtendedField('driver_license')}
+              onChange={e => handleExtendedChange('driver_license', e.target.value, 'documents', 'Nomor SIM')}
+              placeholder="Contoh: 1234-5678-9012"
               className="w-full px-3.5 py-2.5 text-sm font-mono bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>

@@ -199,7 +199,15 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
         const res = await fetch(`${API_BASE}/profile/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.ok) {
+        if (res.status === 401) {
+          console.warn("GovConnect: Token sesi telah kedaluwarsa (401). Menghapus kredensial tersimpan.");
+          await chrome.storage.local.remove([
+            "govconnect_token",
+            "govconnect_email",
+            "govconnect_cached_profile"
+          ]);
+          profile = null;
+        } else if (res.ok) {
           profile = await res.json();
           await chrome.storage.local.set({ govconnect_cached_profile: profile });
         }
@@ -287,7 +295,7 @@ async function handleAutofillResult(tab, response, token) {
         .filter(f => f.status === "filled" && f.profileKey)
         .map(f => f.profileKey);
 
-      await fetch(`${API_BASE}/activities`, {
+      const logRes = await fetch(`${API_BASE}/activities`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -303,6 +311,14 @@ async function handleAutofillResult(tab, response, token) {
           filled_fields_summary: filledFieldKeys.join(",")
         })
       });
+      if (logRes.status === 401) {
+        console.warn("GovConnect: Sesi token kedaluwarsa saat mencatat log aktivitas.");
+        await chrome.storage.local.remove([
+          "govconnect_token",
+          "govconnect_email",
+          "govconnect_cached_profile"
+        ]);
+      }
     } catch (logErr) {
       console.warn("Failed to log one-click activity:", logErr);
     }
