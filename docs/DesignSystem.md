@@ -41,7 +41,7 @@ Prinsip: warna status digunakan secara konsisten pada seluruh extension dan dash
 
 ## 3. Typography
 
-Gunakan **Inter** sebagai font utama.
+Gunakan **system font stack** sebagai font utama.
 
 | Element | Size | Weight |
 |---|---|---|

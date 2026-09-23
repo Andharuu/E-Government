@@ -154,3 +154,9 @@ def health_check():
         "service": settings.APP_NAME,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+
+@app.get("/v1/models", include_in_schema=False)
+def models_probe():
+    """Mock endpoint kompatibilitas untuk probe IDE / tooling local AI."""
+    return {"object": "list", "data": []}
