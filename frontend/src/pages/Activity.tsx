@@ -17,21 +17,21 @@ import {
 const statusConfig = {
   success: {
     label: 'Sukses',
-    badge: 'bg-green-100 text-green-700 border-green-200',
+    badge: 'bg-success-light text-success-dark border-success/30',
     icon: CheckCircle,
-    color: 'text-green-600'
+    color: 'text-success'
   },
   partial: {
     label: 'Parsial',
-    badge: 'bg-amber-100 text-amber-700 border-amber-200',
+    badge: 'bg-warning-light text-warning-dark border-warning/30',
     icon: AlertTriangle,
-    color: 'text-amber-600'
+    color: 'text-warning'
   },
   failed: {
     label: 'Gagal',
-    badge: 'bg-red-100 text-red-700 border-red-200',
+    badge: 'bg-error-light text-error-dark border-error/30',
     icon: XCircle,
-    color: 'text-red-600'
+    color: 'text-error'
   },
 };
 
@@ -166,24 +166,24 @@ export function ActivityPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Riwayat Aktivitas</h1>
-          <p className="text-slate-500 mt-1">Audit log dan jejak privasi pengisian formulir autofill</p>
+          <h1 className="text-2xl font-bold text-content-primary">Riwayat Aktivitas</h1>
+          <p className="text-content-tertiary mt-1 text-sm">Audit log dan jejak privasi pengisian formulir autofill</p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 border border-border-default bg-surface-elevated hover:bg-surface-sunken text-content-secondary rounded-md transition-colors-fast flex items-center gap-1.5 text-xs font-medium"
             title="Segarkan data"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-brand-600' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
           {activities.length > 0 && (
             <button
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-2 bg-error-light hover:bg-error/20 text-error border border-error/30 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors-fast"
             >
               {clearingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               <span>Bersihkan Riwayat</span>
@@ -194,10 +194,10 @@ export function ActivityPage() {
 
       {/* Feedback Toast */}
       {actionFeedback && (
-        <div className={`p-3.5 rounded-lg border text-sm flex items-center gap-2.5 ${
+        <div className={`p-3.5 rounded-md border text-sm flex items-center gap-2.5 ${
           actionFeedback.type === 'success'
-            ? 'bg-green-50 text-green-700 border-green-200'
-            : 'bg-red-50 text-red-700 border-red-200'
+            ? 'bg-success-light text-success-dark border-success/30'
+            : 'bg-error-light text-error-dark border-error/30'
         }`}>
           {actionFeedback.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
           <span>{actionFeedback.text}</span>
@@ -205,9 +205,9 @@ export function ActivityPage() {
       )}
 
       {/* Filter & Search Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+      <div className="bg-surface-elevated rounded-lg border border-border-default p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-surface-sunken p-1 rounded-md">
           {(['all', 'success', 'partial', 'failed'] as const).map(st => {
             const labels = {
               all: 'Semua',
@@ -220,10 +220,10 @@ export function ActivityPage() {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors-fast ${
                   isActive
-                    ? 'bg-white text-slate-900 shadow-sm font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-surface-elevated text-content-primary font-semibold'
+                    : 'text-content-tertiary hover:text-content-secondary'
                 }`}
               >
                 {labels[st]}
@@ -234,31 +234,31 @@ export function ActivityPage() {
 
         {/* Search Input */}
         <div className="relative flex-1 sm:max-w-xs">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-content-disabled absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Cari domain website..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-border-default rounded-md bg-surface-elevated text-content-primary placeholder:text-content-disabled focus:outline-none focus:ring-2 focus:ring-border-focus focus:border-transparent transition-colors-fast"
           />
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-surface-elevated rounded-lg border border-border-default overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            <p className="text-xs text-slate-500">Memuat riwayat aktivitas autofill...</p>
+            <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
+            <p className="text-xs text-content-tertiary">Memuat riwayat aktivitas autofill...</p>
           </div>
         ) : filteredActivities.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+            <div className="w-12 h-12 bg-surface-sunken rounded-full flex items-center justify-center mx-auto mb-3 text-content-disabled">
               <Inbox className="w-6 h-6" />
             </div>
-            <p className="text-slate-700 font-semibold text-sm">Tidak ada riwayat aktivitas yang cocok</p>
-            <p className="text-slate-400 text-xs mt-1 max-w-sm mx-auto">
+            <p className="text-content-secondary font-semibold text-sm">Tidak ada riwayat aktivitas yang cocok</p>
+            <p className="text-content-disabled text-xs mt-1 max-w-sm mx-auto">
               {statusFilter !== 'all' || searchQuery
                 ? 'Coba ganti kata kunci pencarian atau ubah filter status di atas.'
                 : 'Gunakan ekstensi GovConnect di formulir layanan publik untuk merekam riwayat pengisian.'}
@@ -267,16 +267,16 @@ export function ActivityPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
+              <thead className="bg-surface-sunken border-b border-border-default">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Website Target</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Waktu</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Kolom Terisi</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Aksi</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-content-tertiary uppercase tracking-wider">Website Target</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-content-tertiary uppercase tracking-wider">Waktu</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-content-tertiary uppercase tracking-wider">Kolom Terisi</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-content-tertiary uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-content-tertiary uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border-default">
                 {filteredActivities.map(activity => {
                   const config = statusConfig[activity.status] || statusConfig.success;
                   const Icon = config.icon;
@@ -285,12 +285,12 @@ export function ActivityPage() {
                     : [];
 
                   return (
-                    <tr key={activity.id} className="group hover:bg-slate-50/60 transition-colors">
+                    <tr key={activity.id} className="group hover:bg-surface-sunken/50 transition-colors-fast">
                       <td className="px-4 py-3.5">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span className="text-sm font-semibold text-slate-900 truncate max-w-xs">
+                            <Globe className="w-4 h-4 text-content-disabled shrink-0" />
+                            <span className="text-sm font-semibold text-content-primary truncate max-w-xs tabular-nums">
                               {formatWebsiteDomain(activity.website_domain, activity.target_url)}
                             </span>
                             {activity.target_url && !activity.target_url.startsWith('file:') && (
@@ -298,7 +298,7 @@ export function ActivityPage() {
                                 href={activity.target_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-slate-400 hover:text-blue-600 transition-colors"
+                                className="text-content-disabled hover:text-brand-600 transition-colors-fast"
                                 title="Buka URL formulir"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -308,12 +308,12 @@ export function ActivityPage() {
                           {summaryFields.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {summaryFields.slice(0, 3).map((f, idx) => (
-                                <span key={idx} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                                <span key={idx} className="text-[10px] bg-surface-sunken text-content-tertiary px-1.5 py-0.5 rounded font-mono">
                                   {f}
                                 </span>
                               ))}
                               {summaryFields.length > 3 && (
-                                <span className="text-[10px] text-slate-400 font-medium">
+                                <span className="text-[10px] text-content-disabled font-medium">
                                   +{summaryFields.length - 3} lainnya
                                 </span>
                               )}
@@ -322,9 +322,9 @@ export function ActivityPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-xs text-content-secondary whitespace-nowrap tabular-nums">
                         <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <Calendar className="w-3.5 h-3.5 text-content-disabled" />
                           <span>
                             {new Date(activity.created_at).toLocaleDateString('id-ID', {
                               day: 'numeric',
@@ -332,7 +332,7 @@ export function ActivityPage() {
                               year: 'numeric',
                             })}
                           </span>
-                          <span className="text-slate-400">
+                          <span className="text-content-disabled">
                             {new Date(activity.created_at).toLocaleTimeString('id-ID', {
                               hour: '2-digit',
                               minute: '2-digit'
@@ -343,22 +343,22 @@ export function ActivityPage() {
 
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div className="w-16 bg-surface-sunken rounded-full h-2 overflow-hidden">
                             <div
-                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              className="bg-brand-600 h-2 rounded-full transition-[width] duration-normal"
                               style={{
                                 width: `${activity.fields_detected > 0 ? Math.min(100, Math.round((activity.fields_filled / activity.fields_detected) * 100)) : 100}%`
                               }}
                             />
                           </div>
-                          <span className="text-xs font-semibold text-slate-700">
+                          <span className="text-xs font-semibold text-content-secondary tabular-nums">
                             {activity.fields_filled}/{activity.fields_detected}
                           </span>
                         </div>
                       </td>
 
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.badge}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${config.badge}`}>
                           <Icon className="w-3 h-3" />
                           {config.label}
                         </span>
@@ -369,11 +369,11 @@ export function ActivityPage() {
                           type="button"
                           onClick={() => handleDeleteItem(activity.id)}
                           disabled={deletingId === activity.id}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-content-disabled hover:text-error hover:bg-error-light rounded-md transition-colors-fast"
                           title="Hapus catatan ini"
                         >
                           {deletingId === activity.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                            <Loader2 className="w-4 h-4 animate-spin text-error" />
                           ) : (
                             <Trash2 className="w-4 h-4" />
                           )}
@@ -389,13 +389,13 @@ export function ActivityPage() {
 
         {/* Load More Footer */}
         {!loading && hasMore && (
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center">
+          <div className="p-4 border-t border-border-default bg-surface-sunken/50 text-center">
             <button
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+              className="px-4 py-2 bg-surface-elevated border border-border-default hover:bg-surface-sunken text-content-secondary text-xs font-semibold rounded-md transition-colors-fast flex items-center gap-2 mx-auto disabled:opacity-50"
             >
-              {loadingMore && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />}
+              {loadingMore && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-600" />}
               {loadingMore ? 'Memuat...' : 'Muat Lebih Banyak Riwayat'}
             </button>
           </div>

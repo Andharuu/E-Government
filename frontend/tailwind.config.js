@@ -7,7 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', '"Noto Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"SF Mono"', '"Cascadia Code"', 'Consolas', '"Liberation Mono"', 'Menlo', 'monospace'],
       },
       colors: {
         brand: {
@@ -17,38 +18,79 @@ export default {
           300: '#93c5fd',
           400: '#60a5fa',
           500: '#3b82f6',
-          600: '#2563eb', // Primary
-          700: '#1d4ed8', // Primary Dark
-          800: '#1e40af',
-          900: '#1e3a8a',
+          600: '#1e40af',
+          700: '#1e3a8a',
+          800: '#172554',
+          900: '#0f172a',
         },
-        slate: {
-          50: '#f8fafc', // Background
-          100: '#f1f5f9',
-          200: '#e2e8f0', // Border
-          300: '#cbd5e1',
-          400: '#94a3b8', // Neutral
-          500: '#64748b', // Text Secondary
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a', // Text Primary
+        surface: {
+          base: '#f4f6f9',
+          elevated: '#ffffff',
+          sunken: '#e8ecf2',
         },
-        success: '#16a34a',
-        warning: '#f59e0b',
-        error: '#dc2626',
-        neutral: '#94a3b8',
+        content: {
+          primary: '#0c1222',
+          secondary: '#4a5568',
+          tertiary: '#6b7a90',
+          disabled: '#94a3b8',
+        },
+        border: {
+          default: '#d1d9e6',
+          strong: '#94a3b8',
+          focus: '#1e40af',
+        },
+        success: {
+          DEFAULT: '#15803d',
+          light: '#dcfce7',
+          dark: '#166534',
+        },
+        warning: {
+          DEFAULT: '#a16207',
+          light: '#fef3c7',
+          dark: '#854d0e',
+        },
+        error: {
+          DEFAULT: '#b91c1c',
+          light: '#fee2e2',
+          dark: '#991b1b',
+        },
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+      },
+      borderRadius: {
+        'sm': '0.25rem',
+        'DEFAULT': '0.375rem',
+        'md': '0.5rem',
+        'lg': '0.75rem',
       },
       boxShadow: {
-        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        DEFAULT: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        'inner': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+        'xs': '0 1px 2px 0 rgb(12 18 34 / 0.04)',
+        'sm': '0 1px 3px 0 rgb(12 18 34 / 0.06), 0 1px 2px -1px rgb(12 18 34 / 0.06)',
+        'DEFAULT': '0 2px 4px -1px rgb(12 18 34 / 0.06), 0 1px 2px -2px rgb(12 18 34 / 0.06)',
+        'md': '0 4px 6px -1px rgb(12 18 34 / 0.06), 0 2px 4px -2px rgb(12 18 34 / 0.06)',
+        'lg': '0 10px 15px -3px rgb(12 18 34 / 0.06), 0 4px 6px -4px rgb(12 18 34 / 0.06)',
         'none': 'none',
-      }
+      },
+      transitionTimingFunction: {
+        'responsive': 'cubic-bezier(0.23, 1, 0.32, 1)',
+        'layout': 'cubic-bezier(0.77, 0, 0.175, 1)',
+      },
+      transitionDuration: {
+        'fast': '120ms',
+        'normal': '200ms',
+        'slow': '300ms',
+      },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: '65ch',
+            color: 'var(--color-content-primary)',
+            lineHeight: '1.5',
+          },
+        },
+      },
     },
   },
   plugins: [],
