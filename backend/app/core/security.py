@@ -6,6 +6,8 @@ from typing import Optional, Dict
 import bcrypt
 from jose import jwt
 from fastapi import HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.config import settings
 
@@ -46,48 +48,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 # ============================================================
-# In-Memory Rate Limiter Sederhana (Token Bucket / Sliding Window)
+# Rate Limiter (SlowAPI)
 # ============================================================
-class InMemoryRateLimiter:
-    """Rate limiter berbasis sliding window per IP client untuk mencegah brute force."""
+def get_ip_or_token(request: Request) -> str:
+    """Menggunakan token otentikasi (jika ada) atau IP sebagai kunci rate limit."""
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        return f"token:{token}"
+    return f"ip:{get_remote_address(request)}"
 
-    def __init__(self):
-        self._records: Dict[str, deque] = defaultdict(deque)
-
-    def check_rate_limit(self, key: str, max_requests: int, window_seconds: int = 60) -> bool:
-        """
-        Kembalikan True jika request diperbolehkan, False jika melebihi kuota.
-        """
-        now = time.time()
-        queue = self._records[key]
-
-        # Bersihkan timestamp yang berada di luar jendela waktu
-        while queue and queue[0] <= now - window_seconds:
-            queue.popleft()
-
-        if len(queue) >= max_requests:
-            return False
-
-        queue.append(now)
-        return True
-
-    def reset(self):
-        """Mereset seluruh rekaman antrian request (berguna untuk testing)."""
-        self._records.clear()
-
-
-rate_limiter = InMemoryRateLimiter()
-
-
-def enforce_rate_limit(request: Request, max_requests: int = 60, window_seconds: int = 60):
-    """Dependency / Helper untuk memverifikasi rate limit pada endpoint sensitif."""
-    client_ip = request.client.host if request.client else "unknown"
-    path = request.url.path
-    key = f"{client_ip}:{path}"
-
-    if not rate_limiter.check_rate_limit(key, max_requests=max_requests, window_seconds=window_seconds):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Terlalu banyak permintaan. Silakan tunggu {window_seconds} detik sebelum mencoba kembali.",
-            headers={"Retry-After": str(window_seconds)}
-        )
+limiter = Limiter(key_func=get_ip_or_token)

@@ -36,14 +36,7 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 24 * 7)))
 
     # Keamanan CORS
-    _cors_raw: str = os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
-    )
-    CORS_ORIGIN_REGEX: Optional[str] = os.getenv(
-        "CORS_ORIGIN_REGEX",
-        r"^chrome-extension://[a-zA-Z0-9]+$"
-    )
+    ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "chrome-extension://<EXTENSION_ID>")
 
     # Rate Limiting
     RATE_LIMIT_LOGIN_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_LOGIN_PER_MINUTE", "15"))
@@ -51,9 +44,15 @@ class Settings:
 
     @property
     def cors_origins_list(self) -> List[str]:
-        if not self._cors_raw:
-            return []
-        return [origin.strip() for origin in self._cors_raw.split(",") if origin.strip()]
+        origins = [self.ALLOWED_ORIGIN]
+        if self.ENVIRONMENT.lower() != "production":
+            origins.extend([
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000"
+            ])
+        return origins
 
     @property
     def is_sqlite(self) -> bool:

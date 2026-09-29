@@ -21,35 +21,34 @@ Sistem terdiri dari tiga pilar komponen utama yang saling terhubung:
 ### 🏛️ Alur Kerja Sistem (System Architecture)
 
 ```
-┌─────────────────────────────────┐
-│     Google Chrome Browser       │
-│                                 │
-│  ┌───────────────────────────┐  │      REST API (JSON / Bearer JWT)      ┌──────────────────────────────────┐
-│  │     Web Dashboard         │  │ ◄────────────────────────────────────► │         FastAPI Backend          │
-│  │ (React 19 + TS + Tailwind)│  │                                        │          (Port 8000)             │
-│  │   http://localhost:5173   │  │                                        │  • Modular API Routers           │
-│  └───────────────────────────┘  │                                        │  • Business Logic Services       │
-│                                 │                                        │  • Centralized Core Config & Env │
-│  ┌───────────────────────────┐  │      REST API (Fresh Token Sync)       │  • Sliding-Window Rate Limiting  │
-│  │   Chrome Extension (MV3)  │  │ ◄────────────────────────────────────► │  • Global Exception Handlers     │
-│  │ • Popup (Auth Gateway)    │  │                                        └─────────────────┬────────────────┘
-│  │ • Side Panel (Workspace)  │  │                                                          │
-│  └─────────────┬─────────────┘  │                                                          │ SQLAlchemy 2.0 ORM
-│                │ chrome.tabs    │                                                          ▼
-│                ▼ sendMessage    │                                        ┌──────────────────────────────────┐
-│  ┌───────────────────────────┐  │                                        │       Database Engine            │
-│  │     Content Script        │  │                                        │                                  │
-│  │  [ Algoritma Hybrida ]    │  │                                        │ • Production: MySQL (Docker)     │
-│  │ • W3C Autocomplete Match │  │                                        │ • Test/Local: SQLite Instan      │
-│  │ • Heuristic Label Scoring │  │                                        └──────────────────────────────────┘
-│  │ • Exact Token Matcher     │  │
-│  └─────────────┬─────────────┘  │
-│                │ DOM Injection  │
-│                ▼                │
-│  ┌───────────────────────────┐  │
-│  │ Target E-Gov Form Page    │  │
-│  └───────────────────────────┘  │
-└─────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                  Google Chrome Browser                 │
+│                                                        │
+│ ┌──────────────────────────┐ REST API (Bearer JWT)   ┌────────────────────────────────┐
+│ │      Web Dashboard       │◄───────────────────────►│        FastAPI Backend         │
+│ │(React 19 + TS + Tailwind)│                         │          (Port 8000)           │
+│ └──────────────────────────┘                         │  • API v1 Routers              │
+│                                                      │  • Business Logic Services     │
+│ ┌────────────────────────────────────────────────┐   │  • Alembic DB Migrations       │
+│ │             Chrome Extension (MV3)             │   │  • Sliding-Window Rate Limiting│
+│ │                                                │   └────────────────┬───────────────┘
+│ │ ┌──────────────────┐      ┌──────────────────┐ │                    │
+│ │ │ Popup/Side Panel │◄────►│ Background Worker│◄══════(Telemetry)════╛
+│ │ │ (Auth & Workspace)│     │(State & Msg Relay)│ │
+│ │ └──────────────────┘      └─────────┬────────┘ │   ┌────────────────────────────────┐
+│ │                                     │          │   │         Database Engine        │
+│ │ ┌──────────────────┐      ┌─────────▼────────┐ │   │ • Production: MySQL (Docker)   │
+│ │ │ Content Script   │◄────►│ Offscreen Doc    │ │   │ • Test/Local: SQLite Instan    │
+│ │ │ [ DOM Engine ]   │      │ [ AI Inference ] │ │   └────────────────────────────────┘
+│ │ │ • Cascade Match  │      │ • SBERT Model    │ │
+│ │ │ • Shadow DOM     │      │ • ONNX WASM      │ │
+│ │ └────────┬─────────┘      └──────────────────┘ │
+│ └──────────┼─────────────────────────────────────┘
+│            │ DOM Injection
+│ ┌──────────▼───────────────┐
+│ │  Target E-Gov Form Page  │
+│ └──────────────────────────┘
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -61,32 +60,22 @@ Codebase menggunakan arsitektur modular berlapis (*Separation of Concerns*) untu
 ```
 E-Government/
 ├── backend/                            # Layanan RESTful API Engine
+│   ├── alembic/ & alembic.ini          # Konfigurasi migrasi database SQLAlchemy
 │   ├── app/
 │   │   ├── main.py                     # Entry point FastAPI, CORS, logger & global exception
 │   │   ├── database.py                 # Inisialisasi engine & session database (MySQL / SQLite)
 │   │   ├── core/                       # Pengaturan sistem inti & utilitas keamanan
-│   │   │   ├── config.py               # Pydantic Settings & environment variable loader
-│   │   │   └── security.py             # Bcrypt hashing, JWT token issuer & rate limiter
-│   │   ├── api/                        # Lapisan HTTP Routing
-│   │   │   ├── auth.py                 # Otentikasi: register, login, me, change-password
-│   │   │   ├── endpoints.py            # Router agregator v1 (backward compatible)
-│   │   │   └── routers/                # Sub-router modular per domain fitur
-│   │   │       ├── profile_router.py   # Endpoint profil (GET, PUT, PATCH)
-│   │   │       ├── mapping_router.py   # Endpoint custom field mapping (CRUD & Bulk)
-│   │   │       └── activity_router.py  # Endpoint log aktivitas, stats & analytics
-│   │   ├── models/
-│   │   │   └── entities.py             # Model SQLAlchemy: User, Profile, Mapping, Activity
-│   │   ├── schemas/
-│   │   │   └── schemas.py              # Skema validasi Pydantic (Request / Response)
+│   │   ├── api/v1/                     # Lapisan HTTP Routing v1
+│   │   │   ├── api.py                  # Router agregator v1
+│   │   │   └── routers/                # Sub-router modular
+│   │   │       ├── auth.py             # Otentikasi: register, login, me
+│   │   │       ├── profile.py          # Endpoint profil (GET, PUT, PATCH)
+│   │   │       ├── mapping.py          # Endpoint custom field mapping
+│   │   │       └── activity.py         # Endpoint aktivitas, stats & analytics
+│   │   ├── models/entities.py          # Model SQLAlchemy: User, Profile, Mapping, Activity
+│   │   ├── schemas/schemas.py          # Skema validasi Pydantic (Request / Response)
 │   │   └── services/                   # Lapisan logika bisnis terisolasi
-│   │       ├── profile_service.py      # Kalkulasi kelengkapan profil (29+ fields)
-│   │       └── activity_service.py     # Agregasi metrik analitik, domain extractor & KPI
 │   ├── tests/                          # Automated Test Suite (Pytest)
-│   │   ├── conftest.py                 # Fixture isolated in-memory/file SQLite DB & client
-│   │   ├── test_auth.py                # 11 Unit test autentikasi, token & rate limiting
-│   │   ├── test_profile.py             # 6 Unit test CRUD & validasi profil kependudukan
-│   │   ├── test_mappings.py            # 4 Unit test mapping tunggal, bulk & per-domain
-│   │   └── test_activities.py          # 3 Unit test pencatatan aktivitas & analitik
 │   ├── .env.example                    # Template konfigurasi environment
 │   ├── docker-compose.yml              # Orkestrasi container MySQL
 │   ├── pytest.ini                      # Konfigurasi runner test pytest
@@ -94,55 +83,47 @@ E-Government/
 │
 ├── frontend/                           # Web Dashboard SPA
 │   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx           # Ringkasan KPI, grafik Recharts & quick actions
-│   │   │   ├── Profile.tsx             # Form wizard master profile (29+ atribut kependudukan)
-│   │   │   ├── Activity.tsx            # Audit log riwayat injeksi & status keberhasilan
-│   │   │   ├── Settings.tsx            # Pengaturan keamanan, ganti password & kontrol privasi
-│   │   │   ├── Login.tsx               # Halaman masuk sistem
-│   │   │   └── Register.tsx            # Halaman pendaftaran akun baru
+│   │   ├── pages/                      # Dashboard, Profile, Activity, Settings, Auth
 │   │   ├── components/                 # Komponen modular (Sidebar, Navbar, Card, Modal)
-│   │   ├── constants/                  # Preset profil dummy terverifikasi untuk pengujian
-│   │   ├── services/                   # Axios HTTP client, token interceptor & endpoint SDK
-│   │   └── types/                      # Deklarasi tipe TypeScript untuk Profile & Activity
+│   │   └── services/                   # Axios HTTP client, token interceptor
 │   ├── package.json                    # Dependensi Node.js (React 19, Tailwind v4, Vite 8)
 │   └── vite.config.ts                  # Konfigurasi Vite & Tailwind CSS bundler
 │
 ├── extension/                          # Chrome Extension (Manifest V3)
-│   ├── manifest.json                   # Definisi ekstensi, permissions & host matches
+│   ├── manifest.json                   # Definisi ekstensi, CSP & permissions
 │   ├── background.js                   # Service worker, session state & relay pesan
+│   ├── content_script.js               # DOM Engine, Shadow DOM piercing, MutationObserver
+│   ├── offscreen.html & offscreen.js   # Offscreen Document host & AI Inferencing
 │   ├── popup.html & popup.js           # Auth Gateway & panel kontrol cepat
 │   ├── sidepanel.html & sidepanel.js   # Side panel workspace autofill & inspector form
-│   └── content_script.js               # Algoritma Hybrida: deteksi form & injeksi DOM
+│   └── lib/                            # Zero-remote-code execution local libraries
+│       ├── transformers.js             # ESM Bundled @xenova/transformers
+│       └── ort-wasm*.wasm              # ONNX Runtime WebAssembly binaries
 │
 ├── test-page/                          # Portal Uji Coba & Benchmarking Autofill
-│   ├── index.html                      # Test suite portal hub & panduan pengujian
-│   ├── dummy_form.html                 # Formulir pengujian komprehensif (30+ elemen input)
-│   ├── demoqa_standard.html            # Standar pengujian otomasi berbasis DemoQA
-│   └── roboform_standard.html          # Benchmark kompatibilitas standar formulir RoboForm
+│   └── ...                             # Dummy forms & benchmarks
+├── test-form.html                      # Integration Testbed komprehensif
 │
-└── docs/                               # Dokumentasi Teknis & Laporan Proyek
+├── STATE_PROGRESS.md                   # State arsitektur sistem terkini & single source of truth
+└── docs/                               # Dokumentasi Teknis
+    ├── core-architecture.md            # Arsitektur inti sistem
     ├── PRD.md                          # Product Requirements Document
-    ├── System Architecture.md          # Dokumen arsitektur teknis sistem
-    ├── DesignSystem.md                 # Design system, palet warna & tipografi
-    ├── uiuxspesification.md            # Spesifikasi antarmuka dan interaksi pengguna
-    └── progress-report.md              # Laporan progres pengembangan mingguan
+    └── ...
 ```
 
 ---
 
-## ⚡ Algoritma Hybrida & 29+ Atribut Kependudukan
+## ⚡ Arsitektur Hybrid Cascade Pipeline & Offscreen AI Inference
 
-Ekstensi GovConnect menggunakan **Algoritma Hybrida** pada `content_script.js` untuk mendeteksi field input dengan akurasi tinggi:
+Ekstensi GovConnect memecahkan tantangan klasifikasi formulir heterogen menggunakan **Hybrid Cascade Pipeline**, yang diproses secara bertingkat:
 
-1. **Layer 1 — Standar W3C HTML5 `autocomplete`**:
-   Mencocokkan atribut standar browser (`given-name`, `family-name`, `email`, `tel`, `street-address`, `postal-code`, `bday`, dll.) dengan kecocokan instan 100%.
-2. **Layer 2 — Heuristic Multi-Attribute Scoring**:
-   Menganalisis dan memberi bobot skor pada atribut elemen DOM: `id`, `name`, `placeholder`, `aria-label`, `<label>` terdekat, serta atribut konteks form.
-3. **Layer 3 — Exact Token Matching untuk Kata Kunci Pendek**:
-   Mencegah *false positive* pada kata kunci 2–4 karakter (`nik`, `wa`, `hp`, `kab`, `kot`, `zip`, `sim`, `sex`, `age`, `dob`) dengan validasi token presisi (bukan sekadar `substring.includes()`).
-4. **Layer 4 — Custom Persistent Mapping**:
-   Pengguna dapat memetakan kolom formulir yang unik pada domain tertentu; mapping disimpan ke backend dan otomatis digunakan saat situs dibuka kembali.
+1. **Pass 0 — Standar W3C HTML5 `autocomplete`**: Kecocokan 100% instan berdasarkan atribut baku form.
+2. **Pass 1 — Exact Match, Prefix Stripper & Abbreviation Expansion**: Membersihkan ID obfuscation dan menerjemahkan singkatan *legacy*. Termasuk deteksi **Pass 1.5** untuk sub-komponen dropdown tanggal.
+3. **Pass 2 — BM25 & Context Modifiers**: Memberikan penalti tabrakan antar elemen (mis. telepon darurat vs pribadi). Untuk label panjang, **BM25 Lexical Similarity Engine** akan diaktivasi.
+4. **Pass 3 — Jaro-Winkler + Overlap Lexical**: Kalkulasi skor kemiripan berbobot untuk pencocokan elemen yang salah ketik (typo).
+5. **Pass 4 — Offscreen SBERT Semantic Fallback**: Jika label terlalu abstrak (misal: "Orang yang melahirkan pemohon"), tugas inferensi akan dilempar ke **Offscreen Document**. Model bahasa kecil SBERT `all-MiniLM-L6-v2` menghitung vektor kemiripan (*Cosine Similarity*) menggunakan WASM thread secara lokal tanpa memanggil API eksternal (CSP Compliant).
+
+Pengecualian: **Custom Persistent Mapping** memungkinkan pengguna mem-bypass AI dan membuat pemetaan prioritas untuk domain spesifik.
 
 ### Cakupan 29+ Atribut Profil Master
 * **Identitas Diri**: NIK (16 digit), Nama Lengkap, Gelar Depan/Belakang, Tempat Lahir, Tanggal Lahir, Jenis Kelamin, Agama, Status Perkawinan, Golongan Darah.

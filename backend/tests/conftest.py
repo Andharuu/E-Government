@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.core.security import rate_limiter
+from app.core.security import limiter
 
 # Database SQLite in-memory terisolasi khusus untuk testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -41,7 +41,7 @@ def db_session():
 @pytest.fixture(scope="function")
 def client(db_session):
     """TestClient dengan dependency database yang diarahkan ke test database."""
-    rate_limiter.reset()
+    limiter._storage.reset()
     def override_get_db():
         try:
             yield db_session

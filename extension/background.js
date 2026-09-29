@@ -9,7 +9,7 @@ const DASHBOARD_URL = "http://localhost:5173/dashboard";
 // ============================================================
 function resetPanelBehavior() {
   if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
-    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => { });
   }
 }
 
@@ -19,12 +19,74 @@ chrome.runtime.onInstalled.addListener(() => {
   resetPanelBehavior();
   setupContextMenus();
   updateActionBehavior();
+  checkAndUpdateDictionaries();
+  setupOffscreenDocument();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   resetPanelBehavior();
   updateActionBehavior();
+  checkAndUpdateDictionaries();
+  setupOffscreenDocument();
 });
+
+// ============================================================
+// Inisialisasi Offscreen Document
+// ============================================================
+async function setupOffscreenDocument() {
+  try {
+    if (await chrome.offscreen.hasDocument()) {
+      return;
+    }
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['WORKERS'],
+      justification: 'Menjalankan komputasi berat untuk mencocokkan label form di background worker'
+    });
+    console.log("GovConnect: Offscreen document berhasil dibuat.");
+  } catch (err) {
+    console.warn("GovConnect: Gagal membuat offscreen document:", err);
+  }
+}
+
+// ============================================================
+// Data Drift Security - Update Dictionaries
+// ============================================================
+async function checkAndUpdateDictionaries() {
+  try {
+    const res = await fetch("https://api.govconnect.app/dict-manifest.json");
+    if (!res.ok) return;
+
+    const manifest = await res.json();
+    const remoteVersion = manifest.version;
+    if (!remoteVersion) return;
+
+    const storage = await chrome.storage.local.get("govconnect_keyword_version");
+    const localVersion = storage.govconnect_keyword_version;
+
+    if (localVersion !== remoteVersion) {
+      const dataString = JSON.stringify(manifest.data);
+      const encoder = new TextEncoder();
+      const dataBuffer = encoder.encode(dataString);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+      if (manifest.hash && hashHex !== manifest.hash) {
+        console.warn("GovConnect: SHA-256 validation failed for dictionary update!");
+        return; // Reject update
+      }
+
+      await chrome.storage.local.set({
+        govconnect_keyword_version: remoteVersion,
+        govconnect_keywords: manifest.data
+      });
+      console.log(`GovConnect: Dictionary updated to version ${remoteVersion}`);
+    }
+  } catch (err) {
+    console.warn("GovConnect: Failed to check dictionary updates", err);
+  }
+}
 
 // ============================================================
 // Inisialisasi Menu Klik Kanan
@@ -74,7 +136,7 @@ async function updateActionBehavior() {
 
   chrome.contextMenus.update("govconnect_toggle_one_click", {
     title: `⚡ Mode 1-Klik Instan: ${isOneClick ? "AKTIF" : "NONAKTIF"} (Klik untuk ubah)`
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 // ============================================================
@@ -89,7 +151,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     notifyTabsModeChanged(newMode);
   } else if (info.menuItemId === "govconnect_open_sidepanel") {
     if (tab && tab.id) {
-      chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+      chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
     }
   } else if (info.menuItemId === "govconnect_open_dashboard") {
     let res = await chrome.storage.local.get("govconnect_token");
@@ -144,7 +206,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
   // Halaman internal chrome:// tidak dapat diakses
   if (tab.url?.startsWith("chrome://") || tab.url?.startsWith("chrome-extension://")) {
-    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
     return;
   }
 
@@ -167,13 +229,13 @@ chrome.action.onClicked.addListener(async (tab) => {
     chrome.action.setBadgeText({ text: "?", tabId: tab.id });
     chrome.action.setBadgeBackgroundColor({ color: "#EF4444", tabId: tab.id });
     setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab.id }), 2500);
-    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
     return;
   }
 
   // Jika user memilih Mode Panel (Manual), buka Side Panel
   if (!isOneClick) {
-    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
     return;
   }
 
@@ -220,20 +282,40 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
       chrome.action.setBadgeText({ text: "!", tabId: tab.id });
       chrome.action.setBadgeBackgroundColor({ color: "#EF4444", tabId: tab.id });
       setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab.id }), 2500);
-      chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+      chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
       return;
     }
 
-    // 3. Kirim pesan ke content script dengan mekanisme fallback injection
+    // 3. Kirim pesan ke content script top-frame dengan mekanisme fallback injection
+    const sendToChildFrames = () => {
+      if (chrome.webNavigation && chrome.webNavigation.getAllFrames) {
+        chrome.webNavigation.getAllFrames({ tabId: tab.id }, (frames) => {
+          if (!frames) return;
+          for (const frame of frames) {
+            if (frame.frameId !== 0) {
+              try {
+                chrome.tabs.sendMessage(tab.id, {
+                  action: "EXECUTE_ONE_CLICK_AUTOFILL",
+                  profile: profile
+                }, { frameId: frame.frameId }).catch(() => { });
+              } catch (e) {
+                console.warn(`Could not send to frame ${frame.frameId}:`, e);
+              }
+            }
+          }
+        });
+      }
+    };
+
     chrome.tabs.sendMessage(tab.id, {
       action: "EXECUTE_ONE_CLICK_AUTOFILL",
       profile: profile
-    }, async (response) => {
+    }, { frameId: 0 }, async (response) => {
       // Jika terjadi error koneksi (misal tab dibuka sebelum ekstensi direload), inject lalu kirim ulang
       if (chrome.runtime.lastError || !response) {
         try {
           await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
+            target: { tabId: tab.id, allFrames: true },
             files: ["content_script.js"]
           });
 
@@ -241,7 +323,7 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
           chrome.tabs.sendMessage(tab.id, {
             action: "EXECUTE_ONE_CLICK_AUTOFILL",
             profile: profile
-          }, (retryResponse) => {
+          }, { frameId: 0 }, (retryResponse) => {
             if (chrome.runtime.lastError || !retryResponse) {
               chrome.action.setBadgeText({ text: "!", tabId: tab.id });
               chrome.action.setBadgeBackgroundColor({ color: "#EF4444", tabId: tab.id });
@@ -249,6 +331,7 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
               return;
             }
             handleAutofillResult(tab, retryResponse, token);
+            sendToChildFrames();
           });
         } catch (injectErr) {
           console.warn("Failed to inject content script on click:", injectErr);
@@ -260,6 +343,7 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
       }
 
       handleAutofillResult(tab, response, token);
+      sendToChildFrames();
     });
   } catch (err) {
     console.error("Error in executeOneClickAutofill:", err);
@@ -337,7 +421,7 @@ function notifyTabsModeChanged(isOneClick) {
       chrome.tabs.sendMessage(tab.id, {
         action: "ONE_CLICK_MODE_CHANGED",
         isOneClick: isOneClick
-      }).catch(() => {});
+      }).catch(() => { });
     });
   });
 }
@@ -346,6 +430,34 @@ function notifyTabsModeChanged(isOneClick) {
 // Komunikasi Pesan Antar Komponen Ekstensi & Web App
 // ============================================================
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "SEMANTIC_RESULT") {
+    console.log('Background merelay hasil semantik ke Tab', message);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, message).catch(() => { });
+      } else {
+        chrome.tabs.query({ active: true }, (allTabs) => {
+          if (allTabs && allTabs[0]?.id) {
+            chrome.tabs.sendMessage(allTabs[0].id, message).catch(() => { });
+          }
+        });
+      }
+    });
+    sendResponse({ success: true });
+    return true;
+  }
+
+  if (message.action === "SEMANTIC_FALLBACK") {
+    setupOffscreenDocument().catch(() => { });
+    return false;
+  }
+
+  if (message.action === "FORM_UPDATED") {
+    console.log("Form state update detected via mutation/visibility from content script.");
+    sendResponse({ success: true });
+    return false;
+  }
+
   if (message.action === "GET_TOKEN") {
     chrome.storage.local.get("govconnect_token", (result) => {
       sendResponse({ token: result.govconnect_token || null });
@@ -392,7 +504,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "OPEN_SIDEPANEL") {
     const tabId = message.tabId || sender.tab?.id;
     if (tabId) {
-      chrome.sidePanel.open({ tabId }).catch(() => {});
+      chrome.sidePanel.open({ tabId }).catch(() => { });
     }
     sendResponse({ success: true });
     return true;

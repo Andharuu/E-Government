@@ -1,10 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 
-from app.api.auth import get_current_user
+from app.api.v1.routers.auth import get_current_user
 from app.database import get_db
 from app.models.entities import User, Profile, Activity
+from app.core.security import limiter
 from app.schemas.schemas import (
     ActivityCreate,
     ActivityResponse,
@@ -16,46 +17,49 @@ from app.services.activity_service import (
     extract_domain,
     compute_activity_stats,
     compute_activity_analytics,
+    push_activity_to_queue,
 )
 
 router = APIRouter(prefix="/activities", tags=["Aktivitas & Analitik"])
 
 
-@router.post("", response_model=ActivityResponse, status_code=status.HTTP_201_CREATED)
-def log_activity(
+@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("30/minute")
+async def log_activity(
+    request: Request,
     payload: ActivityCreate,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Mencatat log riwayat pengisian formulir.
-    Sesuai PRD §18 & §23: Nilai data pribadi tidak pernah dicatat.
+    Mencatat log riwayat pengisian formulir secara asinkron.
+    Menggunakan buffer in-memory untuk bulk insert ke database (Non-blocking I/O).
     """
     domain = extract_domain(payload.target_url, payload.website_domain)
 
-    # Normalisasi status: success, partial, failed
     norm_status = payload.status.lower()
     if norm_status not in ("success", "partial", "failed"):
         norm_status = "success"
 
-    activity = Activity(
-        user_id=current_user.id,
-        target_url=payload.target_url,
-        website_domain=domain,
-        action=payload.action or "autofill",
-        fields_detected=max(0, payload.fields_detected),
-        fields_filled=max(0, payload.fields_filled),
-        status=norm_status,
-        filled_fields_summary=payload.filled_fields_summary
-    )
-    db.add(activity)
-    db.commit()
-    db.refresh(activity)
-    return activity
+    activity_data = {
+        "user_id": current_user.id,
+        "target_url": payload.target_url,
+        "website_domain": domain,
+        "action": payload.action or "autofill",
+        "fields_detected": max(0, payload.fields_detected),
+        "fields_filled": max(0, payload.fields_filled),
+        "status": norm_status,
+        "filled_fields_summary": payload.filled_fields_summary
+    }
+    
+    await push_activity_to_queue(activity_data)
+    
+    return {"detail": "Log aktivitas diterima untuk diproses"}
 
 
 @router.get("", response_model=List[ActivityResponse])
+@limiter.limit("30/minute")
 def get_activities(
+    request: Request,
     limit: int = Query(10, ge=1, le=100, description="Batas jumlah item per halaman"),
     offset: int = Query(0, ge=0, description="Offset untuk paginasi"),
     status: Optional[str] = Query(None, description="Filter status: success, partial, failed"),
@@ -75,7 +79,9 @@ def get_activities(
 
 
 @router.get("/stats")
+@limiter.limit("30/minute")
 def get_activity_stats(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -88,7 +94,9 @@ def get_activity_stats(
 
 
 @router.get("/analytics", response_model=AnalyticsResponse)
+@limiter.limit("30/minute")
 def get_activity_analytics(
+    request: Request,
     days: int = Query(7, ge=1, le=90, description="Rentang hari tren aktivitas"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -107,7 +115,9 @@ def get_activity_analytics(
 
 
 @router.delete("", response_model=MessageResponse)
+@limiter.limit("30/minute")
 def clear_all_activities(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -121,7 +131,9 @@ def clear_all_activities(
 
 
 @router.get("/{activity_id}", response_model=ActivityResponse)
+@limiter.limit("30/minute")
 def get_activity_detail(
+    request: Request,
     activity_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -141,7 +153,9 @@ def get_activity_detail(
 
 
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 def delete_activity_item(
+    request: Request,
     activity_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

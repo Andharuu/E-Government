@@ -3,7 +3,20 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
 
+import asyncio
+import logging
 from app.models.entities import Activity
+from app.database import SessionLocal
+from sqlalchemy import insert
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+
+# Buffer Antrean Memori untuk async batch processing
+activity_queue: List[Dict[str, Any]] = []
+queue_lock = asyncio.Lock()
+MAX_QUEUE_SIZE = 50
+FLUSH_INTERVAL = 5.0
 
 FIELD_LABELS: Dict[str, str] = {
     "nik": "NIK",
@@ -125,3 +138,48 @@ def compute_activity_analytics(
         "most_used_fields": most_used_fields,
         "recent_activities": recent_activities,
     }
+
+
+async def push_activity_to_queue(activity_data: Dict[str, Any]):
+    """Menambahkan data log aktivitas ke in-memory queue buffer."""
+    async with queue_lock:
+        activity_queue.append(activity_data)
+
+
+def _bulk_insert_activities(records: List[Dict[str, Any]], db: Optional[Session] = None):
+    """Fungsi synchronous untuk menjalankan bulk insert di PostgreSQL."""
+    if not records:
+        return
+    session = db or SessionLocal()
+    try:
+        session.execute(insert(Activity).values(records))
+        session.commit()
+    except Exception as e:
+        logger.error(f"Gagal melakukan bulk insert activity log: {e}")
+        session.rollback()
+    finally:
+        if db is None:
+            session.close()
+
+
+async def flush_activity_logs():
+    """
+    Periodic flush worker:
+    Melakukan bulk insert bila antrean >= 50 atau waktu berlalu 5 detik.
+    """
+    while True:
+        # Tunggu maksimal 5 detik, namun periksa secara periodik apakah ukuran queue mencapai max
+        for _ in range(10):
+            await asyncio.sleep(FLUSH_INTERVAL / 10.0)
+            async with queue_lock:
+                if len(activity_queue) >= MAX_QUEUE_SIZE:
+                    break
+                    
+        async with queue_lock:
+            if not activity_queue:
+                continue
+            records_to_insert = activity_queue[:]
+            activity_queue.clear()
+            
+        # Panggil secara asinkron tanpa memblokir event loop utama
+        await asyncio.to_thread(_bulk_insert_activities, records_to_insert)

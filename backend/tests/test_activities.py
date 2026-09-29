@@ -1,4 +1,12 @@
-def test_log_activity_and_list(client, auth_headers):
+from app.services.activity_service import activity_queue, _bulk_insert_activities
+
+def force_flush_activities(db_session):
+    """Bypass antrean dan insert manual untuk pengujian."""
+    if activity_queue:
+        _bulk_insert_activities(list(activity_queue), db=db_session)
+        activity_queue.clear()
+
+def test_log_activity_and_list(client, auth_headers, db_session):
     # Log aktivitas 1 (Success)
     log1 = {
         "target_url": "https://layanan.kominfo.go.id/permohonan",
@@ -9,10 +17,8 @@ def test_log_activity_and_list(client, auth_headers):
         "filled_fields_summary": "nik, full_name, email, phone"
     }
     res1 = client.post("/api/v1/activities", json=log1, headers=auth_headers)
-    assert res1.status_code == 201
-    data1 = res1.json()
-    assert data1["website_domain"] == "layanan.kominfo.go.id"
-    assert data1["status"] == "success"
+    assert res1.status_code == 202
+    assert "detail" in res1.json()
 
     # Log aktivitas 2 (Partial)
     log2 = {
@@ -23,7 +29,11 @@ def test_log_activity_and_list(client, auth_headers):
         "status": "partial",
         "filled_fields_summary": "nik, full_name, npwp"
     }
-    client.post("/api/v1/activities", json=log2, headers=auth_headers)
+    res2 = client.post("/api/v1/activities", json=log2, headers=auth_headers)
+    assert res2.status_code == 202
+
+    # Flush ke DB
+    force_flush_activities(db_session)
 
     # Ambil daftar aktivitas
     list_res = client.get("/api/v1/activities?limit=10", headers=auth_headers)
@@ -37,7 +47,7 @@ def test_log_activity_and_list(client, auth_headers):
     assert partial_res.json()[0]["status"] == "partial"
 
 
-def test_activity_stats_and_analytics(client, auth_headers):
+def test_activity_stats_and_analytics(client, auth_headers, db_session):
     # Tambah aktivitas sampel
     client.post(
         "/api/v1/activities",
@@ -51,6 +61,7 @@ def test_activity_stats_and_analytics(client, auth_headers):
         },
         headers=auth_headers
     )
+    force_flush_activities(db_session)
 
     # Test Stats KPI
     stats_res = client.get("/api/v1/activities/stats", headers=auth_headers)
@@ -72,7 +83,7 @@ def test_activity_stats_and_analytics(client, auth_headers):
     assert len(analytics["recent_activities"]) >= 1
 
 
-def test_delete_and_clear_activities(client, auth_headers):
+def test_delete_and_clear_activities(client, auth_headers, db_session):
     # Buat satu log
     create_res = client.post(
         "/api/v1/activities",
@@ -86,7 +97,12 @@ def test_delete_and_clear_activities(client, auth_headers):
         },
         headers=auth_headers
     )
-    act_id = create_res.json()["id"]
+    assert create_res.status_code == 202
+    
+    force_flush_activities(db_session)
+    
+    list_res = client.get("/api/v1/activities", headers=auth_headers)
+    act_id = list_res.json()[0]["id"]
 
     # Hapus satu
     del_res = client.delete(f"/api/v1/activities/{act_id}", headers=auth_headers)
@@ -104,6 +120,7 @@ def test_delete_and_clear_activities(client, auth_headers):
         },
         headers=auth_headers
     )
+    force_flush_activities(db_session)
     clear_res = client.delete("/api/v1/activities", headers=auth_headers)
     assert clear_res.status_code == 200
     assert "berhasil dibersihkan" in clear_res.json()["detail"]

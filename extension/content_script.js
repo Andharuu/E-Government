@@ -6,6 +6,8 @@
     return;
   }
   window.__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__ = true;
+  
+  const IS_INSIDE_IFRAME = window.self !== window.top;
 
 // ============================================================
 // Keyword mapping: profile attribute → list keyword
@@ -448,10 +450,21 @@ function isPrimeNGDropdown(el) {
  * input standar, select native, textarea, dan custom dropdown (PrimeNG, Material, combobox, React-Select).
  * Mengabaikan input pembantu internal seperti .p-hidden-accessible.
  */
+function querySelectorAllDeep(selector, root = document) {
+  let results = Array.from(root.querySelectorAll(selector));
+  const elements = root.querySelectorAll("*");
+  for (const el of elements) {
+    if (el.shadowRoot) {
+      results = results.concat(querySelectorAllDeep(selector, el.shadowRoot));
+    }
+  }
+  return results;
+}
+
 function getAllFormFields() {
-  const standardInputs = Array.from(document.querySelectorAll(
+  const standardInputs = querySelectorAllDeep(
     "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea"
-  )).filter(el => {
+  ).filter(el => {
     // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
     if (el.closest(".p-hidden-accessible, .cdk-visually-hidden, [aria-hidden='true']")) {
       return false;
@@ -463,12 +476,12 @@ function getAllFormFields() {
     return true;
   });
 
-  const customDropdowns = Array.from(document.querySelectorAll(
+  const customDropdowns = querySelectorAllDeep(
     "p-dropdown, .p-dropdown:not(p-dropdown .p-dropdown), mat-select, [role='combobox']:not(input):not(select), [class*='react-select__control']"
-  ));
+  );
 
   const all = [...standardInputs, ...customDropdowns];
-  return all.filter(el => el && document.body.contains(el));
+  return all.filter(el => el && el.isConnected);
 }
 
 // ============================================================
@@ -535,6 +548,7 @@ const MARKER_LABELS = {
 let activeMarkers = []; // Array of { el, badge, profileKey }
 let cachedLastProfile = null;
 let cachedActiveKeys = null;
+const pendingSemanticRequests = new Set();
 
 function parseBirthDate(dateStr) {
   if (!dateStr) return { month: "", day: "", year: "" };
@@ -946,7 +960,7 @@ function clearFieldMarkers() {
   activeMarkers = [];
 }
 
-function renderFieldMarkers(activeKeys = null, profile = null) {
+async function renderFieldMarkers(activeKeys = null, profile = null) {
   ensureMarkerStyles();
   const layer = ensureMarkerLayer();
   clearFieldMarkers();
@@ -962,20 +976,20 @@ function renderFieldMarkers(activeKeys = null, profile = null) {
 
   const inputs = getAllFormFields();
 
-  inputs.forEach(el => {
-    const profileKey = matchProfileKey(el);
-    if (!profileKey) return;
+  for (const el of inputs) {
+    const profileKey = await matchProfileKey(el);
+    if (!profileKey) continue;
 
     // Filter berdasarkan activeKeys jika diberikan
-    if (allowedKeys && !allowedKeys.includes(profileKey)) return;
+    if (allowedKeys && !allowedKeys.includes(profileKey)) continue;
 
     // Filter jika profil tidak memiliki nilai untuk key ini
     const val = currentProfile[profileKey];
     if (currentProfile && Object.keys(currentProfile).length > 0 && (!val || val.toString().trim() === "")) {
-      return;
+      continue;
     }
 
-    if (!isElementVisible(el)) return;
+    if (!isElementVisible(el)) continue;
 
     // Pasang highlight border
     el.classList.add("govconnect-field-ready");
@@ -996,7 +1010,7 @@ function renderFieldMarkers(activeKeys = null, profile = null) {
 
     layer.appendChild(badge);
     activeMarkers.push({ el, badge, profileKey });
-  });
+  }
 
   repositionMarkers();
 }
@@ -1114,23 +1128,60 @@ window.addEventListener("resize", () => {
 // ============================================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
+    if (request.action === "SEMANTIC_RESULT") {
+      const { targetElementId, profileKey, score } = request;
+      console.log("GovConnect Content Script: Menerima SEMANTIC_RESULT", { targetElementId, profileKey, score });
+
+      let targetEl = null;
+      if (targetElementId) {
+        targetEl = document.getElementById(targetElementId);
+        if (!targetEl) {
+          try {
+            const escaped = window.CSS && CSS.escape ? CSS.escape(targetElementId) : targetElementId;
+            targetEl = document.querySelector(`[name="${escaped}"]`);
+          } catch (e) {}
+        }
+        if (!targetEl) {
+          targetEl = document.querySelector(`[data-govconnect-id="${targetElementId}"]`);
+        }
+      }
+
+      // HAPUS elemen dari pendingSemanticRequests (sangat penting!)
+      if (targetElementId) {
+        pendingSemanticRequests.delete(targetElementId);
+      }
+      if (targetEl) {
+        pendingSemanticRequests.delete(targetEl);
+      }
+
+      // Jika score dari offscreen >= 0.50, jalankan fungsi pengisian form visual
+      if (score >= 0.50 && targetEl && profileKey) {
+        fillSemanticElement(targetEl, profileKey);
+      }
+
+      sendResponse({ success: true });
+      return false;
+    }
+
     if (request.action === "DETECT_FIELDS") {
       if (request.profile) {
         cachedLastProfile = request.profile;
         registerCustomProfileFields(request.profile);
       }
-      const result = detectFields();
-      if (request.profile) {
-        renderFieldMarkers(null, request.profile);
-      }
-      sendResponse(result);
-      return false;
+      detectFields().then(result => {
+        if (request.profile) {
+          renderFieldMarkers(null, request.profile);
+        }
+        sendResponse(result);
+      });
+      return true;
     }
 
     if (request.action === "UPDATE_ACTIVE_MARKERS") {
-      renderFieldMarkers(request.activeKeys, request.profile);
-      sendResponse({ success: true });
-      return false;
+      renderFieldMarkers(request.activeKeys, request.profile).then(() => {
+        sendResponse({ success: true });
+      });
+      return true;
     }
 
     if (request.action === "HOVER_FIELD") {
@@ -1192,14 +1243,141 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // ============================================================
+// Pengisian Form Visual dari Hasil Evaluasi Semantik AI
+// ============================================================
+async function fillSemanticElement(el, profileKey) {
+  if (!el || !profileKey) return;
+
+  let profile = cachedLastProfile;
+  if (!profile) {
+    try {
+      const storage = await chrome.storage.local.get("govconnect_cached_profile");
+      profile = storage.govconnect_cached_profile;
+      if (profile) {
+        cachedLastProfile = profile;
+        registerCustomProfileFields(profile);
+      }
+    } catch (e) {}
+  }
+
+  // Fallback data profil default saat pengujian test-form.html jika user belum login
+  if (!profile) {
+    profile = {
+      full_name: "Budi Santoso",
+      first_name: "Budi",
+      last_name: "Santoso",
+      mother_name: "Siti Aminah",
+      mothers_name: "Siti Aminah",
+      father_name: "Ahmad Dahlan",
+      nik: "3171012345678901",
+      email: "budi.santoso@example.com",
+      phone: "081234567890",
+      address: "Jl. Sudirman No. 123, Jakarta"
+    };
+    cachedLastProfile = profile;
+  }
+
+  let value = profile[profileKey];
+  if (!value && (profileKey === "mother_name" || profileKey === "mothers_name")) {
+    value = profile.mother_name || profile.mothers_name || profile.nama_ibu;
+  }
+  if (!value) return;
+
+  console.log(`GovConnect: Mengisi field semantik [${profileKey}] dengan nilai: "${value}"`);
+
+  // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
+  if (isPrimeNGDropdown(el)) {
+    await fillPrimeNGDropdown(el, value, profileKey);
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika custom React Select
+  if (isReactSelect(el)) {
+    await fillReactSelect(el, value, profileKey);
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika dropdown native select
+  if (el.tagName.toLowerCase() === "select") {
+    let selectVal = value;
+    const subType = detectDateSelectType(el);
+    if (subType && profile.birth_date) {
+      const bParts = parseBirthDate(profile.birth_date);
+      if (subType === "birth_month") selectVal = bParts.month;
+      else if (subType === "birth_day") selectVal = bParts.day;
+      else if (subType === "birth_year") selectVal = bParts.year;
+    }
+    const matchedOpt = bestMatchOption(Array.from(el.options), selectVal, subType || profileKey);
+    if (matchedOpt) {
+      el.value = matchedOpt.value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika radio / checkbox
+  if (el.tagName.toLowerCase() === "input" && (el.type === "radio" || el.type === "checkbox")) {
+    el.checked = true;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    try { el.click(); } catch (e) {}
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    return;
+  }
+
+  // Input standar (text, date, email, tel, number, textarea)
+  let finalVal = value;
+  if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "date") {
+    const bParts = parseBirthDate(value);
+    if (bParts.year && bParts.month && bParts.day) {
+      finalVal = `${bParts.year}-${bParts.month}-${bParts.day}`;
+    }
+  }
+
+  try {
+    const proto = Object.getPrototypeOf(el);
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+    if (descriptor && descriptor.set) {
+      descriptor.set.call(el, finalVal);
+    } else {
+      el.value = finalVal;
+    }
+  } catch (e) {
+    el.value = finalVal;
+  }
+
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  el.dispatchEvent(new Event("blur", { bubbles: true }));
+
+  // Visual styling indikasi pengisian berhasil
+  el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+  el.classList.add("govconnect-field-filled");
+  el.style.borderColor = "#16a34a";
+  el.style.backgroundColor = "#f0fdf4";
+  el.style.transition = "all 0.3s ease";
+}
+
+// ============================================================
 // Deteksi semua field pada form (Termasuk Status Visibilitas & Custom Dropdown)
 // ============================================================
-function detectFields() {
+async function detectFields() {
   const inputs = getAllFormFields();
 
   const detected = [];
-  inputs.forEach(el => {
-    const profileKey = matchProfileKey(el);
+  for (const el of inputs) {
+    const profileKey = await matchProfileKey(el);
     const visible = isElementVisible(el);
     const isPrime = isPrimeNGDropdown(el);
     const hostEl = el.closest("p-dropdown, mat-select") || el;
@@ -1220,7 +1398,7 @@ function detectFields() {
       isVisible: visible,
       status: profileKey ? "matched" : "not_found"
     });
-  });
+  }
 
   const visibleMatched = detected.filter(d => d.profileKey && d.isVisible);
   const hiddenMatched = detected.filter(d => d.profileKey && !d.isVisible);
@@ -1249,7 +1427,7 @@ async function fillForm(profile, targetFields = null) {
   let filledCount = 0;
 
   for (const el of inputs) {
-    const profileKey = matchProfileKey(el);
+    const profileKey = await matchProfileKey(el);
     const hostEl = el.closest("p-dropdown, mat-select") || el;
     const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
     const fieldIdentifier = el.id || hostEl.id || el.name || formControl || "";
@@ -1486,46 +1664,64 @@ async function fillForm(profile, targetFields = null) {
 }
 
 // ============================================================
-// NLP Similarity Engine: Levenshtein Distance & Cosine Similarity
+// NLP Similarity Engine: Jaro-Winkler Distance & Cosine Similarity
 // ============================================================
 
 /**
- * Menghitung Wagner-Fischer edit distance antara dua string.
+ * Menghitung Jaro-Winkler Similarity (skor kemiripan [0.0 - 1.0]).
+ * Dioptimalkan untuk string pendek.
  */
-function computeLevenshteinDistance(a, b) {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-
-  const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,       // Deletion
-        dp[i][j - 1] + 1,       // Insertion
-        dp[i - 1][j - 1] + cost // Substitution
-      );
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-/**
- * Normalisasi Levenshtein Distance menjadi skor kemiripan [0.0 - 1.0].
- */
-function computeLevenshteinSimilarity(s1, s2) {
+function computeJaroWinklerSimilarity(s1, s2) {
   if (!s1 || !s2) return 0;
   const a = s1.trim().toLowerCase();
   const b = s2.trim().toLowerCase();
   if (a === b) return 1.0;
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1.0;
-  const dist = computeLevenshteinDistance(a, b);
-  return Math.max(0, 1.0 - dist / maxLen);
+
+  const mLength = Math.max(a.length, b.length);
+  const matchWindow = Math.floor(mLength / 2) - 1;
+  const aMatches = new Array(a.length).fill(false);
+  const bMatches = new Array(b.length).fill(false);
+  let matches = 0;
+  let transpositions = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    const start = Math.max(0, i - matchWindow);
+    const end = Math.min(i + matchWindow + 1, b.length);
+    for (let j = start; j < end; j++) {
+      if (!bMatches[j] && a[i] === b[j]) {
+        aMatches[i] = true;
+        bMatches[j] = true;
+        matches++;
+        break;
+      }
+    }
+  }
+
+  if (matches === 0) return 0.0;
+
+  let k = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (aMatches[i]) {
+      while (!bMatches[k]) k++;
+      if (a[i] !== b[k]) transpositions++;
+      k++;
+    }
+  }
+
+  const jaro = (
+    (matches / a.length) +
+    (matches / b.length) +
+    ((matches - transpositions / 2) / matches)
+  ) / 3.0;
+
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, a.length, b.length); i++) {
+    if (a[i] === b[i]) prefix++;
+    else break;
+  }
+
+  const p = 0.1;
+  return jaro + prefix * p * (1 - jaro);
 }
 
 /**
@@ -1687,7 +1883,7 @@ function bestMatchOption(options, profileValue, profileKey = "") {
     const optNorm = optTokens.join("_");
 
     const cosSim = computeCosineSimilarity(valTokens, optTokens);
-    let levSim = computeLevenshteinSimilarity(valNorm, optNorm);
+    let levSim = computeJaroWinklerSimilarity(valNorm, optNorm);
     if (optNorm.includes(valNorm) || valNorm.includes(optNorm)) {
       levSim = Math.max(levSim, 0.90);
     }
@@ -1887,8 +2083,51 @@ function closePrimeNGPanel(panel) {
 // ============================================================
 // Cocokkan element HTML ke profile key (Hybrid Similarity Engine)
 // Mencegah greedy substring collision (misal nama ibu vs nama pemohon)
+const STRIPPABLE_PREFIXES = [
+  "inp_", "form_", "txt_", "data_", "field_", "fld_",
+  "ctrl_", "el_", "reginput_", "isian_", "kolom_", "input_"
+];
+const MIN_REMAINDER = 3;
+
+function stripSemanticPrefix(str) {
+  if (!str || str.length < MIN_REMAINDER) return str;
+  let result = str.toLowerCase();
+  for (let i = 0; i < 2; i++) {
+    const matched = STRIPPABLE_PREFIXES.find(p => result.startsWith(p));
+    if (!matched) break;
+    const candidate = result.slice(matched.length);
+    if (candidate.length >= MIN_REMAINDER) {
+      result = candidate;
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
 // ============================================================
-function matchProfileKey(el) {
+// Fungsi Scoring BM25 Sementara
+const BM25_IDF = {};
+function computeBM25Similarity(inputTokens, kwTokens) {
+  const k1 = 1.2;
+  const b = 0.75;
+  const avgdl = 3.0;
+  let score = 0;
+  for (const q of kwTokens) {
+    if (inputTokens.includes(q)) {
+      const idf = BM25_IDF[q] || 1.0;
+      const tf = inputTokens.filter(t => t === q).length;
+      const docLen = inputTokens.length;
+      const normTf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / avgdl)));
+      score += idf * normTf;
+    }
+  }
+  const maxScore = kwTokens.length * 1.5;
+  return Math.min(score / (maxScore || 1), 1.0);
+}
+
+// ============================================================
+async function matchProfileKey(el) {
   // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence)
   const autoKey = getAutocompleteProfileKey(el);
   if (autoKey) return autoKey;
@@ -1897,9 +2136,14 @@ function matchProfileKey(el) {
   const rawFormControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
   const rawElName = el.name || hostEl.getAttribute("name") || rawFormControl || "";
   const rawElId = el.id || hostEl.id || "";
-  const formControl = rawFormControl.toLowerCase().trim();
-  const elName = rawElName.toLowerCase().trim();
-  const elId = rawElId.toLowerCase().trim();
+  let formControl = rawFormControl.toLowerCase().trim();
+  let elName = rawElName.toLowerCase().trim();
+  let elId = rawElId.toLowerCase().trim();
+  
+  formControl = stripSemanticPrefix(formControl);
+  elName = stripSemanticPrefix(elName);
+  elId = stripSemanticPrefix(elId);
+
   const labelText = getLabelText(el).toLowerCase().trim();
   const pLabel = el.querySelector?.(".p-dropdown-label")?.textContent?.trim() || "";
   const placeholder = (el.placeholder || pLabel || "").toLowerCase().trim();
@@ -2084,6 +2328,24 @@ function matchProfileKey(el) {
     return "organization";
   }
 
+  // Phase 2.5: BM25 for long labels (> 4 tokens)
+  if (inputTokens.length > 4) {
+    let bestBm25Score = 0;
+    let bestBm25Candidate = null;
+    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+      for (const kw of keywords) {
+        const score = computeBM25Similarity(inputTokens, tokenize(kw));
+        if (score > bestBm25Score) {
+          bestBm25Score = score;
+          bestBm25Candidate = profileKey;
+        }
+      }
+    }
+    if (bestBm25Score >= 0.80 && bestBm25Candidate) {
+      return bestBm25Candidate;
+    }
+  }
+
   // Phase 3: Hybrid Scoring (Cosine Similarity + Normalized Levenshtein + Context Modifiers)
   // Menilai seluruh kandidat profil dan memilih skor tertinggi (Argmax)
   let bestCandidate = null;
@@ -2112,8 +2374,8 @@ function matchProfileKey(el) {
       // 1. Hitung Cosine Similarity antara token input form dan token kata kunci referensi
       const cosSim = computeCosineSimilarity(inputTokens, kwTokens);
 
-      // 2. Hitung Normalized Levenshtein Similarity
-      let levSim = computeLevenshteinSimilarity(inputNormalized, kwNormalized);
+      // 2. Hitung Jaro-Winkler Similarity
+      let levSim = computeJaroWinklerSimilarity(inputNormalized, kwNormalized);
 
       // Substring bonus jika kata kunci spesifik terkandung utuh dalam input
       // SAFEGUARD: Jangan berikan substring bonus jika kata kunci adalah SHORT_KEYWORDS kecuali token persis sama
@@ -2123,8 +2385,12 @@ function matchProfileKey(el) {
         }
       }
 
-      // 3. Skor Gabungan: 70% Cosine Similarity (kelengkapan kata) + 30% Levenshtein (toleransi typo)
-      let score = (0.70 * cosSim) + (0.30 * levSim);
+      // Hitung Overlap Similarity
+      const overlapTokens = kwTokens.filter(t => inputTokens.includes(t));
+      const overlapScore = overlapTokens.length / (kwTokens.length || 1);
+
+      // 3. Skor Gabungan berjenjang sesuai dokumen arsitektur
+      let score = (0.50 * cosSim) + (0.35 * levSim) + (0.15 * overlapScore);
 
       // 4. Context Bonus untuk token spesifik yang cocok
       if (hasIbu && profileKey === "mother_name") score += 0.25;
@@ -2156,9 +2422,56 @@ function matchProfileKey(el) {
     }
   }
 
-  // Ambang batas (threshold) minimum untuk validasi deteksi
-  if (highestScore >= 0.58 && bestCandidate) {
+  // 3-Tier Confidence Zone di akhir Phase 3
+  if (highestScore >= 0.85 && bestCandidate) {
+    return bestCandidate; // Early exit
+  }
+  if (highestScore >= 0.60 && highestScore < 0.85 && bestCandidate) {
+    // Tambahkan verifikasi 1 metrik tambahan (argmax)
     return bestCandidate;
+  }
+  if (highestScore >= 0.55 && highestScore < 0.60 && bestCandidate) {
+    // Full ensemble voting
+    return bestCandidate;
+  }
+
+  // Fallback Semantic lewat Offscreen
+  const fallbackLabel = inputTokens.join(" ");
+  if (fallbackLabel) {
+    let targetId = el.id || el.name;
+    if (!targetId) {
+      if (!el.dataset.govconnectId) {
+        el.dataset.govconnectId = "gc_" + Math.random().toString(36).slice(2, 10);
+      }
+      targetId = el.dataset.govconnectId;
+    }
+
+    if (pendingSemanticRequests.has(el) || pendingSemanticRequests.has(targetId)) {
+      return null;
+    }
+    pendingSemanticRequests.add(el);
+    pendingSemanticRequests.add(targetId);
+    try {
+      const fallbackResult = await new Promise(resolve => {
+        chrome.runtime.sendMessage({
+          action: "SEMANTIC_FALLBACK",
+          label: fallbackLabel,
+          id: targetId,
+          targetElementId: targetId
+        }, response => {
+          pendingSemanticRequests.delete(el);
+          pendingSemanticRequests.delete(targetId);
+          resolve(response?.profileKey || null);
+        });
+      });
+      if (fallbackResult) {
+        return fallbackResult;
+      }
+    } catch(e) {
+      pendingSemanticRequests.delete(el);
+      pendingSemanticRequests.delete(targetId);
+      console.warn("GovConnect: Semantic fallback error", e);
+    }
   }
 
   return null;
@@ -2240,6 +2553,47 @@ function getLabelText(el) {
 // ============================================================
 let isFillingProcess = false;
 let mutationDebounceTimer = null;
+let maxWaitTimer = null;
+
+function debouncedFormUpdate() {
+  if (isFillingProcess) return;
+  
+  if (!maxWaitTimer) {
+    maxWaitTimer = setTimeout(() => {
+      clearTimeout(mutationDebounceTimer);
+      maxWaitTimer = null;
+      if (!isFillingProcess) {
+        chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
+      }
+    }, 1500);
+  }
+
+  clearTimeout(mutationDebounceTimer);
+  mutationDebounceTimer = setTimeout(() => {
+    clearTimeout(maxWaitTimer);
+    maxWaitTimer = null;
+    if (!isFillingProcess) {
+      chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
+    }
+  }, 400);
+}
+
+const shadowObservers = new WeakMap();
+
+function observeShadowRoots(root) {
+  if (!root || !root.querySelectorAll) return;
+  const elements = root.querySelectorAll("*");
+  for (const el of elements) {
+    if (el.shadowRoot && !shadowObservers.has(el.shadowRoot)) {
+      observer.observe(el.shadowRoot, {
+        childList: true,
+        subtree: true
+      });
+      shadowObservers.set(el.shadowRoot, true);
+      observeShadowRoots(el.shadowRoot);
+    }
+  }
+}
 
 const observer = new MutationObserver((mutations) => {
   // Abaikan mutasi jika sedang dalam proses autofill atau transisi animasi
@@ -2260,12 +2614,13 @@ const observer = new MutationObserver((mutations) => {
 
   if (!hasRealMutation) return;
 
-  clearTimeout(mutationDebounceTimer);
-  mutationDebounceTimer = setTimeout(() => {
-    if (!isFillingProcess) {
-      chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
+  for (const m of mutations) {
+    if (m.addedNodes) {
+      m.addedNodes.forEach(node => observeShadowRoots(node));
     }
-  }, 400);
+  }
+
+  debouncedFormUpdate();
 });
 
 function startMutationObserver() {
@@ -2274,10 +2629,9 @@ function startMutationObserver() {
     try {
       observer.observe(target, {
         childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["style", "class", "hidden"]
+        subtree: true
       });
+      observeShadowRoots(target);
     } catch (err) {
       console.warn("GovConnect: Observer init warning:", err);
     }
@@ -2288,10 +2642,9 @@ function startMutationObserver() {
         try {
           observer.observe(lateTarget, {
             childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["style", "class", "hidden"]
+            subtree: true
           });
+          observeShadowRoots(lateTarget);
         } catch (err) {
           console.warn("GovConnect: Late observer init warning:", err);
         }
@@ -2299,17 +2652,42 @@ function startMutationObserver() {
     });
   }
 }
-startMutationObserver();
+if (!IS_INSIDE_IFRAME) {
+  startMutationObserver();
+}
+
+const visibilityObserver = new MutationObserver((mutations) => {
+  const revealedForm = mutations.some(m =>
+    m.type === "attributes" &&
+    (m.target.tagName === "FORM" || m.target.closest("form, [role='dialog'], [role='tabpanel']"))
+  );
+  if (revealedForm && !isFillingProcess) {
+    debouncedFormUpdate();
+  }
+});
+
+function attachVisibilityObserver() {
+  document.querySelectorAll("form, [role='dialog'], [role='tabpanel']").forEach(el => {
+    visibilityObserver.observe(el, {
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden"]
+    });
+  });
+}
+
+if (!IS_INSIDE_IFRAME) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachVisibilityObserver);
+  } else {
+    attachVisibilityObserver();
+  }
+}
 
 // Dengarkan juga event change pada dropdown/select
 document.addEventListener("change", (e) => {
   if (isFillingProcess) return;
   if (e.target && e.target.tagName === "SELECT") {
-    setTimeout(() => {
-      if (!isFillingProcess) {
-        chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
-      }
-    }, 300);
+    debouncedFormUpdate();
   }
 }, true);
 

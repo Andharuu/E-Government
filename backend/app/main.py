@@ -1,5 +1,6 @@
 import time
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -12,8 +13,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import settings
 from app.database import init_db
 import app.models.entities # Memastikan seluruh model teregistrasi
-from app.api.auth import router as auth_router
-from app.api.endpoints import router as api_router
+from app.api.v1.api import api_router
+from app.core.security import limiter
+from slowapi.errors import RateLimitExceeded
+from app.services.activity_service import flush_activity_logs
 
 # ============================================================
 # Konfigurasi Logging Terstruktur
@@ -33,12 +36,20 @@ async def lifespan(app: FastAPI):
     """Lifecycle handler untuk startup dan shutdown aplikasi."""
     logger.info(f"Memulai {settings.APP_NAME} v{settings.APP_VERSION} (Env: {settings.ENVIRONMENT})")
     init_db()
+    
     if settings.ENVIRONMENT.lower() == "production" and not settings.is_sqlite:
         logger.warning(
-            "InMemoryRateLimiter aktif pada production! "
+            "SlowAPI in-memory limiter aktif pada production! "
             "Untuk multi-worker cluster, pertimbangkan Redis sebagai storage rate limiting."
         )
+        
+    # Memulai background worker untuk periodic flush log aktivitas
+    flush_task = asyncio.create_task(flush_activity_logs())
+    
     yield
+    
+    # Clean up saat shutdown
+    flush_task.cancel()
     logger.info(f"Menghentikan {settings.APP_NAME}")
 
 
@@ -50,6 +61,8 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+app.state.limiter = limiter
 
 
 # ============================================================
@@ -75,7 +88,6 @@ async def request_logger_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -114,6 +126,15 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
 
 
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Kembalikan respons HTTP status 429 jika rate limit terlampaui."""
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": "Batas permintaan terlampaui. Silakan coba beberapa saat lagi."}
+    )
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Menangani unhandled exception tanpa membocorkan internal database / trace."""
@@ -129,8 +150,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # ============================================================
 # Registrasi Router
 # ============================================================
-app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
-app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+app.include_router(api_router)
 
 
 # ============================================================

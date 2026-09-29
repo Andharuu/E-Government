@@ -9,7 +9,7 @@ from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
-    enforce_rate_limit
+    limiter
 )
 from app.database import get_db
 from app.models.entities import User
@@ -56,9 +56,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # Endpoints Otentikasi
 # ============================================================
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 def register(request: Request, payload: UserCreate, db: Session = Depends(get_db)):
     """Mendaftarkan akun baru pengguna GovConnect."""
-    enforce_rate_limit(request, max_requests=settings.RATE_LIMIT_LOGIN_PER_MINUTE)
 
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
@@ -78,9 +78,9 @@ def register(request: Request, payload: UserCreate, db: Session = Depends(get_db
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("30/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Otentikasi pengguna menggunakan kredensial dan terbitkan JWT access token."""
-    enforce_rate_limit(request, max_requests=settings.RATE_LIMIT_LOGIN_PER_MINUTE)
 
     email = form_data.username.strip().lower()
     user = db.query(User).filter(User.email == email).first()
@@ -103,13 +103,16 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+@limiter.limit("30/minute")
+def get_me(request: Request, current_user: User = Depends(get_current_user)):
     """Mengembalikan informasi akun pengguna yang sedang terotentikasi."""
     return current_user
 
 
 @router.post("/change-password", response_model=MessageResponse)
+@limiter.limit("30/minute")
 def change_password(
+    request: Request,
     payload: PasswordChangeRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
