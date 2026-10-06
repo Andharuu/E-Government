@@ -29,20 +29,26 @@ async function getExtractor() {
   return extractorPromise;
 }
 
-// Picu pemuatan model dan WASM saat offscreen document dimuat
-getExtractor().catch(err => {
-  console.warn("GovConnect Offscreen: Pemuatan awal model ditunda/gagal:", err);
-});
+// Picu pemuatan model dan WASM saat offscreen document dimuat.
+// Setelah model siap, langsung pre-compute embedding referensi 54 profile keys
+// agar request SEMANTIC_FALLBACK pertama pun sudah menggunakan cache (warm-up eager).
+getExtractor()
+  .then(extractor => getReferenceEmbeddings(extractor))
+  .catch(err => {
+    console.warn("GovConnect Offscreen: Pemuatan awal model atau pre-compute referensi ditunda/gagal:", err);
+  });
 
-// Listener pesan chrome.runtime (logika tetap dipertahankan)
+// Cache label → profileKey agar SBERT tidak menghitung ulang label yang sama.
+// Dideklarasikan di scope MODUL (bukan di dalam listener) agar persisten
+// sepanjang lifetime offscreen document dan tidak direset setiap pesan masuk.
+const semanticCache = new Map();
+
+// Listener pesan chrome.runtime
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "PING_OFFSCREEN") {
     sendResponse({ success: true });
     return true;
   }
-
-  // Memori pelindung agar SBERT tidak menghitung label yang sama berkali-kali
-const semanticCache = new Map();
 
 if (message.action === "SEMANTIC_FALLBACK") {
     (async () => {
@@ -202,7 +208,7 @@ async function processSemanticFallback(labelText, targetElementId) {
       }
     }
 
-    const SEMANTIC_THRESHOLD = 0.40;
+    const SEMANTIC_THRESHOLD = 0.50;
     console.log(`GovConnect Offscreen: Best match → "${bestMatchKey}" (score: ${bestMatchScore.toFixed(4)}) untuk label: "${labelText}"`);
 
     if (bestMatchScore >= SEMANTIC_THRESHOLD) {

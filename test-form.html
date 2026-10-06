@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +14,20 @@
       background-color: #f9fafb;
       color: #111827;
     }
-    h1 { font-size: 24px; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-    h2 { font-size: 18px; margin-top: 32px; color: #374151; }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-top: 32px;
+      color: #374151;
+    }
+
     .test-case {
       background: white;
       border: 1px solid #e5e7eb;
@@ -23,15 +36,18 @@
       margin-bottom: 20px;
       box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
+
     .form-group {
       margin-bottom: 16px;
     }
+
     label {
       display: block;
       margin-bottom: 6px;
       font-weight: 500;
       color: #4b5563;
     }
+
     input {
       width: 100%;
       padding: 8px 12px;
@@ -40,17 +56,20 @@
       font-size: 14px;
       box-sizing: border-box;
     }
+
     input:focus {
       outline: none;
       border-color: #2563eb;
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
     }
+
     .description {
       font-size: 13px;
       color: #6b7280;
       margin-top: 4px;
       margin-bottom: 12px;
     }
+
     button {
       padding: 8px 16px;
       background: #2563eb;
@@ -60,16 +79,21 @@
       cursor: pointer;
       font-weight: 500;
     }
-    button:hover { background: #1d4ed8; }
+
+    button:hover {
+      background: #1d4ed8;
+    }
   </style>
 </head>
+
 <body>
   <h1>GovConnect - Halaman Pengujian Ekstensi</h1>
 
   <div class="test-case">
     <h2>1. Uji Prefix Stripper & Jaro-Winkler</h2>
     <div class="description">
-      Menguji pembersihan prefix <code>form_</code> dan <code>inp_</code>. Seharusnya dipetakan ke <code>full_name</code>.
+      Menguji pembersihan prefix <code>form_</code> dan <code>inp_</code>. Seharusnya dipetakan ke
+      <code>full_name</code>.
     </div>
     <div class="form-group">
       <label for="inp_nama_lkp">Nama (ID/Name yang di-obfuscate):</label>
@@ -80,7 +104,8 @@
   <div class="test-case">
     <h2>2. Uji BM25 (Label Panjang)</h2>
     <div class="description">
-      Tidak ada Name/ID yang jelas. Ekstensi harus menggunakan BM25 untuk mengekstrak makna dari kalimat panjang dan menghasilkan skor &ge; 0.80 (dipetakan ke <code>mothers_name</code>).
+      Tidak ada Name/ID yang jelas. Ekstensi harus menggunakan BM25 untuk mengekstrak makna dari kalimat panjang dan
+      menghasilkan skor &ge; 0.80 (dipetakan ke <code>mothers_name</code>).
     </div>
     <div class="form-group">
       <label>Tuliskan nama ibu kandung yang membesarkan Anda</label>
@@ -91,7 +116,8 @@
   <div class="test-case" id="burst-mutation-container">
     <h2>3. Uji Observer Debounce (Burst Mutation)</h2>
     <div class="description">
-      Simulasi SPA (React/Angular) yang merender ulang class CSS dengan brutal. Fungsi maxWait (1500ms) harus memicu update agar tidak hang/silent failure.
+      Simulasi SPA (React/Angular) yang merender ulang class CSS dengan brutal. Fungsi maxWait (1500ms) harus memicu
+      update agar tidak hang/silent failure.
     </div>
     <div class="form-group">
       <label>Kolom Acak (Perhatikan Console untuk debounce event)</label>
@@ -103,7 +129,8 @@
   <div class="test-case">
     <h2>4. Uji "Final Boss" (Shadow DOM)</h2>
     <div class="description">
-      Input berada di dalam Shadow Root (open). Ekstensi harus menembus batas Shadow DOM dan memetakan elemen ini ke <code>first_name</code>.
+      Input berada di dalam Shadow Root (open). Ekstensi harus menembus batas Shadow DOM dan memetakan elemen ini ke
+      <code>first_name</code>.
     </div>
     <div id="shadow-host"></div>
   </div>
@@ -111,10 +138,11 @@
   <div class="test-case">
     <h2>5. Uji Offscreen Document & SBERT (Semantic Fallback)</h2>
     <div class="description">
-      Label ini sangat implisit dan tidak masuk akal secara leksikal. Skor Jaro-Winkler & BM25 akan gagal (&lt; 0.55), memicu Fallback Semantic (Offscreen.js) untuk mencari <code>mothers_name</code>.
+      Label ini sangat implisit dan tidak masuk akal secara leksikal. Skor Jaro-Winkler & BM25 akan gagal (&lt; 0.55),
+      memicu Fallback Semantic (Offscreen.js) untuk mencari <code>mothers_name</code>.
     </div>
     <div class="form-group">
-      <label>Orang yang melahirkan pemohon</label>
+      <label>Nama Ibu pemohon</label>
       <input type="text" placeholder="Input semantik fallback...">
     </div>
   </div>
@@ -123,7 +151,7 @@
     // Setup Shadow DOM
     const host = document.getElementById('shadow-host');
     const shadowRoot = host.attachShadow({ mode: 'open' });
-    
+
     // Inject style & input into Shadow DOM
     shadowRoot.innerHTML = `
       <style>
@@ -140,13 +168,13 @@
     function triggerBurstMutation() {
       const target = document.getElementById('debounce-target');
       let counter = 0;
-      
+
       console.log("Memulai simulasi burst mutation...");
-      
+
       const interval = setInterval(() => {
         target.className = `class-random-${Math.random().toString(36).substring(7)}`;
         counter++;
-        
+
         if (counter > 100) {
           clearInterval(interval);
           target.className = 'final-class';
@@ -156,4 +184,5 @@
     }
   </script>
 </body>
+
 </html>
