@@ -3,25 +3,107 @@ import { pipeline, env } from './lib/transformers.js';
 // Offscreen Document - GovConnect
 // Digunakan untuk menjalankan komputasi berat (Web Workers / ONNX) secara background tanpa memblokir UI thread
 
-// Konfigurasi ONNX Runtime WebAssembly
+// ============================================================
+// KONFIGURASI ONNX RUNTIME WEBASSEMBLY (SAFEGUARDS)
+// ============================================================
+// Tujuan konfigurasi ini:
+//   1. Mengarahkan path .wasm + Web Worker ke CDN publik yang stabil → mencegah
+//      kegagalan "Failed to fetch/load .wasm or worker" saat file lokal tidak lengkap.
+//   2. Mematikan multithreading (numThreads = 1, proxy = false) → mencegah error
+//      SharedArrayBuffer dan menghindari keharusan menyetel header COOP/COEP.
+
+// Pin versi ONNX Runtime Web ke rilis stabil yang kompatibel dengan Transformers.js.
+const ONNX_RUNTIME_VERSION = '1.14.0';
+
+// Base CDN utama (jsDelivr di depan, unpkg sebagai cadangan lewat fallback di bawah).
+const ONNX_WASM_CDN =
+  `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
+
+// 1. ATUR PATH WASM SECARA EKSPLISIT (WAJIB, jangan dikosongkan)
+env.backends.onnx.wasm.wasmPaths = ONNX_WASM_CDN;
+
+// 2. NONAKTIFKAN MULTITHREADING (WAJIB)
+//    numThreads = 1 mematikan shared worker; proxy = false memastikan ORT
+//    tidak memuat ort-wasm-simd-threaded.* dan tidak menyentuh SharedArrayBuffer.
 env.backends.onnx.wasm.numThreads = 1;
-if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
-  env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('lib/') + '/';
-}
+env.backends.onnx.wasm.proxy = false;
+
+// Logging ORT dibuat lebih tenang agar tidak membanjiri console offscreen.
+env.backends.onnx.logLevel = 'error';
+
+// Izinkan Transformers.js mengambil file model (.onnx, tokenizer, dsb.) dari Hugging Face.
+env.allowRemoteModels = true;
+env.allowLocalModels = false;
+
+console.log(
+  `GovConnect Offscreen: Konfigurasi ORT WASM → wasmPaths="${env.backends.onnx.wasm.wasmPaths}", ` +
+  `numThreads=${env.backends.onnx.wasm.numThreads}, proxy=${env.backends.onnx.wasm.proxy}`
+);
+
+// ============================================================
+// INISIALISASI PIPELINE SBERT (dengan Error Handling & Fallback)
+// ============================================================
+const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
+
+// Daftar strategi pemuatan berlapis. Lapis pertama adalah konfigurasi utama
+// (CDN jsDelivr). Lapis berikutnya sebagai fallback bila lapis sebelumnya gagal.
+const LOAD_STRATEGIES = [
+  {
+    name: 'jsDelivr CDN (default)',
+    wasmPaths: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
+  },
+  {
+    name: 'unpkg CDN (fallback)',
+    wasmPaths: `https://unpkg.com/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
+  }
+];
 
 // Inisialisasi pipeline model SBERT
 let extractorPromise = null;
 
+async function loadExtractorWithFallback() {
+  let lastError = null;
+
+  for (const strategy of LOAD_STRATEGIES) {
+    try {
+      // Setel ulang path WASM sesuai strategi yang sedang dicoba.
+      // Selalu eksplisit dan tidak pernah kosong.
+      env.backends.onnx.wasm.wasmPaths = strategy.wasmPaths;
+      env.backends.onnx.wasm.numThreads = 1;
+      env.backends.onnx.wasm.proxy = false;
+
+      console.log(`GovConnect Offscreen: Mencoba memuat model SBERT via ${strategy.name}...`);
+      console.log(`GovConnect Offscreen: wasmPaths = ${env.backends.onnx.wasm.wasmPaths}`);
+
+      const extractor = await pipeline('feature-extraction', MODEL_ID);
+      console.log(`GovConnect Offscreen: Model SBERT berhasil dimuat via ${strategy.name}.`);
+      return extractor;
+    } catch (err) {
+      lastError = err;
+      console.error(
+        `GovConnect Offscreen: Gagal memuat model via ${strategy.name}. ` +
+        `Mencoba strategi berikutnya...`,
+        err
+      );
+    }
+  }
+
+  // Semua strategi gagal → lempar error terakhir dengan pesan yang jelas.
+  const finalErr = new Error(
+    `Gagal memuat model SBERT "${MODEL_ID}" dari semua sumber CDN. ` +
+    `Penyebab terakhir: ${lastError?.message || lastError}`
+  );
+  finalErr.cause = lastError;
+  throw finalErr;
+}
+
 async function getExtractor() {
   if (!extractorPromise) {
-    console.log("GovConnect Offscreen: Memulai inisialisasi model SBERT (Xenova/all-MiniLM-L6-v2)...");
-    extractorPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2')
-      .then(extractor => {
-        console.log("GovConnect Offscreen: Model SBERT berhasil dimuat dan siap digunakan.");
-        return extractor;
-      })
+    extractorPromise = loadExtractorWithFallback()
       .catch(err => {
-        console.error("GovConnect Offscreen: Gagal memuat model SBERT:", err);
+        // Penting: reset promise agar percobaan berikutnya bisa mencoba lagi,
+        // alih-alih menyimpan promise yang sudah rejected selamanya.
+        console.error("GovConnect Offscreen: Inisialisasi model SBERT gagal total:", err);
         extractorPromise = null;
         throw err;
       });
