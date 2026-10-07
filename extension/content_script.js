@@ -450,14 +450,24 @@ function isPrimeNGDropdown(el) {
  * input standar, select native, textarea, dan custom dropdown (PrimeNG, Material, combobox, React-Select).
  * Mengabaikan input pembantu internal seperti .p-hidden-accessible.
  */
-function querySelectorAllDeep(selector, root = document) {
+function querySelectorAllDeep(selector, root = document, depth = 0) {
+  // Safeguard: Batasi kedalaman rekursi maksimal 4 level untuk mencegah infinite loop
+  if (depth > 4) return [];
+
   let results = Array.from(root.querySelectorAll(selector));
-  const elements = root.querySelectorAll("*");
-  for (const el of elements) {
-    if (el.shadowRoot) {
-      results = results.concat(querySelectorAllDeep(selector, el.shadowRoot));
+
+  // HANYA cari elemen host yang berpotensi memiliki Shadow Root (Custom Elements / Web Components)
+  // Mencegah penelusuran rekursif pada ribuan elemen HTML standar (div, span, p, dll)
+  const shadowHosts = root.querySelectorAll(
+    "p-dropdown, mat-select, [class*='p-'], [class*='mat-'], [role='combobox'], [role='dialog'], [role='tabpanel'], [data-govconnect-id]"
+  );
+
+  for (const host of shadowHosts) {
+    if (host.shadowRoot) {
+      results = results.concat(querySelectorAllDeep(selector, host.shadowRoot, depth + 1));
     }
   }
+
   return results;
 }
 
