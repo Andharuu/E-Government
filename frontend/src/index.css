@@ -1,12 +1,124 @@
 @import "tailwindcss";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+@import "@flaticon/flaticon-uicons/css/regular/rounded.css";
+@import "@flaticon/flaticon-uicons/css/bold/rounded.css";
 
 @layer base {
-  html {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  :root {
+    /* Design Tokens - Netral */
+    --bg-page: #F6F8FB;
+    --surface: #FFFFFF;
+    --border: #E8ECF2;
+    --border-subtle: #F1F4F8;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-tertiary: #64748B;
+
+    /* Design Tokens - Aksen Utama */
+    --primary: #2563EB;
+    --primary-hover: #1D4ED8;
+    --primary-tint: #EFF4FF;
+    --sidebar-bg: #14225E;
+
+    /* Design Tokens - Semantik */
+    --status-success-text: #047857;
+    --status-success-bg: #ECFDF5;
+    --status-success-dot: #10B981;
+
+    --status-warning-text: #B45309;
+    --status-warning-bg: #FFFBEB;
+    --status-warning-dot: #F59E0B;
+
+    --status-danger-text: #BE123C;
+    --status-danger-bg: #FFF1F2;
+    --status-danger-dot: #F43F5E;
+
+    /* Legacy compatibility mappings */
+    --brand-blue-deep: #14225E;
+    --brand-blue: #1D4ED8;
+    --brand-blue-light: #2563EB;
+    --canvas-bg: #14225E;
+    --panel-bg: #F6F8FB;
+    --panel-radius: 28px;
+    --surface-white: #FFFFFF;
   }
-  body {
-    background-color: #F8FAFC;
-    color: #0F172A;
+
+  html {
+    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--sidebar-bg);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--sidebar-bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Aktifkan tabular numbers secara global pada elemen angka */
+  .tabular-nums, [data-tabular="true"] {
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom sleek scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+}
+
+@layer utilities {
+  /* Smooth page entrance transition */
+  .page-enter {
+    animation: pageEnter 0.15s ease;
+  }
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Sidebar active tab transition */
+  .sidebar-tab-active {
+    animation: tabSlideRightToLeft 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes tabSlideRightToLeft {
+    0% {
+      transform: translateX(12px);
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
 }

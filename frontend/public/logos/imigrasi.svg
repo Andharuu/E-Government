@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldImigrasi" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="blueImigrasi" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Bintang Emas Puncak -->
+  <path d="M 100,14 L 103,24 L 114,24 L 105,30 L 108,40 L 100,34 L 92,40 L 95,30 L 86,24 L 97,24 Z" fill="url(#goldImigrasi)" />
+
+  <!-- Perisai Luar Emas -->
+  <path d="M 100,46 Q 162,46 166,98 Q 170,165 100,206 Q 30,165 34,98 Q 38,46 100,46 Z" fill="url(#goldImigrasi)" />
+
+  <!-- Badan Perisai Biru Navy -->
+  <path d="M 100,52 Q 156,52 160,100 Q 164,160 100,199 Q 36,160 40,100 Q 44,52 100,52 Z" fill="url(#blueImigrasi)" />
+
+  <!-- Lingkaran Bola Dunia -->
+  <circle cx="100" cy="116" r="34" fill="none" stroke="url(#goldImigrasi)" stroke-width="3" />
+  <!-- Garis Lintang & Bujur Globe -->
+  <ellipse cx="100" cy="116" rx="18" ry="34" fill="none" stroke="url(#goldImigrasi)" stroke-width="2" />
+  <line x1="66" y1="116" x2="134" y2="116" stroke="url(#goldImigrasi)" stroke-width="2" />
+  <line x1="72" y1="102" x2="128" y2="102" stroke="url(#goldImigrasi)" stroke-width="1.5" stroke-dasharray="2 1" />
+  <line x1="72" y1="130" x2="128" y2="130" stroke="url(#goldImigrasi)" stroke-width="1.5" stroke-dasharray="2 1" />
+
+  <!-- Pintu Gerbang Kedaulatan Negara (Pura) -->
+  <path d="M 88,102 L 95,95 L 95,137 L 88,137 Z" fill="url(#goldImigrasi)" />
+  <path d="M 112,102 L 105,95 L 105,137 L 112,137 Z" fill="url(#goldImigrasi)" />
+
+  <!-- Pita Emas Bawah "IMIGRASI" -->
+  <path d="M 48,166 Q 100,158 152,166 L 148,182 Q 100,174 52,182 Z" fill="url(#goldImigrasi)" />
+  <text x="100" y="177" font-family="'Inter', sans-serif" font-weight="900" font-size="10" fill="#0F172A" text-anchor="middle" letter-spacing="1.5">IMIGRASI</text>
+</svg>

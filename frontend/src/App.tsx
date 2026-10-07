@@ -7,7 +7,8 @@ import { Dashboard } from './pages/Dashboard';
 import { ProfilePage } from './pages/Profile';
 import { ActivityPage } from './pages/Activity';
 import { SettingsPage } from './pages/Settings';
-import { Loader2 } from 'lucide-react';
+import { TemplatesPage } from './pages/Templates';
+import { FontAwesome } from './components/ui';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -15,7 +16,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <FontAwesome name="spinner" spin className="text-3xl text-blue-600" />
       </div>
     );
   }
@@ -29,7 +30,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <FontAwesome name="spinner" spin className="text-3xl text-blue-600" />
       </div>
     );
   }
@@ -45,6 +46,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

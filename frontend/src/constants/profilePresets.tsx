@@ -1,56 +1,65 @@
-import {
-  User, MapPin, Phone, GraduationCap, Briefcase, HeartHandshake, FileText, Camera
-} from 'lucide-react';
+import { FontAwesome } from '../components/ui';
 import type { CustomFieldType } from '../types/profile';
 
+const createFaIcon = (name: string) => {
+  return function FaIconWrapper({ className }: { className?: string }) {
+    return <FontAwesome name={name} className={className} />;
+  };
+};
+
 export const STANDARD_CATEGORIES = [
-  { id: 'identity', title: 'Identitas & Kependudukan', icon: User, desc: 'Sesuai KTP resmi' },
-  { id: 'address', title: 'Alamat & Domisili', icon: MapPin, desc: 'Tempat tinggal saat ini' },
-  { id: 'contact', title: 'Kontak Pribadi', icon: Phone, desc: 'Nomor HP dan email' },
-  { id: 'education', title: 'Pendidikan & Akademik', icon: GraduationCap, desc: 'Riwayat sekolah & kampus' },
-  { id: 'career', title: 'Pekerjaan & Karir', icon: Briefcase, desc: 'Profesi dan instansi kerja' },
-  { id: 'family', title: 'Keluarga & Kontak Darurat', icon: HeartHandshake, desc: 'Orang tua dan kontak darurat' },
-  { id: 'documents', title: 'Dokumen Resmi & Berkas Foto', icon: FileText, desc: 'NPWP, BPJS & Foto KTP/KK' },
+  { id: 'identity', title: 'Identitas & kependudukan', icon: createFaIcon('user'), iconName: 'user', desc: 'Sesuai KTP resmi' },
+  { id: 'address', title: 'Alamat & domisili', icon: createFaIcon('map'), iconName: 'map', desc: 'Tempat tinggal saat ini' },
+  { id: 'contact', title: 'Kontak pribadi', icon: createFaIcon('phone'), iconName: 'phone', desc: 'Nomor HP dan email' },
+  { id: 'education', title: 'Pendidikan & akademik', icon: createFaIcon('graduation-cap'), iconName: 'graduation-cap', desc: 'Riwayat sekolah & kampus' },
+  { id: 'career', title: 'Pekerjaan & karir', icon: createFaIcon('building'), iconName: 'building', desc: 'Profesi dan instansi kerja' },
+  { id: 'family', title: 'Keluarga & kontak darurat', icon: createFaIcon('heart'), iconName: 'heart', desc: 'Orang tua dan kontak darurat' },
+  { id: 'documents', title: 'Dokumen resmi & berkas foto', icon: createFaIcon('file-lines'), iconName: 'file-lines', desc: 'NPWP, BPJS & Foto KTP/KK' },
 ];
 
 export const PHOTO_DOCUMENT_SLOTS = [
   {
     id: 'ktp',
-    title: 'Foto e-KTP Asli',
+    title: 'Foto e-KTP asli',
     desc: 'Foto KTP tampak depan, tulisan & NIK terbaca jelas.',
-    icon: User,
+    icon: createFaIcon('id-card'),
+    iconName: 'id-card',
     fieldKey: 'foto_ktp',
     badge: 'Autofill Berkas KTP'
   },
   {
     id: 'kk',
-    title: 'Foto / Scan Kartu Keluarga',
+    title: 'Foto / scan kartu keluarga',
     desc: 'Lembar Kartu Keluarga tampak penuh dan jelas.',
-    icon: HeartHandshake,
+    icon: createFaIcon('heart'),
+    iconName: 'heart',
     fieldKey: 'foto_kk',
     badge: 'Autofill Berkas KK'
   },
   {
     id: 'pasfoto',
-    title: 'Pasfoto Formal Diri',
+    title: 'Pasfoto formal diri',
     desc: 'Foto wajah resmi 3x4 / 4x6 latar merah atau biru.',
-    icon: Camera,
+    icon: createFaIcon('image'),
+    iconName: 'image',
     fieldKey: 'pasfoto',
     badge: 'Autofill Pasfoto'
   },
   {
     id: 'npwp_card',
-    title: 'Foto Kartu NPWP',
+    title: 'Foto kartu NPWP',
     desc: 'Foto fisik kartu NPWP atau bukti cetak resmi.',
-    icon: FileText,
+    icon: createFaIcon('credit-card'),
+    iconName: 'credit-card',
     fieldKey: 'foto_npwp',
     badge: 'Autofill NPWP'
   },
   {
     id: 'ijazah',
-    title: 'Foto Ijazah / Dokumen Akademik',
+    title: 'Foto ijazah / dokumen akademik',
     desc: 'Ijazah terakhir atau surat keterangan lulus.',
-    icon: GraduationCap,
+    icon: createFaIcon('graduation-cap'),
+    iconName: 'graduation-cap',
     fieldKey: 'foto_ijazah',
     badge: 'Autofill Ijazah'
   },

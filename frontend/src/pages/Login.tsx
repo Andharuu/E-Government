@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { FontAwesome } from '../components/ui';
 
 export function Login() {
   const { login } = useAuth();
@@ -31,11 +31,11 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">G</span>
+          <div className="w-14 h-14 rounded-2xl bg-[#19349e] border border-white/20 shadow-md flex items-center justify-center mx-auto mb-4 p-2.5">
+            <img src="/logo-white.png" alt="GovConnect" className="w-9 h-9 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Masuk ke GovConnect</h1>
-          <p className="text-slate-500 mt-2">Isi formulir layanan publik lebih cepat</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Masuk ke GovConnect</h1>
+          <p className="text-slate-500 text-sm mt-1">Asisten pengisian formulir layanan publik otomatis</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
@@ -50,7 +50,7 @@ export function Login() {
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" aria-hidden="true" />
+                <FontAwesome name="envelope" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true" />
                 <input
                   id="email"
                   type="email"
@@ -67,7 +67,7 @@ export function Login() {
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" aria-hidden="true" />
+                <FontAwesome name="lock" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -84,7 +84,7 @@ export function Login() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <FontAwesome name="eye-slash" className="text-sm" /> : <FontAwesome name="eye" className="text-sm" />}
                 </button>
               </div>
             </div>
@@ -94,7 +94,7 @@ export function Login() {
               disabled={loading}
               className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Masuk'}
+              {loading ? <FontAwesome name="spinner" spin className="text-sm" /> : 'Masuk'}
             </button>
           </form>
 
