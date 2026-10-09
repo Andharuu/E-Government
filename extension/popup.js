@@ -6,6 +6,7 @@ let isRegisterMode = false;
 // Inisialisasi: cek apakah sudah login
 // ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
+  switchScreen("loadingScreen");
   let token = await getToken();
   if (!token) {
     token = await tryAutoSyncFromOpenTabs();
@@ -41,44 +42,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const btnQuick = document.getElementById("btnPopupQuickFill");
   if (btnQuick) {
-    btnQuick.addEventListener("click", async () => {
-      btnQuick.disabled = true;
-      btnQuick.textContent = "Mengisi...";
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab) {
-        const token = await getToken();
-        let cached = await chrome.storage.local.get("govconnect_cached_profile");
-        let profile = cached.govconnect_cached_profile;
-        if (!profile && token) {
-          const res = await fetch(`${API_BASE}/profile/me`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.ok) profile = await res.json();
-        }
-        if (profile) {
-          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content_script.js"] }).catch(() => {});
-          chrome.tabs.sendMessage(tab.id, { action: "EXECUTE_ONE_CLICK_AUTOFILL", profile }, () => {
-            window.close();
-          });
-          return;
-        }
-      }
-      btnQuick.disabled = false;
-      btnQuick.textContent = "⚡ Isi Form Halaman Ini (1-Klik)";
-    });
+    btnQuick.addEventListener("click", openSidePanel);
   }
 
-  const toggleOneClick = document.getElementById("popupToggleOneClick");
-  if (toggleOneClick) {
-    chrome.storage.local.get("govconnect_one_click_mode", (res) => {
-      toggleOneClick.checked = res.govconnect_one_click_mode !== false;
-    });
-    toggleOneClick.addEventListener("change", async (e) => {
-      const isEnabled = e.target.checked;
-      await chrome.storage.local.set({ govconnect_one_click_mode: isEnabled });
-      chrome.runtime.sendMessage({ action: "SET_ONE_CLICK_MODE", enabled: isEnabled }).catch(() => {});
-    });
-  }
+// One-click toggle removed
 
   document.getElementById("btnDashboard").addEventListener("click", async () => {
     const activeToken = await getToken();
@@ -235,12 +202,21 @@ async function showMainScreen(token) {
 }
 
 // ============================================================
-// Buka Side Panel
+// Buka Asisten Melayang di Halaman Web
 // ============================================================
 async function openSidePanel() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab) {
-    chrome.sidePanel.open({ tabId: tab.id });
+  if (tab?.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_ASSISTANT" }).catch(() => {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content_script.js"]
+      }).then(() => {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_ASSISTANT" }).catch(() => {});
+        }, 150);
+      }).catch(() => {});
+    });
     window.close();
   }
 }

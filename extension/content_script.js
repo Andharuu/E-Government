@@ -10,6 +10,47 @@
   const IS_INSIDE_IFRAME = window.self !== window.top;
 
 // ============================================================
+// Pengecekan Halaman Dashboard Internal GovConnect
+// Memastikan ekstensi TIDAK mendeteksi form internal GovConnect
+// ============================================================
+function isGovConnectDashboardPage() {
+  try {
+    const host = (window.location.hostname || "").toLowerCase();
+    const port = window.location.port || "";
+    const path = (window.location.pathname || "").toLowerCase();
+    const title = (document.title || "").toLowerCase();
+
+    // 1. Host local dev port atau environment GovConnect (5173, 3000, 4173)
+    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && 
+        (port === "5173" || port === "3000" || port === "4173")) {
+      return true;
+    }
+
+    // 2. Deteksi berdasarkan URL path atau title GovConnect
+    const isGovTitle = title.includes("govconnect") || title.includes("gov connect");
+    if (isGovTitle && (
+      path.includes("/dashboard") ||
+      path.includes("/profile") ||
+      path.includes("/templates") ||
+      path.includes("/activity") ||
+      path.includes("/settings") ||
+      path.includes("/login") ||
+      path.includes("/register") ||
+      path === "/" || path === ""
+    )) {
+      return true;
+    }
+
+    // 3. Elemen root aplikasi React GovConnect
+    if (document.getElementById("govconnect-app-root") || 
+        (document.getElementById("root") && isGovTitle)) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+// ============================================================
 // Keyword mapping: profile attribute → list keyword
 // Sesuai PRD §14 — multi-level matching (Spesifik -> Umum)
 // ============================================================
@@ -961,6 +1002,10 @@ function clearFieldMarkers() {
 }
 
 async function renderFieldMarkers(activeKeys = null, profile = null) {
+  if (isGovConnectDashboardPage()) {
+    clearFieldMarkers();
+    return;
+  }
   ensureMarkerStyles();
   const layer = ensureMarkerLayer();
   clearFieldMarkers();
@@ -998,9 +1043,11 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
     const badge = document.createElement("div");
     badge.className = "govconnect-badge";
     badge.dataset.key = profileKey;
+    badge.style.animation = "govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both";
+    badge.style.animationDelay = `${Math.min(activeMarkers.length * 35, 450)}ms`;
     const label = MARKER_LABELS[profileKey] || profileKey;
-    badge.title = val ? `GovConnect siap mengisi: ${val}` : `Kolom terdeteksi: ${label}`;
-    badge.innerHTML = `<span class="govconnect-badge-icon">⚡</span><span>GovConnect: ${label}</span>`;
+    badge.title = val ? `Siap mengisi: ${val}` : `Kolom terdeteksi: ${label}`;
+    badge.innerHTML = `<span>${label}</span>`;
 
     badge.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1126,8 +1173,133 @@ window.addEventListener("resize", () => {
 // ============================================================
 // Listener untuk pesan dari side panel / popup
 // ============================================================
+
+// ============================================================
+// Modul Tampilan Asisten Melayang (In-Page Floating Assistant)
+// Menggantikan side panel pembelah layar agar tampil melayang
+// ============================================================
+// ============================================================
+// FLOATING OVERLAY SIDEPANEL DRAWER (MENIMPA WEB TANPA MEMBELAH LAYAR)
+// ============================================================
+let isSidebarOpen = false;
+
+function removeFloatingSidebar() {
+  const existing = document.getElementById("govconnect-sidebar-container");
+  if (existing) existing.remove();
+  isSidebarOpen = false;
+}
+
+function getOrCreateFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return null;
+
+  let wrapper = document.getElementById("govconnect-sidebar-container");
+  if (!wrapper) {
+    wrapper = document.createElement("div");
+    wrapper.id = "govconnect-sidebar-container";
+    wrapper.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      right: 0 !important;
+      width: 410px !important;
+      max-width: 95vw !important;
+      height: 100vh !important;
+      z-index: 2147483647 !important;
+      box-shadow: -8px 0 32px rgba(15, 23, 42, 0.22) !important;
+      border-left: 1px solid rgba(226, 232, 240, 0.8) !important;
+      background: #F1F5F9 !important;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
+      transform: translateX(105%) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    `;
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "govconnect-sidebar-iframe";
+    iframe.src = chrome.runtime.getURL("sidepanel.html");
+    iframe.style.cssText = `
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      background: #F1F5F9 !important;
+      display: block !important;
+    `;
+
+    wrapper.appendChild(iframe);
+    (document.body || document.documentElement).appendChild(wrapper);
+  }
+  return wrapper;
+}
+
+function openFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
+  const wrapper = getOrCreateFloatingSidebar();
+  if (!wrapper) return;
+
+  requestAnimationFrame(() => {
+    wrapper.style.transform = "translateX(0)";
+    wrapper.style.opacity = "1";
+    wrapper.style.pointerEvents = "auto";
+    isSidebarOpen = true;
+  });
+}
+
+function closeFloatingSidebar() {
+  const wrapper = document.getElementById("govconnect-sidebar-container");
+  if (wrapper) {
+    wrapper.style.transform = "translateX(105%)";
+    wrapper.style.opacity = "0";
+    wrapper.style.pointerEvents = "none";
+  }
+  isSidebarOpen = false;
+}
+
+function toggleFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
+  if (isSidebarOpen) {
+    closeFloatingSidebar();
+  } else {
+    openFloatingSidebar();
+  }
+}
+
+// Dengarkan postMessage dari iframe sidepanel (misal tombol tutup)
+window.addEventListener("message", (event) => {
+  if (event.data?.action === "CLOSE_GOVCONNECT_SIDEBAR") {
+    closeFloatingSidebar();
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
+    if (request.action === "TOGGLE_FLOATING_SIDEBAR" || request.action === "TOGGLE_FLOATING_ASSISTANT") {
+      if (isGovConnectDashboardPage()) {
+        sendResponse({ success: false, reason: "dashboard_page" });
+        return false;
+      }
+      toggleFloatingSidebar();
+      sendResponse({ success: true, isOpen: isSidebarOpen });
+      return false;
+    }
+
+    if (request.action === "OPEN_FLOATING_SIDEBAR" || request.action === "OPEN_FLOATING_ASSISTANT") {
+      if (isGovConnectDashboardPage()) {
+        sendResponse({ success: false, reason: "dashboard_page" });
+        return false;
+      }
+      openFloatingSidebar();
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "CLOSE_FLOATING_SIDEBAR" || request.action === "CLOSE_FLOATING_ASSISTANT") {
+      closeFloatingSidebar();
+      sendResponse({ success: true });
+      return false;
+    }
+
     if (request.action === "SEMANTIC_RESULT") {
       const { targetElementId, profileKey, score } = request;
       console.log("GovConnect Content Script: Menerima SEMANTIC_RESULT", { targetElementId, profileKey, score });
@@ -1218,7 +1390,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
           // Jika dijalankan via mode 1-klik, tampilkan floating toast notifikasi yang menawan di halaman
           if (request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
-            showOneClickFloatingToast(result);
+            
           }
 
           sendResponse(result);
@@ -1373,6 +1545,16 @@ async function fillSemanticElement(el, profileKey) {
 // Deteksi semua field pada form (Termasuk Status Visibilitas & Custom Dropdown)
 // ============================================================
 async function detectFields() {
+  if (isGovConnectDashboardPage()) {
+    return {
+      total: 0,
+      matched: 0,
+      hiddenMatched: 0,
+      unmatched: 0,
+      fields: [],
+      isGovConnectDashboard: true
+    };
+  }
   const inputs = getAllFormFields();
 
   const detected = [];
@@ -1463,6 +1645,9 @@ async function fillForm(profile, targetFields = null) {
       results.push({ id: fieldIdentifier, status: "skipped", profileKey });
       continue;
     }
+
+    // Pacing jeda fluid agar pengisian form terasa halus dan natural
+    await new Promise(r => setTimeout(r, 45));
 
     // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
     if (isPrimeNGDropdown(el)) {
@@ -2556,6 +2741,7 @@ let mutationDebounceTimer = null;
 let maxWaitTimer = null;
 
 function debouncedFormUpdate() {
+  if (isGovConnectDashboardPage()) return;
   if (isFillingProcess) return;
   
   if (!maxWaitTimer) {
@@ -2624,6 +2810,7 @@ const observer = new MutationObserver((mutations) => {
 });
 
 function startMutationObserver() {
+  if (isGovConnectDashboardPage()) return;
   const target = document.body || document.documentElement;
   if (target) {
     try {
@@ -2667,6 +2854,7 @@ const visibilityObserver = new MutationObserver((mutations) => {
 });
 
 function attachVisibilityObserver() {
+  if (isGovConnectDashboardPage()) return;
   document.querySelectorAll("form, [role='dialog'], [role='tabpanel']").forEach(el => {
     visibilityObserver.observe(el, {
       attributes: true,
@@ -2691,99 +2879,7 @@ document.addEventListener("change", (e) => {
   }
 }, true);
 
-// ============================================================
-// Notifikasi Mengambang (Floating Toast) Mode 1-Klik Instan
-// ============================================================
-function showOneClickFloatingToast(result) {
-  const existing = document.getElementById("govconnect-oneclick-toast");
-  if (existing) existing.remove();
-
-  const count = result.count || 0;
-  const isSuccess = count > 0;
-
-  const toast = document.createElement("div");
-  toast.id = "govconnect-oneclick-toast";
-  toast.style.cssText = `
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    z-index: 2147483647;
-    background: #FFFFFF;
-    color: #0F172A;
-    border: 1px solid ${isSuccess ? '#BBF7D0' : '#FED7AA'};
-    border-radius: 16px;
-    padding: 14px 18px;
-    box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.16), 0 4px 12px -2px rgba(15, 23, 42, 0.08);
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    max-width: 380px;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    transform: translateX(120%);
-    opacity: 0;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    pointer-events: auto;
-  `;
-
-  const iconBg = isSuccess ? '#ECFDF5' : '#FFF7ED';
-  const iconColor = isSuccess ? '#16A34A' : '#EA580C';
-  const iconSvg = isSuccess
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`
-    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-
-  toast.innerHTML = `
-    <div style="width: 36px; height: 36px; border-radius: 10px; background: ${iconBg}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-      ${iconSvg}
-    </div>
-    <div style="flex: 1; min-width: 0;">
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <span style="font-size: 13px; font-weight: 700; color: #0F172A; letter-spacing: -0.2px;">
-          ${isSuccess ? '⚡ GovConnect 1-Klik Berhasil!' : '⚡ GovConnect 1-Klik'}
-        </span>
-        <button id="govconnect-toast-close" style="background: none; border: none; font-size: 18px; color: #94A3B8; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
-      </div>
-      <p style="font-size: 12px; color: #475569; margin: 4px 0 8px 0; line-height: 1.4;">
-        ${isSuccess
-          ? `Berhasil mengisi <b>${count}</b> kolom formulir dan berkas foto secara otomatis.`
-          : `Tidak ada kolom formulir yang cocok untuk diisi di halaman ini.`}
-      </p>
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <button id="govconnect-toast-details" style="background: none; border: none; color: #2563EB; font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline;">
-          Buka Panel Samping &rarr;
-        </button>
-        <span style="font-size: 10px; color: #16A34A; font-weight: 600; background: #F0FDF4; padding: 2px 6px; border-radius: 6px;">Mode 1-Klik Aktif</span>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(toast);
-
-  // Animasi masuk
-  requestAnimationFrame(() => {
-    toast.style.transform = "translateX(0)";
-    toast.style.opacity = "1";
-  });
-
-  const dismiss = () => {
-    toast.style.transform = "translateX(120%)";
-    toast.style.opacity = "0";
-    setTimeout(() => toast.remove(), 400);
-  };
-
-  const closeBtn = toast.querySelector("#govconnect-toast-close");
-  if (closeBtn) closeBtn.onclick = dismiss;
-
-  const detailBtn = toast.querySelector("#govconnect-toast-details");
-  if (detailBtn) {
-    detailBtn.onclick = () => {
-      chrome.runtime.sendMessage({ action: "OPEN_SIDEPANEL" }).catch(() => {});
-      dismiss();
-    };
-  }
-
-  // Otomatis hilang setelah 4.5 detik
-  setTimeout(dismiss, 4500);
-}
+// Mode 1-Klik dihapus
 
 // ============================================================
 // Bridge Sinkronisasi Ekstensi <-> Web Dashboard GovConnect
@@ -2867,3 +2963,24 @@ function showOneClickFloatingToast(result) {
   }
 })();
 })();
+if (isGovConnectDashboardPage()) {
+  clearFieldMarkers();
+}
+
+(function addGovSpinStyle() {
+  if (document.getElementById("govconnect-spin-style")) return;
+  const s = document.createElement("style");
+  s.id = "govconnect-spin-style";
+  s.textContent = "@keyframes govSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+  document.head ? document.head.appendChild(s) : document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
+})();
+
+setTimeout(async () => {
+  if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
+    try {
+      const storage = await chrome.storage.local.get(["govconnect_cached_profile", "govconnect_token"]);
+      if (storage.govconnect_cached_profile) cachedLastProfile = storage.govconnect_cached_profile;
+      await detectFields();
+    } catch (e) {}
+  }
+}, 1200);

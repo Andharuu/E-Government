@@ -13,7 +13,6 @@
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },
   "permissions": [
-    "sidePanel",
     "activeTab",
     "scripting",
     "storage",
@@ -36,12 +35,36 @@
   "background": {
     "service_worker": "background.js"
   },
+  "icons": {
+    "16": "logo-white-blue.png",
+    "32": "logo-white-blue.png",
+    "48": "logo-white-blue.png",
+    "128": "logo-white-blue.png"
+  },
   "action": {
-    "default_title": "GovConnect Autofill (⚡ 1-Klik)"
+    "default_title": "GovConnect Autofill Assistant",
+    "default_icon": {
+      "16": "logo-white-blue.png",
+      "32": "logo-white-blue.png",
+      "48": "logo-white-blue.png",
+      "128": "logo-white-blue.png"
+    }
   },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "sidepanel.html",
+        "sidepanel.js",
+        "logo-white.png",
+        "logo-white-blue.png",
+        "fontawesome/*",
+        "uicons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [

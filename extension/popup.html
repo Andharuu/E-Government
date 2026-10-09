@@ -6,6 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="fontawesome/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -410,6 +411,18 @@
       border-color: #FEE2E2;
       color: #B91C1C;
     }
+
+    .simple-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #E2E8F0;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -417,10 +430,11 @@
   <!-- App Header -->
   <header class="app-header">
     <div class="brand">
-      <div class="brand-icon">G</div>
+      <div class="brand-icon" style="overflow: hidden; padding: 3px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+        <img src="logo-white.png" alt="GovConnect" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
       <div>
         <div class="brand-title">GovConnect</div>
-        <div class="brand-sub">Asisten Formulir Publik</div>
       </div>
     </div>
     <div class="sync-badge" id="syncStatusBadge">
@@ -429,8 +443,16 @@
     </div>
   </header>
 
+  <!-- ================= LOADING SCREEN ================= -->
+  <main id="loadingScreen" class="screen active">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; gap: 14px;">
+      <div class="simple-spinner"></div>
+      <span style="font-size: 12px; color: #64748B; font-weight: 500;">Memuat data profil...</span>
+    </div>
+  </main>
+
   <!-- ================= AUTH SCREEN ================= -->
-  <main id="authScreen" class="screen active">
+  <main id="authScreen" class="screen">
     <div class="auth-card">
       <h2 class="auth-heading" id="authTitle">Masuk ke GovConnect</h2>
 
@@ -497,22 +519,9 @@
 
     <!-- Actions -->
     <div class="actions-grid">
-      <button class="btn-sidepanel" id="btnPopupQuickFill" style="background: #16A34A; color: #FFFFFF; border: none; margin-bottom: 4px;">
-        <span>⚡</span> Isi Form Halaman Ini (1-Klik)
+      <button class="btn-sidepanel" id="btnPopupQuickFill" style="background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%); color: #FFFFFF; border: none; margin-bottom: 4px;">
+        <span>⚡</span> Buka Asisten Formulir (Melayang)
       </button>
-
-      <button class="btn-sidepanel" id="btnOpenPanel">
-        <span>📋</span> Buka Side Panel Lengkap
-      </button>
-
-      <!-- Mode 1-Klik Toolbar Setting -->
-      <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; margin-top: 2px;">
-        <div>
-          <div style="font-size: 11px; font-weight: 700; color: #0F172A;">Mode 1-Klik Toolbar</div>
-          <div style="font-size: 10px; color: #64748B;">Klik ikon toolbar langsung isi form</div>
-        </div>
-        <input type="checkbox" id="popupToggleOneClick" style="width: 16px; height: 16px; accent-color: #2563EB; cursor: pointer;">
-      </div>
 
       <div class="secondary-row" style="margin-top: 4px;">
         <button class="btn-outline" id="btnDashboard">
