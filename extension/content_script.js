@@ -1439,7 +1439,6 @@ async function fillSemanticElement(el, profileKey) {
       first_name: "Budi",
       last_name: "Santoso",
       mother_name: "Siti Aminah",
-      mothers_name: "Siti Aminah",
       father_name: "Ahmad Dahlan",
       nik: "3171012345678901",
       email: "budi.santoso@example.com",
@@ -1450,8 +1449,8 @@ async function fillSemanticElement(el, profileKey) {
   }
 
   let value = profile[profileKey];
-  if (!value && (profileKey === "mother_name" || profileKey === "mothers_name")) {
-    value = profile.mother_name || profile.mothers_name || profile.nama_ibu;
+  if (!value && profileKey === "mother_name") {
+    value = profile.mother_name || profile.nama_ibu;
   }
   if (!value) return;
 
@@ -2749,9 +2748,9 @@ function debouncedFormUpdate() {
       clearTimeout(mutationDebounceTimer);
       maxWaitTimer = null;
       if (!isFillingProcess) {
-        chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
+        chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
       }
-    }, 1500);
+    }, 3000);
   }
 
   clearTimeout(mutationDebounceTimer);
@@ -2759,7 +2758,7 @@ function debouncedFormUpdate() {
     clearTimeout(maxWaitTimer);
     maxWaitTimer = null;
     if (!isFillingProcess) {
-      chrome.runtime.sendMessage({ action: "FORM_UPDATED" }).catch(() => {});
+      chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
     }
   }, 400);
 }
