@@ -254,28 +254,29 @@ async function executeOneClickAutofill(tab, token, cachedProfile) {
     chrome.action.setBadgeText({ text: "...", tabId: tab.id });
     chrome.action.setBadgeBackgroundColor({ color: "#2563EB", tabId: tab.id });
 
-    // 2. Ambil data profil terbaru jika belum di-cache
+    // 2. Ambil data profil terbaru — VALIDASI TOKEN, jangan percaya cache secara membabi buta
     let profile = cachedProfile;
-    if (!profile) {
-      try {
-        const res = await fetch(`${API_BASE}/profile/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.status === 401) {
-          console.warn("GovConnect: Token sesi telah kedaluwarsa (401). Menghapus kredensial tersimpan.");
-          await chrome.storage.local.remove([
-            "govconnect_token",
-            "govconnect_email",
-            "govconnect_cached_profile"
-          ]);
-          profile = null;
-        } else if (res.ok) {
-          profile = await res.json();
-          await chrome.storage.local.set({ govconnect_cached_profile: profile });
-        }
-      } catch (fetchErr) {
-        console.warn("Failed to fetch fresh profile, using cached if available:", fetchErr);
+    // Selalu attempt fetch fresh jika token ada (cache hanya fallback saat network error)
+    try {
+      const res = await fetch(`${API_BASE}/profile/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        console.warn("GovConnect: Token sesi telah kedaluwarsa (401). Menghapus kredensial tersimpan.");
+        await chrome.storage.local.remove([
+          "govconnect_token",
+          "govconnect_email",
+          "govconnect_cached_profile"
+        ]);
+        profile = null;
+      } else if (res.ok) {
+        profile = await res.json();
+        await chrome.storage.local.set({ govconnect_cached_profile: profile });
       }
+      // Jika res.ok=false dan bukan 401 (misal 500), pakai cachedProfile sebagai fallback
+    } catch (fetchErr) {
+      console.warn("Failed to fetch fresh profile, using cached if available:", fetchErr);
+      // Network error — gunakan cache hanya jika benar-benar tidak bisa konek
     }
 
     if (!profile) {
@@ -429,25 +430,47 @@ function notifyTabsModeChanged(isOneClick) {
 // ============================================================
 // Komunikasi Pesan Antar Komponen Ekstensi & Web App
 // ============================================================
+// Map targetElementId → tabId pengirim, agar hasil semantik dikembalikan ke tab yang benar
+const pendingSemanticTabs = new Map();
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "SEMANTIC_RESULT") {
-    console.log('Background merelay hasil semantik ke Tab', message);
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs && tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, message).catch(() => { });
-      } else {
-        chrome.tabs.query({ active: true }, (allTabs) => {
-          if (allTabs && allTabs[0]?.id) {
-            chrome.tabs.sendMessage(allTabs[0].id, message).catch(() => { });
-          }
-        });
-      }
-    });
+    const targetTabId = message.targetElementId
+      ? pendingSemanticTabs.get(message.targetElementId)
+      : null;
+
+    if (message.targetElementId) {
+      pendingSemanticTabs.delete(message.targetElementId);
+    }
+
+    console.log('Background merelay hasil semantik ke tab', targetTabId ?? '(active)');
+
+    if (targetTabId) {
+      // Kirim ke tab spesifik yang meminta (bukan tab aktif yang mungkin sudah berpindah)
+      chrome.tabs.sendMessage(targetTabId, message).catch(() => { });
+    } else {
+      // Fallback: kirim ke tab aktif jika mapping hilang
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, message).catch(() => { });
+        } else {
+          chrome.tabs.query({ active: true }, (allTabs) => {
+            if (allTabs && allTabs[0]?.id) {
+              chrome.tabs.sendMessage(allTabs[0].id, message).catch(() => { });
+            }
+          });
+        }
+      });
+    }
     sendResponse({ success: true });
     return true;
   }
 
   if (message.action === "SEMANTIC_FALLBACK") {
+    // Simpan tab pengirim agar hasil dikembalikan ke tab yang benar
+    if (sender.tab?.id && message.targetElementId) {
+      pendingSemanticTabs.set(message.targetElementId, sender.tab.id);
+    }
     setupOffscreenDocument().catch(() => { });
     return false;
   }

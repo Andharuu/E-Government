@@ -311,7 +311,11 @@ function getToken() {
 }
 
 function clearToken() {
-  return chrome.storage.local.remove("govconnect_token");
+  return chrome.storage.local.remove([
+    "govconnect_token",
+    "govconnect_email",
+    "govconnect_cached_profile"
+  ]);
 }
 
 function saveUserEmail(email) {
@@ -325,7 +329,7 @@ function getUserEmail() {
 }
 
 function clearUserEmail() {
-  return chrome.storage.local.remove("govconnect_email");
+  return chrome.storage.local.remove(["govconnect_email", "govconnect_cached_profile"]);
 }
 
 async function tryAutoSyncFromOpenTabs() {

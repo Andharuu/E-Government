@@ -9,6 +9,34 @@
   
   const IS_INSIDE_IFRAME = window.self !== window.top;
 
+  // ============================================================
+  // Safe Messaging Helper — menangkap "Extension context invalidated"
+  // (terjadi saat ekstensi di-reload/update sementara tab masih terbuka)
+  // ============================================================
+  function safeSendMessage(message, callback) {
+    try {
+      if (!chrome.runtime || !chrome.runtime.id) {
+        if (typeof callback === "function") {
+          try { callback(undefined); } catch (e) {}
+        }
+        return;
+      }
+      if (typeof callback === "function") {
+        chrome.runtime.sendMessage(message, (response) => {
+          // Baca lastError untuk menyerap "Extension context invalidated" agar tidak muncul sebagai uncaught
+          void chrome.runtime.lastError;
+          try { callback(response); } catch (e) {}
+        });
+      } else {
+        chrome.runtime.sendMessage(message).catch(() => {});
+      }
+    } catch (e) {
+      if (typeof callback === "function") {
+        try { callback(undefined); } catch (err) {}
+      }
+    }
+  }
+
 // ============================================================
 // Keyword mapping: profile attribute → list keyword
 // Sesuai PRD §14 — multi-level matching (Spesifik -> Umum)
@@ -931,6 +959,18 @@ function ensureMarkerStyles() {
       box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35), 0 1px 2px rgba(0,0,0,0.08) !important;
       animation: govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
+    .govconnect-badge-upload {
+      background: linear-gradient(135deg, #D97706, #B45309) !important;
+      box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3), 0 1px 2px rgba(0,0,0,0.08) !important;
+    }
+    .govconnect-badge-upload:hover {
+      box-shadow: 0 4px 10px rgba(217, 119, 6, 0.45) !important;
+    }
+    .govconnect-field-upload-pending {
+      outline: 2px dashed #D97706 !important;
+      outline-offset: 2px !important;
+      background-color: #FFFBEB !important;
+    }
     .govconnect-badge-fadeout {
       opacity: 0 !important;
       transform: translateX(-100%) translateY(-6px) scale(0.92) !important;
@@ -1000,6 +1040,27 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
     }
 
     if (!isElementVisible(el)) continue;
+
+    // Jika elemen adalah file input (KTP, KK, Ijazah, dll) — pasang badge khusus
+    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
+      el.classList.add("govconnect-field-upload-pending");
+      const uploadBadge = document.createElement("div");
+      uploadBadge.className = "govconnect-badge govconnect-badge-upload";
+      uploadBadge.dataset.key = profileKey;
+      const upLabel = MARKER_LABELS[profileKey] || profileKey;
+      uploadBadge.title = `GovConnect: berkas "${upLabel}" perlu diunggah manual untuk privasi Anda`;
+      uploadBadge.innerHTML = `<span class="govconnect-badge-icon">📎</span><span>Perlu Upload: ${upLabel}</span>`;
+      uploadBadge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          el.focus();
+          el.click();
+        } catch (err) {}
+      });
+      layer.appendChild(uploadBadge);
+      activeMarkers.push({ el, badge: uploadBadge, profileKey });
+      continue;
+    }
 
     // Pasang highlight border
     el.classList.add("govconnect-field-ready");
@@ -1588,57 +1649,16 @@ async function fillForm(profile, targetFields = null) {
       continue;
     }
 
-    // Jika tag adalah input type=file (Autofill Berkas & Foto Dokumen)
+    // Jika tag adalah input type=file — TIDAK otomatis upload (privasi)
+    // Tandai saja agar user klik manual
     if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
-      let docPhotos = {};
-      if (profile && profile.document_photos) {
-        try {
-          docPhotos = typeof profile.document_photos === "string"
-            ? JSON.parse(profile.document_photos)
-            : profile.document_photos;
-        } catch (e) {}
-      }
-
-      let photoSlot = null;
-      if (profileKey === "foto_ktp" || profileKey === "ktp") photoSlot = docPhotos.ktp;
-      else if (profileKey === "foto_kk" || profileKey === "kk") photoSlot = docPhotos.kk;
-      else if (profileKey === "pasfoto") photoSlot = docPhotos.pasfoto;
-      else if (profileKey === "foto_npwp" || profileKey === "npwp_card") photoSlot = docPhotos.npwp_card;
-      else if (profileKey === "foto_ijazah" || profileKey === "ijazah") photoSlot = docPhotos.ijazah;
-      else if (docPhotos[profileKey]) photoSlot = docPhotos[profileKey];
-
-      if (photoSlot && photoSlot.data) {
-        try {
-          const parts = photoSlot.data.split(",");
-          const mimeType = photoSlot.type || (parts[0].match(/:(.*?);/) ? parts[0].match(/:(.*?);/)[1] : "image/jpeg");
-          const byteString = atob(parts[1]);
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-          const blob = new Blob([ab], { type: mimeType });
-          const file = new File([blob], photoSlot.name || `${profileKey}.jpg`, { type: mimeType });
-
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          el.files = dataTransfer.files;
-
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-
-          filledCount++;
-          results.push({ id: fieldIdentifier, status: "filled", profileKey });
-          continue;
-        } catch (fileErr) {
-          console.warn("GovConnect: Error saat autofill file input:", fileErr);
-          results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-          continue;
-        }
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-        continue;
-      }
+      results.push({
+        id: fieldIdentifier,
+        status: "requires_upload",
+        profileKey,
+        message: `Berkas "${MARKER_LABELS[profileKey] || profileKey}" perlu diunggah manual`
+      });
+      continue;
     }
 
     // Input text / textarea / date / tel / email
@@ -2461,13 +2481,22 @@ async function matchProfileKey(el) {
     pendingSemanticRequests.add(el);
     pendingSemanticRequests.add(targetId);
     try {
+      const SEMANTIC_TIMEOUT_MS = 30000; // 30 detik (first-load model 22MB butuh waktu)
       const fallbackResult = await new Promise(resolve => {
-        chrome.runtime.sendMessage({
+        const timer = setTimeout(() => {
+          pendingSemanticRequests.delete(el);
+          pendingSemanticRequests.delete(targetId);
+          console.warn(`GovConnect: Semantic fallback TIMEOUT untuk label: "${fallbackLabel}"`);
+          resolve(null);
+        }, SEMANTIC_TIMEOUT_MS);
+
+        safeSendMessage({
           action: "SEMANTIC_FALLBACK",
           label: fallbackLabel,
           id: targetId,
           targetElementId: targetId
         }, response => {
+          clearTimeout(timer);
           pendingSemanticRequests.delete(el);
           pendingSemanticRequests.delete(targetId);
           resolve(response?.profileKey || null);
@@ -2572,7 +2601,7 @@ function debouncedFormUpdate() {
       clearTimeout(mutationDebounceTimer);
       maxWaitTimer = null;
       if (!isFillingProcess) {
-        chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
+        safeSendMessage({ action: "FORM_UPDATED", newFormsFound: true });
       }
     }, 3000);
   }
@@ -2582,7 +2611,7 @@ function debouncedFormUpdate() {
     clearTimeout(maxWaitTimer);
     maxWaitTimer = null;
     if (!isFillingProcess) {
-      chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
+      safeSendMessage({ action: "FORM_UPDATED", newFormsFound: true });
     }
   }, 400);
 }
@@ -2785,7 +2814,7 @@ function showOneClickFloatingToast(result) {
   const detailBtn = toast.querySelector("#govconnect-toast-details");
   if (detailBtn) {
     detailBtn.onclick = () => {
-      chrome.runtime.sendMessage({ action: "OPEN_SIDEPANEL" }).catch(() => {});
+      safeSendMessage({ action: "OPEN_SIDEPANEL" });
       dismiss();
     };
   }
@@ -2831,7 +2860,7 @@ function showOneClickFloatingToast(result) {
       if (event.data.type === "GOVCONNECT_SET_ONE_CLICK_MODE") {
         const enabled = !!event.data.enabled;
         chrome.storage.local.set({ govconnect_one_click_mode: enabled }, () => {
-          chrome.runtime.sendMessage({ action: "SET_ONE_CLICK_MODE", enabled }).catch(() => {});
+          safeSendMessage({ action: "SET_ONE_CLICK_MODE", enabled });
           window.postMessage({
             type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
             oneClickMode: enabled
@@ -2853,12 +2882,30 @@ function showOneClickFloatingToast(result) {
     });
 
     // Dengarkan pesan background jika mode diubah via context menu / sidepanel
-    chrome.runtime.onMessage.addListener((msg) => {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.action === "ONE_CLICK_MODE_CHANGED") {
         window.postMessage({
           type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
           oneClickMode: msg.isOneClick
         }, "*");
+      }
+
+      // Terima token dari popup/background (login/logout di ekstensi → sync ke dashboard)
+      if (msg.action === "SYNC_AUTH_FROM_EXTENSION") {
+        if (msg.token) {
+          localStorage.setItem("govconnect_token", msg.token);
+          if (msg.email) localStorage.setItem("govconnect_email", msg.email);
+        } else {
+          localStorage.removeItem("govconnect_token");
+          localStorage.removeItem("govconnect_email");
+        }
+        window.postMessage({
+          type: "GOVCONNECT_AUTH_STATE_CHANGED",
+          token: msg.token || null,
+          email: msg.email || null
+        }, "*");
+        sendResponse?.({ success: true });
+        return true;
       }
     });
 
@@ -2866,10 +2913,10 @@ function showOneClickFloatingToast(result) {
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "GOVCONNECT_PROFILE_UPDATED") {
         try {
-          chrome.runtime.sendMessage({
+          safeSendMessage({
             action: "PROFILE_UPDATED",
             profile: event.data.profile
-          }).catch(() => {});
+          });
         } catch {}
       }
     });

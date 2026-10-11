@@ -4,126 +4,90 @@ import { pipeline, env } from './lib/transformers.js';
 // Digunakan untuk menjalankan komputasi berat (Web Workers / ONNX) secara background tanpa memblokir UI thread
 
 // ============================================================
-// KONFIGURASI ONNX RUNTIME WEBASSEMBLY (SAFEGUARDS)
+// KONFIGURASI ONNX RUNTIME WEBASSEMBLY — 100% LOKAL (CSP COMPLIANT)
 // ============================================================
-// Tujuan konfigurasi ini:
-//   1. Mengarahkan path .wasm + Web Worker ke CDN publik yang stabil → mencegah
-//      kegagalan "Failed to fetch/load .wasm or worker" saat file lokal tidak lengkap.
-//   2. Mematikan multithreading (numThreads = 1, proxy = false) → mencegah error
-//      SharedArrayBuffer dan menghindari keharusan menyetel header COOP/COEP.
+// WASM dimuat dari ./lib/ (bundel ekstensi).
+// Model SBERT dimuat dari ./models/ (bundel ekstensi, offline).
+// Remote model DIBLOKIR agar label DOM tidak keluar browser.
 
-// Pin versi ONNX Runtime Web ke rilis stabil yang kompatibel dengan Transformers.js.
-const ONNX_RUNTIME_VERSION = '1.14.0';
+env.backends.onnx.wasm.wasmPaths = './lib/';
 
-// Base CDN utama (jsDelivr di depan, unpkg sebagai cadangan lewat fallback di bawah).
-const ONNX_WASM_CDN =
-  `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
-
-// 1. ATUR PATH WASM SECARA EKSPLISIT (WAJIB, jangan dikosongkan)
-env.backends.onnx.wasm.wasmPaths = ONNX_WASM_CDN;
-
-// 2. NONAKTIFKAN MULTITHREADING (WAJIB)
-//    numThreads = 1 mematikan shared worker; proxy = false memastikan ORT
-//    tidak memuat ort-wasm-simd-threaded.* dan tidak menyentuh SharedArrayBuffer.
+// NONAKTIFKAN MULTITHREADING (WAJIB untuk MV3)
 env.backends.onnx.wasm.numThreads = 1;
 env.backends.onnx.wasm.proxy = false;
 
-// Logging ORT dibuat lebih tenang agar tidak membanjiri console offscreen.
 env.backends.onnx.logLevel = 'error';
 
-// Izinkan Transformers.js mengambil file model (.onnx, tokenizer, dsb.) dari Hugging Face.
-env.allowRemoteModels = true;
-env.allowLocalModels = false;
+env.allowRemoteModels = false;
+env.allowLocalModels = true;
+env.localModelPath = './models/';
+
+// Matikan Browser Cache API: skema chrome-extension:// tidak didukung Cache Storage,
+// dan model sudah tersedia di disk ekstensi lokal (tidak perlu cache lagi).
+env.useBrowserCache = false;
+env.useFSCache = false;
+env.useCustomCache = false;
 
 console.log(
-  `GovConnect Offscreen: Konfigurasi ORT WASM → wasmPaths="${env.backends.onnx.wasm.wasmPaths}", ` +
+  `GovConnect Offscreen: Konfigurasi LOKAL → wasmPaths="${env.backends.onnx.wasm.wasmPaths}", ` +
+  `localModelPath="${env.localModelPath}", ` +
   `numThreads=${env.backends.onnx.wasm.numThreads}, proxy=${env.backends.onnx.wasm.proxy}`
 );
 
 // ============================================================
-// INISIALISASI PIPELINE SBERT (dengan Error Handling & Fallback)
+// INISIALISASI PIPELINE SBERT (model lokal, quantized INT8 ~22MB)
 // ============================================================
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
 
-// Daftar strategi pemuatan berlapis. Lapis pertama adalah konfigurasi utama
-// (CDN jsDelivr). Lapis berikutnya sebagai fallback bila lapis sebelumnya gagal.
-const LOAD_STRATEGIES = [
-  {
-    name: 'jsDelivr CDN (default)',
-    wasmPaths: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
-  },
-  {
-    name: 'unpkg CDN (fallback)',
-    wasmPaths: `https://unpkg.com/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
-  }
-];
-
-// Inisialisasi pipeline model SBERT
 let extractorPromise = null;
-
-async function loadExtractorWithFallback() {
-  let lastError = null;
-
-  for (const strategy of LOAD_STRATEGIES) {
-    try {
-      // Setel ulang path WASM sesuai strategi yang sedang dicoba.
-      // Selalu eksplisit dan tidak pernah kosong.
-      env.backends.onnx.wasm.wasmPaths = strategy.wasmPaths;
-      env.backends.onnx.wasm.numThreads = 1;
-      env.backends.onnx.wasm.proxy = false;
-
-      console.log(`GovConnect Offscreen: Mencoba memuat model SBERT via ${strategy.name}...`);
-      console.log(`GovConnect Offscreen: wasmPaths = ${env.backends.onnx.wasm.wasmPaths}`);
-
-      const extractor = await pipeline('feature-extraction', MODEL_ID);
-      console.log(`GovConnect Offscreen: Model SBERT berhasil dimuat via ${strategy.name}.`);
-      return extractor;
-    } catch (err) {
-      lastError = err;
-      console.error(
-        `GovConnect Offscreen: Gagal memuat model via ${strategy.name}. ` +
-        `Mencoba strategi berikutnya...`,
-        err
-      );
-    }
-  }
-
-  // Semua strategi gagal → lempar error terakhir dengan pesan yang jelas.
-  const finalErr = new Error(
-    `Gagal memuat model SBERT "${MODEL_ID}" dari semua sumber CDN. ` +
-    `Penyebab terakhir: ${lastError?.message || lastError}`
-  );
-  finalErr.cause = lastError;
-  throw finalErr;
-}
 
 async function getExtractor() {
   if (!extractorPromise) {
-    extractorPromise = loadExtractorWithFallback()
-      .catch(err => {
-        // Penting: reset promise agar percobaan berikutnya bisa mencoba lagi,
-        // alih-alih menyimpan promise yang sudah rejected selamanya.
-        console.error("GovConnect Offscreen: Inisialisasi model SBERT gagal total:", err);
-        extractorPromise = null;
-        throw err;
-      });
+    console.log(`GovConnect Offscreen: Memuat model lokal dari ./models/${MODEL_ID} ...`);
+    extractorPromise = pipeline('feature-extraction', MODEL_ID, {
+      quantized: true,
+      local_files_only: true,
+      progress_callback: (progress) => {
+        if (progress && progress.status === 'progress' && progress.file) {
+          console.log(`Model load: ${progress.file} — ${Math.round(progress.progress || 0)}%`);
+        }
+      }
+    }).catch(err => {
+      console.error("GovConnect Offscreen: Gagal memuat model LOKAL:", err);
+      extractorPromise = null;
+      throw err;
+    });
   }
   return extractorPromise;
 }
 
-// Picu pemuatan model dan WASM saat offscreen document dimuat.
-// Setelah model siap, langsung pre-compute embedding referensi 54 profile keys
-// agar request SEMANTIC_FALLBACK pertama pun sudah menggunakan cache (warm-up eager).
+// Picu pemuatan model lokal saat offscreen document dimuat, lalu pre-compute
+// embedding referensi 54 profile keys agar request SEMANTIC_FALLBACK pertama
+// langsung menggunakan cache (warm-up eager).
 getExtractor()
-  .then(extractor => getReferenceEmbeddings(extractor))
+  .then(extractor => {
+    console.log("GovConnect Offscreen: Model SBERT lokal berhasil dimuat ✓");
+    return getReferenceEmbeddings(extractor);
+  })
+  .then(() => {
+    console.log("GovConnect Offscreen: Embedding referensi siap ✓");
+  })
   .catch(err => {
-    console.warn("GovConnect Offscreen: Pemuatan awal model atau pre-compute referensi ditunda/gagal:", err);
+    console.warn("GovConnect Offscreen: Pemuatan awal model lokal gagal:", err);
   });
 
 // Cache label → profileKey agar SBERT tidak menghitung ulang label yang sama.
 // Dideklarasikan di scope MODUL (bukan di dalam listener) agar persisten
 // sepanjang lifetime offscreen document dan tidak direset setiap pesan masuk.
 const semanticCache = new Map();
+
+// Safe messaging: menyerap "Extension context invalidated" saat offscreen di-reload
+function safeSend(message) {
+  try {
+    if (!chrome.runtime || !chrome.runtime.id) return;
+    chrome.runtime.sendMessage(message).catch(() => {});
+  } catch (e) {}
+}
 
 // Listener pesan chrome.runtime
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -135,34 +99,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 if (message.action === "SEMANTIC_FALLBACK") {
     (async () => {
         try {
-            // Jika label sudah pernah dihitung, langsung ambil dari cache! (Bypass SBERT)
+            // Cek cache: hanya kembalikan jika BERISI nilai valid (bukan null)
             if (semanticCache.has(message.label)) {
-                chrome.runtime.sendMessage({
-                    action: "SEMANTIC_RESULT",
-                    targetElementId: message.targetElementId,
-                    profileKey: semanticCache.get(message.label)
-                }).catch(() => {});
-                return;
+                const cached = semanticCache.get(message.label);
+                if (cached !== null) {
+                  safeSend({
+                      action: "SEMANTIC_RESULT",
+                      targetElementId: message.targetElementId,
+                      profileKey: cached
+                  });
+                  return;
+                }
+                // Cached null → model mungkin belum siap dulu, coba lagi
+                semanticCache.delete(message.label);
             }
 
-            // Jika belum ada di cache, biarkan SBERT berpikir
+            // Jika belum ada di cache atau cache null, biarkan SBERT berpikir
             const result = await processSemanticFallback(message.label, message.targetElementId);
             
-            // Simpan hasilnya ke memori agar perhitungan berikutnya instan
-            semanticCache.set(message.label, result);
+            // Hanya cache hasil non-null (hindari lock null permanen)
+            if (result !== null) {
+              semanticCache.set(message.label, result);
+            }
 
-            chrome.runtime.sendMessage({
+            safeSend({
                 action: "SEMANTIC_RESULT",
                 targetElementId: message.targetElementId,
                 profileKey: result
-            }).catch(() => {});
+            });
         } catch (err) {
             console.error("Offscreen: Semantic Fallback Error", err);
-            chrome.runtime.sendMessage({
+            safeSend({
                 action: "SEMANTIC_RESULT",
                 targetElementId: message.targetElementId,
                 profileKey: null
-            }).catch(() => {});
+            });
         }
     })();
     return true; 
@@ -295,12 +266,12 @@ async function processSemanticFallback(labelText, targetElementId) {
 
     if (bestMatchScore >= SEMANTIC_THRESHOLD) {
       // 4. Kirim SEMANTIC_RESULT ke background.js agar diteruskan ke content script
-      chrome.runtime.sendMessage({
+      safeSend({
         action: "SEMANTIC_RESULT",
         targetElementId: targetElementId,
         profileKey: bestMatchKey,
         score: bestMatchScore
-      }).catch(() => {});
+      });
 
       return bestMatchKey;
     }
