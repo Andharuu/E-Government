@@ -60,7 +60,7 @@ async def log_activity(
 @limiter.limit("30/minute")
 def get_activities(
     request: Request,
-    limit: int = Query(10, ge=1, le=100, description="Batas jumlah item per halaman"),
+    limit: int = Query(50, ge=1, le=1000, description="Batas jumlah item per halaman"),
     offset: int = Query(0, ge=0, description="Offset untuk paginasi"),
     status: Optional[str] = Query(None, description="Filter status: success, partial, failed"),
     domain: Optional[str] = Query(None, description="Filter domain website"),

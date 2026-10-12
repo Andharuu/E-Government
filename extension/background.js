@@ -1,22 +1,29 @@
 // Background Service Worker — GovConnect
-// Mendukung Mode 1-Klik Instan (One-Click Autofill) & Mode Panel Samping
+// Mode Panel Samping Cerdas dengan Deteksi Semantik & Sinkronisasi Profil Otomatis
 
 const API_BASE = "http://127.0.0.1:8000/api/v1";
 const DASHBOARD_URL = "http://localhost:5173/dashboard";
 
 // ============================================================
-// Matikan openPanelOnActionClick agar chrome.action.onClicked BISA TERPANGGIL
-// ============================================================
-function resetPanelBehavior() {
-  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
-    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => { });
-  }
-}
+// Klik ikon toolbar ekstensi membuka/menutup panel samping melayang yang menimpa web (tanpa membelah layar)
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab?.id) return;
+  if (tab.url?.startsWith("chrome://") || tab.url?.startsWith("chrome-extension://")) return;
 
-resetPanelBehavior();
+  chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_SIDEBAR" }).catch(() => {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content_script.js"]
+    }).then(() => {
+      setTimeout(() => {
+        chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_SIDEBAR" }).catch(() => {});
+      }, 120);
+    }).catch(() => {});
+  });
+});
 
 chrome.runtime.onInstalled.addListener(() => {
-  resetPanelBehavior();
+  setupPanelBehavior();
   setupContextMenus();
   updateActionBehavior();
   checkAndUpdateDictionaries();
@@ -24,7 +31,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  resetPanelBehavior();
+  setupPanelBehavior();
   updateActionBehavior();
   checkAndUpdateDictionaries();
   setupOffscreenDocument();
@@ -41,7 +48,7 @@ async function setupOffscreenDocument() {
     await chrome.offscreen.createDocument({
       url: 'offscreen.html',
       reasons: ['WORKERS'],
-      justification: 'Menjalankan komputasi berat untuk mencocokkan label form di background worker'
+      justification: 'Menjalankan komputasi semantik untuk pencocokan formulir di background worker'
     });
     console.log("GovConnect: Offscreen document berhasil dibuat.");
   } catch (err) {
@@ -74,7 +81,7 @@ async function checkAndUpdateDictionaries() {
 
       if (manifest.hash && hashHex !== manifest.hash) {
         console.warn("GovConnect: SHA-256 validation failed for dictionary update!");
-        return; // Reject update
+        return;
       }
 
       await chrome.storage.local.set({
@@ -94,26 +101,16 @@ async function checkAndUpdateDictionaries() {
 async function setupContextMenus() {
   try {
     chrome.contextMenus.removeAll(() => {
-      chrome.storage.local.get("govconnect_one_click_mode", (res) => {
-        const isOneClick = res.govconnect_one_click_mode !== false; // Default: true
+      chrome.contextMenus.create({
+        id: "govconnect_open_sidepanel",
+        title: "📋 Buka Panel Samping GovConnect",
+        contexts: ["action", "page"]
+      });
 
-        chrome.contextMenus.create({
-          id: "govconnect_toggle_one_click",
-          title: `⚡ Mode 1-Klik Instan: ${isOneClick ? "AKTIF" : "NONAKTIF"} (Klik untuk ubah)`,
-          contexts: ["action"]
-        });
-
-        chrome.contextMenus.create({
-          id: "govconnect_open_sidepanel",
-          title: "📋 Buka Panel Samping GovConnect",
-          contexts: ["action", "page"]
-        });
-
-        chrome.contextMenus.create({
-          id: "govconnect_open_dashboard",
-          title: "🌐 Buka Dashboard Web GovConnect",
-          contexts: ["action", "page"]
-        });
+      chrome.contextMenus.create({
+        id: "govconnect_open_dashboard",
+        title: "🌐 Buka Dashboard Web GovConnect",
+        contexts: ["action", "page"]
       });
     });
   } catch (err) {
@@ -125,31 +122,16 @@ async function setupContextMenus() {
 // Update Label & Tooltip Action Toolbar
 // ============================================================
 async function updateActionBehavior() {
-  const res = await chrome.storage.local.get("govconnect_one_click_mode");
-  const isOneClick = res.govconnect_one_click_mode !== false; // default true
-
   chrome.action.setTitle({
-    title: isOneClick
-      ? "GovConnect — ⚡ Mode 1-Klik Aktif (Klik untuk mengisi form langsung)"
-      : "GovConnect — 📋 Mode Panel (Klik untuk membuka panel samping)"
+    title: "GovConnect — Asisten Pengisian Formulir Otomatis"
   });
-
-  chrome.contextMenus.update("govconnect_toggle_one_click", {
-    title: `⚡ Mode 1-Klik Instan: ${isOneClick ? "AKTIF" : "NONAKTIF"} (Klik untuk ubah)`
-  }).catch(() => { });
 }
 
 // ============================================================
 // Klik Kanan Context Menu Handler
 // ============================================================
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "govconnect_toggle_one_click") {
-    const res = await chrome.storage.local.get("govconnect_one_click_mode");
-    const newMode = !(res.govconnect_one_click_mode !== false);
-    await chrome.storage.local.set({ govconnect_one_click_mode: newMode });
-    await updateActionBehavior();
-    notifyTabsModeChanged(newMode);
-  } else if (info.menuItemId === "govconnect_open_sidepanel") {
+  if (info.menuItemId === "govconnect_open_sidepanel") {
     if (tab && tab.id) {
       chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
     }
@@ -434,6 +416,39 @@ function notifyTabsModeChanged(isOneClick) {
 const pendingSemanticTabs = new Map();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "GET_CURRENT_TAB_INFO") {
+    if (sender.tab) {
+      sendResponse({ tab: sender.tab });
+    } else {
+      chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+        sendResponse({ tab: tabs[0] || null });
+      });
+    }
+    return true;
+  }
+
+  if (message.action === "SEND_TAB_MESSAGE") {
+    const tabId = message.tabId || sender.tab?.id;
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, message.message).then(res => {
+        sendResponse(res || null);
+      }).catch(() => {
+        sendResponse(null);
+      });
+      return true;
+    }
+    sendResponse(null);
+    return false;
+  }
+
+  if (message.action === "CLOSE_SIDEBAR") {
+    const tabId = sender.tab?.id;
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, { action: "CLOSE_FLOATING_SIDEBAR" }).catch(() => {});
+    }
+    sendResponse({ success: true });
+    return false;
+  }
   if (message.action === "SEMANTIC_RESULT") {
     const targetTabId = message.targetElementId
       ? pendingSemanticTabs.get(message.targetElementId)
@@ -476,7 +491,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "FORM_UPDATED") {
-    console.log("Form state update detected via mutation/visibility from content script.");
     sendResponse({ success: true });
     return false;
   }
@@ -499,24 +513,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "SET_ONE_CLICK_MODE") {
-    const mode = !!message.enabled;
-    chrome.storage.local.set({ govconnect_one_click_mode: mode }, () => {
-      resetPanelBehavior();
-      updateActionBehavior();
-      notifyTabsModeChanged(mode);
-      sendResponse({ success: true, mode });
-    });
-    return true;
-  }
-
-  if (message.action === "GET_ONE_CLICK_MODE") {
-    chrome.storage.local.get("govconnect_one_click_mode", (result) => {
-      sendResponse({ mode: result.govconnect_one_click_mode !== false });
-    });
-    return true;
-  }
-
   if (message.action === "PROFILE_UPDATED") {
     if (message.profile) {
       chrome.storage.local.set({ govconnect_cached_profile: message.profile });
@@ -527,7 +523,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "OPEN_SIDEPANEL") {
     const tabId = message.tabId || sender.tab?.id;
     if (tabId) {
-      chrome.sidePanel.open({ tabId }).catch(() => { });
+      chrome.tabs.sendMessage(tabId, { action: "TOGGLE_FLOATING_ASSISTANT" }).catch(() => { });
     }
     sendResponse({ success: true });
     return true;
