@@ -18,22 +18,22 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variantStyles: Record<BadgeVariant, string> = {
-    success: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+    success: 'bg-[#4E8EA2]/15 text-[#0A4174] border-[#4E8EA2]/40',
     warning: 'bg-amber-50 text-amber-800 border-amber-200/80',
     danger: 'bg-rose-50 text-rose-800 border-rose-200/80',
-    info: 'bg-blue-50 text-blue-700 border-blue-200/80',
-    neutral: 'bg-slate-100 text-slate-700 border-slate-200/80',
-    outline: 'bg-transparent text-slate-600 border-slate-200',
-    primary: 'bg-blue-600 text-white border-transparent shadow-xs',
+    info: 'bg-[#BDD8E9]/40 text-[#0A4174] border-[#6EA2B3]/40',
+    neutral: 'bg-[#BDD8E9]/25 text-[#001D39] border-[#BDD8E9]',
+    outline: 'bg-transparent text-[#49769F] border-[#BDD8E9]',
+    primary: 'bg-[#0A4174] text-white border-transparent shadow-xs',
   };
 
   const dotColors: Record<BadgeVariant, string> = {
-    success: 'bg-emerald-500',
+    success: 'bg-[#4E8EA2]',
     warning: 'bg-amber-500',
     danger: 'bg-rose-500',
-    info: 'bg-blue-500',
-    neutral: 'bg-slate-400',
-    outline: 'bg-slate-400',
+    info: 'bg-[#7BBDE8]',
+    neutral: 'bg-[#6EA2B3]',
+    outline: 'bg-[#49769F]',
     primary: 'bg-white',
   };
 

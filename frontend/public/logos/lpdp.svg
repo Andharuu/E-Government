@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="lpdpBg" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#0D47A1"/>
+      <stop offset="100%" stop-color="#001E3D"/>
+    </radialGradient>
+    <linearGradient id="lpdpFlame1" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF6F00"/>
+      <stop offset="100%" stop-color="#FFD54F"/>
+    </linearGradient>
+    <linearGradient id="lpdpFlame2" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#00897B"/>
+      <stop offset="100%" stop-color="#80CBC4"/>
+    </linearGradient>
+    <linearGradient id="lpdpFlame3" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#1E88E5"/>
+      <stop offset="100%" stop-color="#90CAF9"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Circle Navy -->
+  <circle cx="100" cy="100" r="92" fill="url(#lpdpBg)" stroke="#26C6DA" stroke-width="2.5"/>
+  <!-- Tiga Helai Daun / Kobaran Cita-cita LPDP -->
+  <g transform="translate(10, 5)">
+    <!-- Daun Kiri (Teal) -->
+    <path d="M85,120 C55,100 48,60 75,38 C82,58 78,95 85,120 Z" fill="url(#lpdpFlame2)"/>
+    <!-- Daun Kanan (Biru Langit) -->
+    <path d="M95,120 C125,100 132,60 105,38 C98,58 102,95 95,120 Z" fill="url(#lpdpFlame3)"/>
+    <!-- Daun Tengah / Api Emas Utama -->
+    <path d="M90,135 C78,110 78,65 90,24 C102,65 102,110 90,135 Z" fill="url(#lpdpFlame1)"/>
+  </g>
+  <!-- Banner Putih Lengkung & Teks LPDP -->
+  <rect x="52" y="148" width="96" height="24" rx="12" fill="#FFFFFF" stroke="#FFB300" stroke-width="2"/>
+  <text x="100" y="165" text-anchor="middle" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="14" fill="#0D47A1" letter-spacing="2">LPDP</text>
+</svg>

@@ -20,6 +20,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     is_active: bool = True
+    is_admin: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -210,3 +211,32 @@ class AnalyticsResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     detail: str
+
+
+# ============================================================
+# NOTIFICATION SCHEMAS
+# ============================================================
+class NotificationCreate(BaseModel):
+    title: str = Field(..., description="Judul notifikasi")
+    desc: Optional[str] = Field(None, description="Deskripsi notifikasi")
+    type: str = Field("info", description="Tipe: success, info, warning, system")
+    source: Optional[str] = Field("system", description="Sumber notifikasi")
+    ref_id: Optional[int] = Field(None, description="Referensi ID (activity id, dll)")
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    desc: Optional[str] = None
+    type: str
+    read: bool
+    source: Optional[str] = None
+    ref_id: Optional[int] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NotificationUnreadCount(BaseModel):
+    count: int

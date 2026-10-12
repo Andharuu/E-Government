@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="dukcapilGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#004D99"/>
+      <stop offset="100%" stop-color="#002244"/>
+    </linearGradient>
+    <linearGradient id="goldDukcapil" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+  </defs>
+  <!-- Perisai Kemendagri / Dukcapil -->
+  <polygon points="100,10 186,68 152,184 48,184 14,68" fill="url(#dukcapilGrad)" stroke="url(#goldDukcapil)" stroke-width="4"/>
+  <!-- Lingkaran Chip IKD & Bintang -->
+  <polygon points="100,28 103,37 113,37 105,43 108,52 100,47 92,52 95,43 87,37 97,37" fill="url(#goldDukcapil)"/>
+  <!-- Siluet KTP Digital & Chip -->
+  <rect x="52" y="60" width="96" height="64" rx="8" fill="#FFFFFF" stroke="#004D99" stroke-width="2"/>
+  <rect x="62" y="72" width="22" height="28" rx="3" fill="#E2E8F0"/>
+  <!-- Simbol Foto Pengguna -->
+  <circle cx="73" cy="82" r="5" fill="#004D99"/>
+  <path d="M65,96 C65,90 81,90 81,96 Z" fill="#004D99"/>
+  <!-- Chip Gold -->
+  <rect x="92" y="74" width="16" height="12" rx="2" fill="url(#goldDukcapil)" stroke="#B78103" stroke-width="1"/>
+  <!-- Baris Baris Data KTP -->
+  <line x1="92" y1="92" x2="136" y2="92" stroke="#64748B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="92" y1="100" x2="130" y2="100" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
+  <line x1="92" y1="108" x2="124" y2="108" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
+  <!-- Gelombang Sidik Jari / Kependudukan -->
+  <path d="M56,140 Q100,126 144,140" fill="none" stroke="url(#goldDukcapil)" stroke-width="3" stroke-linecap="round"/>
+  <rect x="44" y="150" width="112" height="20" rx="6" fill="#002244" stroke="url(#goldDukcapil)" stroke-width="1.5"/>
+  <text x="100" y="164" text-anchor="middle" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="10" fill="#FFFFFF" letter-spacing="1">DUKCAPIL</text>
+</svg>

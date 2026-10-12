@@ -5,16 +5,38 @@ def test_register_success(client):
     )
     assert response.status_code == 201
     data = response.json()
-    assert data["email"] == "newuser@example.com"
-    assert "id" in data
+    # Respons generik (anti email-enumeration) — tidak mengembalikan data akun.
+    assert "detail" in data
+    assert "email" not in data
     assert "password" not in data
+
+    # Akun benar-benar dibuat → dapat login.
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "newuser@example.com", "password": "Password123"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert login.status_code == 200
 
 
 def test_register_duplicate_email(client):
-    client.post("/api/v1/auth/register", json={"email": "dup@example.com", "password": "Password123"})
-    response = client.post("/api/v1/auth/register", json={"email": "dup@example.com", "password": "Password123"})
-    assert response.status_code == 400
-    assert "sudah terdaftar" in response.json()["detail"]
+    """Respons registrasi harus IDENTIK baik untuk email baru maupun email lama
+    (mencegah email enumeration), dan akun lama TIDAK boleh ditimpa."""
+    r1 = client.post("/api/v1/auth/register", json={"email": "dup@example.com", "password": "Password123"})
+    r2 = client.post("/api/v1/auth/register", json={"email": "dup@example.com", "password": "Password123"})
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+    # Respons tidak dapat dibedakan satu sama lain.
+    assert r1.json() == r2.json()
+    assert "email" not in r2.json()
+
+    # Kata sandi lama tetap berlaku (tidak ditimpa).
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "dup@example.com", "password": "Password123"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert login.status_code == 200
 
 
 def test_register_invalid_email(client):

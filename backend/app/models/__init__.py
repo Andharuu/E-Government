@@ -1,5 +1,5 @@
 from app.database import Base
-from app.models.entities import User, Profile, Mapping, Activity
+from app.models.entities import User, Profile, Mapping, Activity, Complaint, Notification, AuditLog
 
 __all__ = [
     "Base",
@@ -7,4 +7,7 @@ __all__ = [
     "Profile",
     "Mapping",
     "Activity",
+    "Complaint",
+    "Notification",
+    "AuditLog",
 ]

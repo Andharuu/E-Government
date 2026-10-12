@@ -3,27 +3,66 @@
 @import "@flaticon/flaticon-uicons/css/regular/rounded.css";
 @import "@flaticon/flaticon-uicons/css/bold/rounded.css";
 
+@theme {
+  --color-gov-1: #001D39;
+  --color-gov-2: #0A4174;
+  --color-gov-3: #49769F;
+  --color-gov-4: #4E8EA2;
+  --color-gov-5: #6EA2B3;
+  --color-gov-6: #7BBDE8;
+  --color-gov-7: #BDD8E9;
+
+  --color-gov-deep: #001D39;
+  --color-gov-navy: #0A4174;
+  --color-gov-steel: #49769F;
+  --color-gov-teal: #4E8EA2;
+  --color-gov-cyan: #6EA2B3;
+  --color-gov-sky: #7BBDE8;
+  --color-gov-ice: #BDD8E9;
+
+  --color-blue-50: #F0F6FA;
+  --color-blue-100: #BDD8E9;
+  --color-blue-200: #9EC6E2;
+  --color-blue-300: #7BBDE8;
+  --color-blue-400: #6EA2B3;
+  --color-blue-500: #4E8EA2;
+  --color-blue-600: #0A4174;
+  --color-blue-700: #08345D;
+  --color-blue-800: #001D39;
+  --color-blue-900: #001326;
+  --color-blue-950: #000B17;
+}
+
 @layer base {
   :root {
+    /* Color Palette Hierarchy */
+    --gov-1: #001D39;
+    --gov-2: #0A4174;
+    --gov-3: #49769F;
+    --gov-4: #4E8EA2;
+    --gov-5: #6EA2B3;
+    --gov-6: #7BBDE8;
+    --gov-7: #BDD8E9;
+
     /* Design Tokens - Netral */
     --bg-page: #F6F8FB;
     --surface: #FFFFFF;
-    --border: #E8ECF2;
-    --border-subtle: #F1F4F8;
-    --text-primary: #0F172A;
-    --text-secondary: #475569;
-    --text-tertiary: #64748B;
+    --border: #BDD8E9;
+    --border-subtle: #E2EBF2;
+    --text-primary: #001D39;
+    --text-secondary: #0A4174;
+    --text-tertiary: #49769F;
 
     /* Design Tokens - Aksen Utama */
-    --primary: #2563EB;
-    --primary-hover: #1D4ED8;
-    --primary-tint: #EFF4FF;
-    --sidebar-bg: #14225E;
+    --primary: #0A4174;
+    --primary-hover: #001D39;
+    --primary-tint: #BDD8E9;
+    --sidebar-bg: #001D39;
 
-    /* Design Tokens - Semantik */
-    --status-success-text: #047857;
-    --status-success-bg: #ECFDF5;
-    --status-success-dot: #10B981;
+    /* Design Tokens - Semantik (Peringatan tetap merah/amber sesuai instruksi) */
+    --status-success-text: #0A4174;
+    --status-success-bg: #BDD8E9;
+    --status-success-dot: #4E8EA2;
 
     --status-warning-text: #B45309;
     --status-warning-bg: #FFFBEB;
@@ -34,17 +73,17 @@
     --status-danger-dot: #F43F5E;
 
     /* Legacy compatibility mappings */
-    --brand-blue-deep: #14225E;
-    --brand-blue: #1D4ED8;
-    --brand-blue-light: #2563EB;
-    --canvas-bg: #14225E;
+    --brand-blue-deep: #001D39;
+    --brand-blue: #0A4174;
+    --brand-blue-light: #7BBDE8;
+    --canvas-bg: #001D39;
     --panel-bg: #F6F8FB;
     --panel-radius: 28px;
     --surface-white: #FFFFFF;
   }
 
   html {
-    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
     background-color: var(--sidebar-bg);
     -webkit-font-smoothing: antialiased;
@@ -120,5 +159,17 @@
       transform: translateX(0);
       opacity: 1;
     }
+  }
+
+  /* ============================================================
+     Perlindungan PII (data pribadi) — penyamaran visual opsional.
+     Field bertanda [data-pii] akan tersamar (bullet) saat kontainer
+     memiliki kelas .pii-masked. Fokus pada field otomatis membuka
+     samaran agar pengguna tetap dapat mengedit dengan nyaman.
+     ============================================================ */
+  .pii-masked [data-pii]:not(:focus) {
+    -webkit-text-security: disc;
+    text-security: disc;
+    letter-spacing: 0.12em;
   }
 }

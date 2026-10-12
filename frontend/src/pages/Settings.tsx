@@ -91,22 +91,22 @@ export function SettingsPage() {
     }
   };
 
-  const inputClass = "w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal";
+  const inputClass = "w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal";
 
   return (
     <div className="w-full space-y-6 pb-12">
       {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#0F172A] tracking-[-0.02em]">Pengaturan & keamanan</h1>
-          <p className="text-[14px] leading-[22px] font-normal text-[#475569] mt-1">Kelola kredensial akun, perlindungan enkripsi data, dan preferensi privasi Anda.</p>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Pengaturan & keamanan</h1>
+          <p className="text-[14px] leading-[22px] font-normal text-[#49769F] mt-1">Kelola kredensial akun, perlindungan enkripsi data, dan preferensi privasi Anda.</p>
         </div>
       </div>
 
       {/* Banner Ringkasan Status Akun & Keamanan Dinamis */}
-      <div className="bg-gradient-to-r from-[#0F172A] via-[#1E293B] to-[#1E3A8A] rounded-[16px] p-5 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="bg-gradient-to-r from-[#001D39] via-[#0A4174] to-[#001D39] rounded-[16px] p-5 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 border border-[#BDD8E9]/20">
         <div className="flex items-center gap-4">
-          <div className="w-13 h-13 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white text-[20px] font-bold shadow-inner shrink-0">
+          <div className="w-13 h-13 rounded-full bg-white/10 border border-[#7BBDE8]/30 flex items-center justify-center text-white text-[20px] font-bold shadow-inner shrink-0">
             {user?.email?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
@@ -117,25 +117,25 @@ export function SettingsPage() {
                 Terverifikasi
               </span>
             </div>
-            <p className="text-[13px] leading-[18px] text-slate-300 mt-0.5">
+            <p className="text-[13px] leading-[18px] text-[#BDD8E9] mt-0.5">
               Akun Warga GovConnect • Perlindungan Kriptografi Aktif
             </p>
           </div>
         </div>
 
         {/* 3 Status Chips Dinamis */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex wrap items-center gap-2.5">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white/10 border border-white/15 backdrop-blur-xs">
             <FontAwesome name="shield-halved" variant="solid" className="text-emerald-400 text-xs" />
             <div className="text-left">
-              <p className="text-[10px] text-slate-300 uppercase tracking-wider font-semibold">Enkripsi</p>
+              <p className="text-[10px] text-[#BDD8E9] uppercase tracking-wider font-semibold">Enkripsi</p>
               <p className="text-[12px] font-medium text-white leading-tight">AES-256 Aktif</p>
             </div>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white/10 border border-white/15 backdrop-blur-xs">
-            <FontAwesome name="database" variant="solid" className="text-blue-400 text-xs" />
+            <FontAwesome name="database" variant="solid" className="text-[#7BBDE8] text-xs" />
             <div className="text-left">
-              <p className="text-[10px] text-slate-300 uppercase tracking-wider font-semibold">Penyimpanan</p>
+              <p className="text-[10px] text-[#BDD8E9] uppercase tracking-wider font-semibold">Penyimpanan</p>
               <p className="text-[12px] font-medium text-white leading-tight">Zero-Cloud Leak</p>
             </div>
           </div>
@@ -147,25 +147,25 @@ export function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Kolom Kiri: Kredensial & Ganti Kata Sandi (7 Kolom) */}
         <div className="lg:col-span-7 space-y-6">
-          <Card className="p-6 lg:p-7 space-y-5 shadow-xs border border-slate-200/80">
+          <Card className="p-6 lg:p-7 space-y-5 shadow-xs border border-[#BDD8E9]/60">
             {/* Header: Icon FontAwesome Tanpa Background, Deskripsi Sejajar */}
-            <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
-              <FontAwesome name="user-shield" variant="solid" className="text-[20px] text-[#2563EB] shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 border-b border-[#BDD8E9]/30 pb-4">
+              <FontAwesome name="user-shield" variant="solid" className="text-[20px] text-[#0A4174] shrink-0 mt-0.5" />
               <div>
-                <h2 className="text-[16px] leading-[24px] font-semibold text-[#0F172A]">Akun & keamanan sandi</h2>
-                <p className="text-[13px] leading-[20px] font-normal text-[#64748B] mt-0.5">Kelola identitas email terdaftar dan perbarui kata sandi akun</p>
+                <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">Akun & keamanan sandi</h2>
+                <p className="text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5">Kelola identitas email terdaftar dan perbarui kata sandi akun</p>
               </div>
             </div>
 
             {/* Email Field */}
             <div>
-              <label className="block text-[13px] leading-[20px] font-medium text-[#475569] mb-1.5">
+              <label className="block text-[13px] leading-[20px] font-medium text-[#49769F] mb-1.5">
                 Alamat email terdaftar
               </label>
               <div className="flex items-center gap-2 max-w-xl">
-                <div className="flex-1 bg-[#F8FAFC] border border-[#E8ECF2] rounded-[10px] h-10 px-3.5 flex items-center justify-between text-[14px] text-[#334155]">
-                  <span className="font-medium text-[#0F172A]">{user?.email}</span>
-                  <span className="text-[11px] font-semibold text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-[6px]">
+                <div className="flex-1 bg-[#BDD8E9]/15 border border-[#BDD8E9]/60 rounded-[10px] h-10 px-3.5 flex items-center justify-between text-[14px] text-[#001D39]">
+                  <span className="font-medium text-[#001D39]">{user?.email}</span>
+                  <span className="text-[11px] font-semibold text-[#0A4174] bg-[#BDD8E9]/35 px-2 py-0.5 rounded-[6px]">
                     Akun Utama
                   </span>
                 </div>
@@ -173,13 +173,13 @@ export function SettingsPage() {
             </div>
 
             {/* Form Ganti Password Dinamis */}
-            <div className="pt-4 border-t border-slate-100">
+            <div className="pt-4 border-t border-[#BDD8E9]/30">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[14px] leading-[20px] font-semibold text-[#0F172A]">Ganti kata sandi</h3>
+                <h3 className="text-[14px] leading-[20px] font-semibold text-[#001D39]">Ganti kata sandi</h3>
                 <button
                   type="button"
                   onClick={() => setShowPasswords(!showPasswords)}
-                  className="text-[13px] font-medium text-[#2563EB] hover:text-[#1D4ED8] flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="text-[13px] font-medium text-[#0A4174] hover:text-[#001D39] flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Flaticon name={showPasswords ? "eye-crossed" : "eye"} className="text-xs" />
                   <span>{showPasswords ? 'Sembunyikan' : 'Tampilkan'} password</span>
@@ -306,7 +306,7 @@ export function SettingsPage() {
                   <button
                     type="submit"
                     disabled={saving || (!!confirmPassword && !passwordsMatch)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] transition-colors cursor-pointer shadow-xs"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] transition-colors cursor-pointer shadow-xs"
                   >
                     <FontAwesome
                       name={saving ? "spinner" : "lock"}
@@ -329,8 +329,8 @@ export function SettingsPage() {
             <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
               <FontAwesome name="shield-halved" variant="solid" className="text-[20px] text-[#E11D48] shrink-0 mt-0.5" />
               <div>
-                <h2 className="text-[16px] leading-[24px] font-semibold text-[#0F172A]">Manajemen privasi & sesi</h2>
-                <p className="text-[13px] leading-[20px] font-normal text-[#64748B] mt-0.5">Pembersihan data riwayat pengisian dan sesi akun</p>
+                <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">Manajemen privasi & sesi</h2>
+                <p className="text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5">Pembersihan data riwayat pengisian dan sesi akun</p>
               </div>
             </div>
 
@@ -354,8 +354,8 @@ export function SettingsPage() {
             {/* Clear History Box */}
             <div className="p-4 rounded-[12px] bg-[#FFF8F8] border border-[#FDE2E6] space-y-3">
               <div>
-                <p className="text-[14px] leading-[20px] font-medium text-[#0F172A]">Bersihkan riwayat aktivitas</p>
-                <p className="text-[12.5px] leading-[18px] font-normal text-[#64748B] mt-0.5">
+                <p className="text-[14px] leading-[20px] font-medium text-[#001D39]">Bersihkan riwayat aktivitas</p>
+                <p className="text-[12.5px] leading-[18px] font-normal text-[#49769F] mt-0.5">
                   Menghapus seluruh log formulir dan domain yang pernah diisi untuk privasi maksimal.
                 </p>
               </div>
@@ -389,7 +389,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmClear(false)}
-                      className="px-3 py-1.5 text-[12px] font-medium text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-[8px] cursor-pointer"
+                      className="px-3 py-1.5 text-[12px] font-medium text-[#49769F] hover:text-[#001D39] bg-white border border-[#BDD8E9]/70 rounded-[8px] cursor-pointer"
                     >
                       Batal
                     </button>
@@ -403,7 +403,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={logout}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[#475569] bg-white hover:border-[#2563EB] hover:text-[#2563EB] border border-[#E8ECF2] rounded-[10px] transition-colors cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[#49769F] bg-white hover:border-[#0A4174] hover:text-[#0A4174] border border-[#BDD8E9]/70 rounded-[10px] transition-colors cursor-pointer"
               >
                 <Flaticon name="sign-out-alt" className="text-[16px] text-inherit" />
                 <span>Keluar dari akun (logout)</span>

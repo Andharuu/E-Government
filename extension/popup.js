@@ -48,11 +48,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 // One-click toggle removed
 
   document.getElementById("btnDashboard").addEventListener("click", async () => {
-    const activeToken = await getToken();
-    const url = activeToken
-      ? `${DASHBOARD_URL}#token=${encodeURIComponent(activeToken)}`
-      : DASHBOARD_URL;
-    chrome.tabs.create({ url });
+    // Token tidak lagi dikirim via URL hash; sinkronisasi aman via bridge content-script.
+    await getToken();
+    chrome.tabs.create({ url: DASHBOARD_URL });
   });
 
   document.getElementById("btnLogout").addEventListener("click", handleLogout);
@@ -240,7 +238,7 @@ async function handleLogout() {
 function syncAuthToWebTabs(token, email) {
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
-      if (tab.url && (tab.url.includes("localhost:5173") || tab.url.includes("127.0.0.1:5173"))) {
+      if (isGovConnectDashboardUrl(tab.url)) {
         chrome.tabs.sendMessage(tab.id, {
           action: "SYNC_AUTH_FROM_EXTENSION",
           token: token,
@@ -249,6 +247,23 @@ function syncAuthToWebTabs(token, email) {
       }
     });
   });
+}
+
+// Verifikasi origin SECARA PERSIS (bukan substring) untuk mencegah bypass
+// seperti "http://evil.com/?x=localhost:5173".
+const GOVCONNECT_WEB_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+function isGovConnectDashboardUrl(url) {
+  if (!url) return false;
+  try {
+    return GOVCONNECT_WEB_ORIGINS.includes(new URL(url).origin);
+  } catch {
+    return false;
+  }
 }
 
 // ============================================================

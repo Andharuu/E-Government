@@ -18,27 +18,27 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   subLabel,
   icon,
-  iconBg: _iconBg = 'bg-blue-50 text-blue-600',
+  iconBg: _iconBg = 'bg-[#BDD8E9]/30 text-[#0A4174]',
   trend,
   className = '',
 }) => {
   return (
     <div
-      className={`bg-white rounded-[16px] border border-[#E8ECF2] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] flex items-start justify-between gap-3 ${className}`}
+      className={`bg-white rounded-[16px] border border-[#BDD8E9]/60 p-5 shadow-[0_1px_2px_rgba(0,29,57,0.04)] flex items-start justify-between gap-3 ${className}`}
     >
       <div className="min-w-0">
-        <p className="text-[13px] leading-[20px] font-medium text-[#475569] truncate">
+        <p className="text-[13px] leading-[20px] font-medium text-[#49769F] truncate">
           {title}
         </p>
         <div className="flex items-baseline gap-2 mt-2">
-          <span className="text-[28px] leading-[34px] font-semibold text-[#0F172A] tracking-[-0.02em] tabular-nums">
+          <span className="text-[28px] leading-[34px] font-semibold text-[#001D39] tracking-[-0.02em] tabular-nums">
             {value}
           </span>
           {trend && (
             <span
               className={`text-[12px] leading-[16px] font-medium px-2 py-0.5 rounded-full ${
                 trend.positive
-                  ? 'bg-[#ECFDF5] text-[#047857]'
+                  ? 'bg-[#BDD8E9]/40 text-[#0A4174]'
                   : 'bg-[#FFF1F2] text-[#BE123C]'
               }`}
             >
@@ -48,14 +48,14 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
         {subLabel && (
-          <p className="text-[12px] leading-[18px] font-normal text-[#64748B] truncate mt-1">
+          <p className="text-[12px] leading-[18px] font-normal text-[#6EA2B3] truncate mt-1">
             {subLabel}
           </p>
         )}
       </div>
 
       {icon && (
-        <div className="shrink-0 flex items-center justify-center text-[20px] text-[#2563EB] pt-0.5">
+        <div className="shrink-0 flex items-center justify-center text-[20px] text-[#0A4174] pt-0.5">
           {icon}
         </div>
       )}

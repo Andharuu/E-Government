@@ -1,0 +1,53 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=latex 2026.9.30)  30 SEP 2026 14:12
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**"d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/JURNAL_GOVCONNECT.tex"
+(d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/JURNAL_GOVCONNECT.tex
+LaTeX2e <2026-06-01>
+L3 programming layer <2026-08-10>
+(C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex/latex/base\size12.clo
+File: size12.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count276
+\c@section=\count277
+\c@subsection=\count278
+\c@subsubsection=\count279
+\c@paragraph=\count280
+\c@subparagraph=\count281
+\c@figure=\count282
+\c@table=\count283
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen150
+) (C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex/latex/base\inputenc.sty
+Package: inputenc 2024/02/08 v1.3d Input encoding file
+\inpenc@prehook=\toks17
+\inpenc@posthook=\toks18
+
+
+! LaTeX Error: File `utf-8.def' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: def)
+
+Enter file name: 
+! Emergency stop.
+<read *> 
+         
+l.164 \endinput
+               ^^M
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 273 strings out of 467442
+ 4034 string characters out of 5403693
+ 435796 words of memory out of 5000000
+ 29666 multiletter control sequences out of 15000+600000
+ 628019 words of font info for 41 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 36i,0n,49p,262b,36s stack positions out of 10000i,1000n,20000p,200000b,200000s
+No pages of output.

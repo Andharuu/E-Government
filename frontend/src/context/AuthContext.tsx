@@ -13,6 +13,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Origin dashboard GovConnect yang diizinkan (untuk verifikasi postMessage).
+const ALLOWED_ORIGINS = [
+  window.location.origin,
+].filter(Boolean);
+const WEB_ORIGIN = window.location.origin;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -20,36 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Cek apakah ada transfer token dari Extension via hash (#token=...)
-    let initialToken = localStorage.getItem('govconnect_token');
-    const hash = window.location.hash;
-
-    if (hash && hash.includes('token=')) {
-      try {
-        const params = new URLSearchParams(hash.substring(1));
-        const hashToken = params.get('token');
-        if (hashToken) {
-          initialToken = hashToken;
-          localStorage.setItem('govconnect_token', hashToken);
-          // Bersihkan hash dari URL agar rapi
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-      } catch (err) {
-        console.error('Error parsing token from hash:', err);
-      }
-    }
+    // Token HANYA diambil dari storage (tidak lagi dari URL hash — hash bocor
+    // ke riwayat browser/Referer & dapat disuntik oleh tautan jahat).
+    const initialToken = localStorage.getItem('govconnect_token');
 
     if (initialToken) {
       setToken(initialToken);
       authApi.me()
         .then(res => {
           setUser(res.data);
-          // Sync balik ke extension
+          // Sync balik ke extension (targetOrigin spesifik, bukan "*")
           window.postMessage({
             type: 'GOVCONNECT_WEB_AUTH_SYNC',
             token: initialToken,
             email: res.data.email
-          }, '*');
+          }, WEB_ORIGIN);
         })
         .catch(() => {
           localStorage.removeItem('govconnect_token');
@@ -64,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 2. Listener komunikasi dengan Chrome Extension Content Script
     const handleMessage = (event: MessageEvent) => {
+      // Verifikasi ketat: hanya terima pesan dari window sendiri + origin yang diizinkan.
+      if (event.source !== window) return;
+      if (!ALLOWED_ORIGINS.includes(event.origin)) return;
       if (!event.data || typeof event.data !== 'object') return;
 
       if (event.data.type === 'GOVCONNECT_EXTENSION_READY' || event.data.type === 'GOVCONNECT_EXTENSION_PONG') {
@@ -88,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Ping extension untuk cek keterhubungan
     const pingTimer = setTimeout(() => {
-      window.postMessage({ type: 'GOVCONNECT_PING_EXTENSION' }, '*');
+      window.postMessage({ type: 'GOVCONNECT_PING_EXTENSION' }, WEB_ORIGIN);
     }, 400);
 
     return () => {
@@ -111,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       type: 'GOVCONNECT_WEB_AUTH_SYNC',
       token: access_token,
       email: email
-    }, '*');
+    }, WEB_ORIGIN);
   };
 
   const register = async (email: string, password: string) => {
@@ -130,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       type: 'GOVCONNECT_WEB_AUTH_SYNC',
       token: null,
       email: null
-    }, '*');
+    }, WEB_ORIGIN);
   };
 
   return (

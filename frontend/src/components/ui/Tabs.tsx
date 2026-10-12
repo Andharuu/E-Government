@@ -24,7 +24,7 @@ export const Tabs: React.FC<TabsProps> = ({
 }) => {
   if (variant === 'underline') {
     return (
-      <div className={`flex items-center gap-6 border-b border-slate-200 overflow-x-auto no-scrollbar ${className}`}>
+      <div className={`flex items-center gap-6 border-b border-[#BDD8E9] overflow-x-auto no-scrollbar ${className}`}>
         {items.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -33,14 +33,14 @@ export const Tabs: React.FC<TabsProps> = ({
               onClick={() => onChange(item.id)}
               className={`pb-3 text-xs sm:text-[13px] font-semibold transition-all duration-150 flex items-center gap-2 border-b-2 whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'border-blue-600 text-blue-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                  ? 'border-[#0A4174] text-[#0A4174] font-bold'
+                  : 'border-transparent text-[#49769F] hover:text-[#001D39] hover:border-[#6EA2B3]'
               }`}
             >
               {item.icon && <span className="shrink-0">{item.icon}</span>}
               <span>{item.label}</span>
               {item.badge !== undefined && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-bold">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#BDD8E9]/40 text-[#0A4174] font-bold">
                   {item.badge}
                 </span>
               )}
@@ -52,7 +52,7 @@ export const Tabs: React.FC<TabsProps> = ({
   }
 
   return (
-    <div className={`flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl overflow-x-auto no-scrollbar ${className}`}>
+    <div className={`flex items-center gap-1.5 p-1 bg-[#BDD8E9]/25 border border-[#BDD8E9]/50 rounded-xl overflow-x-auto no-scrollbar ${className}`}>
       {items.map((item) => {
         const isActive = activeTab === item.id;
         return (
@@ -61,15 +61,15 @@ export const Tabs: React.FC<TabsProps> = ({
             onClick={() => onChange(item.id)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               isActive
-                ? 'bg-white text-blue-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                ? 'bg-white text-[#0A4174] shadow-xs font-bold border border-[#BDD8E9]/50'
+                : 'text-[#49769F] hover:text-[#001D39] hover:bg-white/60'
             }`}
           >
             {item.icon && <span className="shrink-0">{item.icon}</span>}
             <span>{item.label}</span>
             {item.badge !== undefined && (
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+                isActive ? 'bg-[#BDD8E9]/60 text-[#0A4174]' : 'bg-[#BDD8E9]/30 text-[#49769F]'
               }`}>
                 {item.badge}
               </span>

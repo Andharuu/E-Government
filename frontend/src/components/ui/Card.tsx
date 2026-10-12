@@ -9,8 +9,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 ${
-          hover ? 'hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] hover:border-slate-300' : ''
+        className={`bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] transition-all duration-150 ${
+          hover ? 'hover:shadow-[0_4px_12px_rgba(0,29,57,0.08)] hover:border-[#6EA2B3]' : ''
         } ${className}`}
         {...props}
       >
@@ -25,7 +25,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 pb-4 border-b border-[#F1F4F8] flex items-center justify-between gap-4 ${className}`}
+      className={`p-6 pb-4 border-b border-[#BDD8E9]/40 flex items-center justify-between gap-4 ${className}`}
       {...props}
     >
       {children}
@@ -38,7 +38,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttribut
   ({ className = '', children, ...props }, ref) => (
     <h3
       ref={ref}
-      className={`text-[16px] leading-[24px] font-semibold tracking-[-0.01em] text-[#0F172A] ${className}`}
+      className={`text-[16px] leading-[24px] font-semibold tracking-[-0.01em] text-[#001D39] ${className}`}
       {...props}
     >
       {children}
@@ -51,7 +51,7 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
   ({ className = '', children, ...props }, ref) => (
     <p
       ref={ref}
-      className={`text-[13px] leading-[20px] font-normal text-[#64748B] mt-0.5 ${className}`}
+      className={`text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5 ${className}`}
       {...props}
     >
       {children}
@@ -73,7 +73,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 pt-4 border-t border-[#F1F4F8] flex items-center justify-between gap-3 ${className}`}
+      className={`p-6 pt-4 border-t border-[#BDD8E9]/40 flex items-center justify-between gap-3 ${className}`}
       {...props}
     >
       {children}

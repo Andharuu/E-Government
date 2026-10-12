@@ -1,0 +1,21 @@
+# Secrets & kunci (JANGAN commit)
+.env
+.env.*
+!.env.example
+.secret_key
+.pii_key
+.pii_salt
+
+# Basis data lokal
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/

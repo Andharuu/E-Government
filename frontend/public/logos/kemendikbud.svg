@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <!-- Background Shield (Pentagon Segilima Biru) -->
+  <polygon points="100,8 190,74 156,182 44,182 10,74" fill="#003580" stroke="#FFFFFF" stroke-width="3"/>
+  <polygon points="100,16 180,75 149,172 51,172 20,75" fill="#0047AB"/>
+  <!-- Sayap Emas Garuda / Tut Wuri Handayani -->
+  <g fill="#F5B000" stroke="#B37D00" stroke-width="0.8">
+    <!-- Sayap Kiri -->
+    <path d="M100,105 C75,100 50,85 30,55 C45,78 65,95 100,105 Z"/>
+    <path d="M100,118 C70,115 48,102 34,75 C48,94 70,110 100,118 Z"/>
+    <path d="M100,132 C72,130 52,118 42,95 C54,112 74,125 100,132 Z"/>
+    <!-- Sayap Kanan -->
+    <path d="M100,105 C125,100 150,85 170,55 C155,78 135,95 100,105 Z"/>
+    <path d="M100,118 C130,115 152,102 166,75 C152,94 130,110 100,118 Z"/>
+    <path d="M100,132 C128,130 148,118 158,95 C146,112 126,125 100,132 Z"/>
+    <!-- Ekor Bawah -->
+    <path d="M90,135 L100,165 L110,135 Z"/>
+    <path d="M78,134 L92,160 L98,134 Z"/>
+    <path d="M122,134 L108,160 L102,134 Z"/>
+  </g>
+  <!-- Buku Terbuka Putih di Bawah -->
+  <path d="M100,148 C85,142 65,145 52,152 C65,158 85,155 100,160 C115,155 135,158 148,152 C135,145 115,142 100,148 Z" fill="#FFFFFF" stroke="#003580" stroke-width="1.5"/>
+  <!-- Blencong / Lampu Api Menyala Merah-Kuning -->
+  <path d="M100,45 C92,60 94,76 100,90 C106,76 108,60 100,45 Z" fill="#E60000"/>
+  <path d="M100,52 C95,64 96,75 100,85 C104,75 105,64 100,52 Z" fill="#FFCC00"/>
+  <ellipse cx="100" cy="92" rx="10" ry="5" fill="#F5B000" stroke="#B37D00" stroke-width="1"/>
+</svg>

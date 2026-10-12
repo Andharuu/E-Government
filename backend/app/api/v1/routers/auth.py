@@ -55,26 +55,33 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # ============================================================
 # Endpoints Otentikasi
 # ============================================================
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
 def register(request: Request, payload: UserCreate, db: Session = Depends(get_db)):
-    """Mendaftarkan akun baru pengguna GovConnect."""
+    """
+    Mendaftarkan akun baru pengguna GovConnect.
 
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Alamat email sudah terdaftar"
+    Catatan keamanan (anti email-enumeration): respons SELALU identik, baik ketika
+    email baru berhasil dibuat maupun ketika email sudah terdaftar. Ini mencegah
+    penyerang menebak email mana yang terdaftar pada sistem.
+
+    Email dinormalisasi (lowercase + strip) agar konsisten dengan proses login.
+    Akun yang sudah ada TIDAK pernah ditimpa (kata sandi lama tetap aman).
+    """
+    email = payload.email.strip().lower()
+
+    existing = db.query(User).filter(User.email == email).first()
+    if not existing:
+        # Hanya buat jika benar-benar belum ada. Jika email sudah terdaftar kita
+        # tidak melakukan apa pun (tidak mengganti password) — namun respons tetap sama.
+        user = User(
+            email=email,
+            hashed_password=hash_password(payload.password),
         )
+        db.add(user)
+        db.commit()
 
-    user = User(
-        email=payload.email,
-        hashed_password=hash_password(payload.password)
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+    return {"detail": "Jika email belum terdaftar, akun Anda telah berhasil dibuat."}
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -1,56 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="100%" height="100%">
-  <!-- Perisai Luar Emas & Hitam POLRI -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <defs>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FCD34D" />
-      <stop offset="50%" stop-color="#F59E0B" />
-      <stop offset="100%" stop-color="#D97706" />
+    <linearGradient id="polriGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE57F"/>
+      <stop offset="50%" stop-color="#FFC107"/>
+      <stop offset="100%" stop-color="#B28900"/>
     </linearGradient>
-    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1E293B" />
-      <stop offset="100%" stop-color="#0F172A" />
+    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1A1A1A"/>
+      <stop offset="100%" stop-color="#330000"/>
     </linearGradient>
   </defs>
-
-  <!-- Bintang Tiga di Atas (Tribrata) -->
-  <g fill="url(#goldGrad)">
-    <!-- Bintang Tengah -->
-    <path d="M 100,12 L 103,22 L 113,22 L 105,28 L 108,38 L 100,32 L 92,38 L 95,28 L 87,22 L 97,22 Z" />
-    <!-- Bintang Kiri -->
-    <path d="M 68,20 L 70.5,28 L 79,28 L 72,33 L 74.5,41 L 68,36 L 61.5,41 L 64,33 L 57,28 L 65.5,28 Z" />
-    <!-- Bintang Kanan -->
-    <path d="M 132,20 L 134.5,28 L 143,28 L 136,33 L 138.5,41 L 132,36 L 125.5,41 L 128,33 L 121,28 L 129.5,28 Z" />
+  <!-- Outer Glow / Radiance Bulat -->
+  <circle cx="100" cy="100" r="92" fill="#0A192F" stroke="url(#polriGold)" stroke-width="4"/>
+  <!-- Pancaran Berkas Sinar (Bintang Sudut Delapan) -->
+  <g stroke="url(#polriGold)" stroke-width="1.5" opacity="0.4">
+    <line x1="100" y1="12" x2="100" y2="188"/>
+    <line x1="12" y1="100" x2="188" y2="100"/>
+    <line x1="38" y1="38" x2="162" y2="162"/>
+    <line x1="38" y1="162" x2="162" y2="38"/>
   </g>
-
-  <!-- Outline Perisai Emas -->
-  <path d="M 100,48 Q 160,48 165,100 Q 170,165 100,205 Q 30,165 35,100 Q 40,48 100,48 Z" 
-        fill="url(#goldGrad)" />
-
-  <!-- Badan Perisai Hitam -->
-  <path d="M 100,54 Q 154,54 158,102 Q 163,160 100,198 Q 37,160 42,102 Q 46,54 100,54 Z" 
-        fill="url(#shieldGrad)" />
-
-  <!-- Lambang Kepala Rajawali & Obor Polri -->
-  <!-- Obor Api -->
-  <path d="M 100,72 Q 106,85 100,94 Q 94,85 100,72 Z" fill="#EF4444" />
-  <path d="M 100,78 Q 103,86 100,92 Q 97,86 100,78 Z" fill="#FBBF24" />
-  <!-- Tiang Obor -->
-  <rect x="98" y="94" width="4" height="24" rx="2" fill="url(#goldGrad)" />
-
-  <!-- Sayap Kiri dan Kanan -->
-  <g fill="url(#goldGrad)">
-    <!-- Sayap Kiri -->
-    <path d="M 94,95 C 75,90 60,105 56,120 C 65,116 75,118 94,115 Z" />
-    <path d="M 94,105 C 78,104 65,118 62,130 C 72,126 80,126 94,122 Z" />
-    <path d="M 94,115 C 82,116 72,126 70,138 C 78,134 84,133 94,128 Z" />
-
-    <!-- Sayap Kanan -->
-    <path d="M 106,95 C 125,90 140,105 144,120 C 135,116 125,118 106,115 Z" />
-    <path d="M 106,105 C 122,104 135,118 138,130 C 128,126 120,126 106,122 Z" />
-    <path d="M 106,115 C 118,116 128,126 130,138 C 122,134 116,133 106,128 Z" />
+  <!-- Bintang Tiga Polri (Tri Brata) -->
+  <g fill="url(#polriGold)">
+    <polygon points="100,24 102,30 108,30 103,34 105,40 100,36 95,40 97,34 92,30 98,30"/>
+    <polygon points="80,32 82,37 87,37 83,40 85,45 80,42 76,45 78,40 74,37 79,37"/>
+    <polygon points="120,32 122,37 127,37 123,40 125,45 120,42 116,45 118,40 114,37 119,37"/>
   </g>
-
-  <!-- Pita Emas Bawah "POLRI" -->
-  <path d="M 52,162 Q 100,154 148,162 L 144,178 Q 100,170 56,178 Z" fill="url(#goldGrad)" />
-  <text x="100" y="173" font-family="'Inter', sans-serif" font-weight="900" font-size="11" fill="#0F172A" text-anchor="middle" letter-spacing="2">POLRI</text>
+  <!-- Perisai Merah-Hitam -->
+  <path d="M60,52 L140,52 C140,52 145,115 100,150 C55,115 60,52 60,52 Z" fill="url(#shieldBg)" stroke="url(#polriGold)" stroke-width="3"/>
+  <!-- Tiang / Monumen Gada Keemasan -->
+  <g fill="url(#polriGold)">
+    <rect x="97" y="60" width="6" height="75" rx="1"/>
+    <!-- Kepala Tiang -->
+    <polygon points="100,54 106,62 94,62"/>
+    <!-- Pangkal Tiang -->
+    <rect x="93" y="132" width="14" height="4" rx="1"/>
+  </g>
+  <!-- Daun Padi dan Kapas Emas Melingkari Perisai -->
+  <g fill="none" stroke="url(#polriGold)" stroke-width="2.5">
+    <path d="M64,136 C45,110 45,70 66,54"/>
+    <path d="M136,136 C155,110 155,70 134,54"/>
+  </g>
+  <!-- Pita Tulisan Rastra Sewakottama -->
+  <path d="M48,155 C75,148 125,148 152,155 L146,168 C125,162 75,162 54,168 Z" fill="#8B0000" stroke="url(#polriGold)" stroke-width="1.5"/>
+  <text x="100" y="163" text-anchor="middle" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="7.5" fill="#FFE57F" letter-spacing="1">POLRI</text>
 </svg>

@@ -1,58 +1,37 @@
-# ==========================================
-# GovConnect Unified .gitignore
-# ==========================================
+# ===== Secrets & kunci (JANGAN commit) =====
+.env
+.env.*
+!.env.example
+.secret_key
+.pii_key
+.pii_salt
 
-# --- Python & Virtual Environment ---
+# ===== Basis data lokal =====
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
 .venv/
 venv/
 env/
-ENV/
-__pycache__/
-**/__pycache__/**
-*.pyc
-*.py[cod]
-*$py.class
-*.so
 .pytest_cache/
 .mypy_cache/
+.coverage
+htmlcov/
 
-# --- Node / Frontend (React & Vite) ---
+# ===== Node / frontend =====
 node_modules/
 dist/
 dist-ssr/
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-.eslintcache
+*.local
+.vite/
 
-# --- Environment Variables & Credentials ---
-.env
-.env.local
-.env.*.local
-*.env
-
-# --- Database & Docker Local Data ---
-*.sqlite3
-*.db
-mysql_data/
-
-# --- IDE & Editor Specific ---
-.vscode/*
-!.vscode/extensions.json
+# ===== Editor / OS =====
+.vscode/
 .idea/
-*.swp
-*.swo
-*.sw?
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# --- OS Specific Files ---
 .DS_Store
 Thumbs.db
-desktop.ini

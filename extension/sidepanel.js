@@ -4,6 +4,22 @@
 const API_BASE = "http://127.0.0.1:8000/api/v1";
 const DASHBOARD_URL = "http://localhost:5173/dashboard";
 
+// Verifikasi origin dashboard SECARA PERSIS (bukan substring).
+const GOVCONNECT_WEB_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+function isGovConnectDashboardUrl(url) {
+  if (!url) return false;
+  try {
+    return GOVCONNECT_WEB_ORIGINS.includes(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
+
 let cachedProfile = null;
 let detectedFields = [];
 let currentTab = null;
@@ -173,11 +189,9 @@ function setupUIEvents() {
   const btnGoDashboard = document.getElementById("btnGoDashboard");
   if (btnGoDashboard) {
     btnGoDashboard.addEventListener("click", async () => {
-      const token = await getToken();
-      const url = token
-        ? `${DASHBOARD_URL}#token=${encodeURIComponent(token)}`
-        : DASHBOARD_URL;
-      chrome.tabs.create({ url });
+      // Token tidak lagi dikirim via URL hash; sinkronisasi aman via bridge content-script.
+      await getToken();
+      chrome.tabs.create({ url: DASHBOARD_URL });
     });
   }
 }
@@ -204,7 +218,8 @@ async function refreshProfile() {
     }
     cachedProfile = await res.json();
     processCustomFields(cachedProfile);
-    await chrome.storage.local.set({ govconnect_cached_profile: cachedProfile });
+    // T6: simpan DI MEMORI service worker, bukan chrome.storage.local (disk plaintext).
+    chrome.runtime.sendMessage({ action: "SET_CACHED_PROFILE", profile: cachedProfile }).catch(() => {});
     setApiStatus("online");
     return cachedProfile;
   } catch (err) {
@@ -591,12 +606,18 @@ async function executeAutofill() {
     if (token) {
       try {
         let domain = "";
+        let safeTargetUrl = "";
         if (currentTab?.url) {
           try {
             const parsed = new URL(currentTab.url);
             domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
+            // T7: buang query string & fragment — dapat memuat data sensitif/PII.
+            safeTargetUrl = parsed.origin && parsed.origin !== "null"
+              ? `${parsed.origin}${parsed.pathname}`
+              : `${parsed.protocol}//${parsed.pathname}`;
           } catch {
             domain = "";
+            safeTargetUrl = "";
           }
         }
         const filledFieldKeys = (result.fields || [])
@@ -610,7 +631,7 @@ async function executeAutofill() {
             "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
-            target_url: currentTab?.url || "",
+            target_url: safeTargetUrl,
             website_domain: domain,
             action: "autofill",
             fields_detected: detectedFields.length,
@@ -909,9 +930,7 @@ function escapeHtml(str) {
 async function tryAutoSyncFromOpenTabs() {
   try {
     const tabs = await chrome.tabs.query({});
-    const dashboardTab = tabs.find(t =>
-      t.url && (t.url.includes("localhost:5173") || t.url.includes("127.0.0.1:5173"))
-    );
+    const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
     if (dashboardTab?.id) {
       const results = await chrome.scripting.executeScript({

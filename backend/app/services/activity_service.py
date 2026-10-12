@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import asyncio
 import logging
-from app.models.entities import Activity
+from app.models.entities import Activity, Notification
 from app.database import SessionLocal
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
@@ -55,6 +55,26 @@ def extract_domain(target_url: str, provided_domain: Optional[str] = None) -> st
         return parsed.netloc or "Layanan Publik"
     except Exception:
         return "Layanan Publik"
+
+
+def sanitize_target_url(target_url: Optional[str]) -> Optional[str]:
+    """Buang query string & fragment dari URL (T7).
+
+    Query/fragment dapat memuat data sensitif (token, PII di parameter pencarian).
+    Yang disimpan cukup origin + path.
+    """
+    if not target_url:
+        return target_url
+    try:
+        parsed = urlparse(target_url)
+        if parsed.scheme in ("http", "https"):
+            return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        if parsed.scheme == "file":
+            return f"file://{parsed.path}"
+        # Skema tak dikenal: jaga hanya sampai sebelum '?'/'#'.
+        return target_url.split("?", 1)[0].split("#", 1)[0]
+    except Exception:
+        return target_url.split("?", 1)[0].split("#", 1)[0]
 
 
 def compute_activity_stats(activities: List[Activity], profile_completion: float) -> Dict[str, Any]:
@@ -141,9 +161,49 @@ def compute_activity_analytics(
 
 
 async def push_activity_to_queue(activity_data: Dict[str, Any]):
-    """Menambahkan data log aktivitas ke in-memory queue buffer."""
+    """Menambahkan data log aktivitas ke in-memory queue buffer dan generate notifikasi."""
     async with queue_lock:
         activity_queue.append(activity_data)
+
+    # Buat notifikasi otomatis dari event aktivitas autofill
+    try:
+        db = SessionLocal()
+        _generate_activity_notification(
+            user_id=activity_data["user_id"],
+            status=activity_data.get("status", "success"),
+            domain=activity_data.get("website_domain", ""),
+            fields_filled=activity_data.get("fields_filled", 0),
+            db=db,
+        )
+        db.commit()
+        db.close()
+    except Exception as e:
+        logger.error(f"Gagal membuat notifikasi otomatis: {e}")
+
+
+def _generate_activity_notification(user_id: int, status: str, domain: str, fields_filled: int, db: Session):
+    """Membuat notifikasi otomatis berdasarkan hasil log aktivitas autofill."""
+    if status == "success":
+        title = "Autofill Berhasil"
+        desc = f"Formulir di {domain or 'layan publik'} berhasil terisi ({fields_filled} field)."
+        notif_type = "success"
+    elif status == "partial":
+        title = "Autofill Sebagian"
+        desc = f"Formulir di {domain or 'layan publik'} terisi sebagian ({fields_filled} field)."
+        notif_type = "warning"
+    else:
+        title = "Autofill Gagal"
+        desc = f"Pengisian formulir di {domain or 'layan publik'} gagal. Silakan periksa kembali."
+        notif_type = "warning"
+
+    notif = Notification(
+        user_id=user_id,
+        title=title,
+        description=desc,
+        type=notif_type,
+        source="autofill",
+    )
+    db.add(notif)
 
 
 def _bulk_insert_activities(records: List[Dict[str, Any]], db: Optional[Session] = None):

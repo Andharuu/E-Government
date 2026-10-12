@@ -28,17 +28,17 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#001D39] via-[#0A4174] to-[#001D39] px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-[#19349e] border border-white/20 shadow-md flex items-center justify-center mx-auto mb-4 p-2.5">
+          <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 shadow-md flex items-center justify-center mx-auto mb-4 p-2.5 backdrop-blur-md">
             <img src="/logo-white.png" alt="GovConnect" className="w-9 h-9 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Masuk ke GovConnect</h1>
-          <p className="text-slate-500 text-sm mt-1">Asisten pengisian formulir layanan publik otomatis</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Masuk ke GovConnect</h1>
+          <p className="text-[#BDD8E9] text-sm mt-1">Asisten pengisian formulir layanan publik otomatis</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#BDD8E9]/60 p-6 sm:p-8 shadow-2xl">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2">
               <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
@@ -48,15 +48,15 @@ export function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-semibold text-[#001D39] mb-1">Email</label>
               <div className="relative">
-                <FontAwesome name="envelope" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true" />
+                <FontAwesome name="envelope" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#49769F]" aria-hidden="true" />
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 border border-[#BDD8E9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/30 focus:border-[#0A4174] text-[#001D39]"
                   placeholder="email@example.com"
                   required
                   autoComplete="email"
@@ -65,15 +65,15 @@ export function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm font-semibold text-[#001D39] mb-1">Password</label>
               <div className="relative">
-                <FontAwesome name="lock" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true" />
+                <FontAwesome name="lock" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#49769F]" aria-hidden="true" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-2.5 border border-[#BDD8E9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/30 focus:border-[#0A4174] text-[#001D39]"
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
@@ -81,7 +81,7 @@ export function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#49769F] hover:text-[#001D39] cursor-pointer"
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <FontAwesome name="eye-slash" className="text-sm" /> : <FontAwesome name="eye" className="text-sm" />}
@@ -92,17 +92,17 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-[#0A4174] hover:bg-[#001D39] text-white font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer transition-all duration-150"
             >
               {loading ? <FontAwesome name="spinner" spin className="text-sm" /> : 'Masuk'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-600">
+          <p className="mt-6 text-center text-sm text-[#49769F]">
             Belum punya akun?{' '}
             <button
               onClick={() => navigate('/register')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-[#0A4174] hover:text-[#001D39] font-semibold cursor-pointer underline"
             >
               Daftar
             </button>

@@ -27,15 +27,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variantStyles: Record<ButtonVariant, string> = {
       primary:
-        'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-xs hover:shadow-sm disabled:bg-blue-300',
+        'bg-[#0A4174] hover:bg-[#001D39] active:bg-[#001D39] text-white shadow-xs hover:shadow-sm disabled:bg-[#BDD8E9] disabled:text-[#49769F]',
       secondary:
-        'bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 border border-slate-200/80 disabled:opacity-50',
+        'bg-[#BDD8E9]/30 hover:bg-[#BDD8E9]/60 active:bg-[#BDD8E9]/80 text-[#0A4174] border border-[#BDD8E9] disabled:opacity-50',
       ghost:
-        'bg-transparent hover:bg-slate-100 active:bg-slate-200 text-slate-600 hover:text-slate-900 disabled:opacity-40',
+        'bg-transparent hover:bg-[#BDD8E9]/20 active:bg-[#BDD8E9]/35 text-[#49769F] hover:text-[#001D39] disabled:opacity-40',
       danger:
         'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs hover:shadow-sm disabled:bg-rose-300',
       outline:
-        'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-xs hover:border-slate-300 disabled:opacity-50',
+        'bg-white hover:bg-[#BDD8E9]/15 text-[#0A4174] border border-[#BDD8E9] hover:border-[#49769F] shadow-xs disabled:opacity-50',
     };
 
     const sizeStyles: Record<ButtonSize, string> = {

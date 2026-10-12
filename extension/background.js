@@ -4,6 +4,32 @@
 const API_BASE = "http://127.0.0.1:8000/api/v1";
 const DASHBOARD_URL = "http://localhost:5173/dashboard";
 
+// Verifikasi origin dashboard SECARA PERSIS (bukan substring) untuk mencegah
+// bypass seperti "http://evil.com/?x=localhost:5173".
+const GOVCONNECT_WEB_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+function isGovConnectDashboardUrl(url) {
+  if (!url) return false;
+  try {
+    return GOVCONNECT_WEB_ORIGINS.includes(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
+// Cache Profil DI MEMORI (T6)
+// Profil berisi PII lengkap. Kita TIDAK lagi menyimpannya ke
+// chrome.storage.local (disk, plaintext). Hanya hidup di memori
+// service worker dan dihapus saat browser/logout. Bila SW tidur,
+// profil diambil ulang dari API saat dibutuhkan.
+// ============================================================
+let memoryProfile = null;
+
 // ============================================================
 // Klik ikon toolbar ekstensi membuka/menutup panel samping melayang yang menimpa web (tanpa membelah layar)
 chrome.action.onClicked.addListener(async (tab) => {
@@ -21,6 +47,15 @@ chrome.action.onClicked.addListener(async (tab) => {
     }).catch(() => {});
   });
 });
+
+// ============================================================
+// Konfigurasi Perilaku Panel
+// ============================================================
+// GovConnect menggunakan floating overlay sidebar yang disuntikkan ke halaman
+// sehingga tidak memerlukan konfigurasi chrome.sidePanel bawaan Chrome.
+function setupPanelBehavior() {
+  // No-op / fallback aman agar tidak memicu ReferenceError pada service worker
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   setupPanelBehavior();
@@ -61,12 +96,24 @@ async function setupOffscreenDocument() {
 // ============================================================
 async function checkAndUpdateDictionaries() {
   try {
-    const res = await fetch("https://api.govconnect.app/dict-manifest.json");
-    if (!res.ok) return;
+    // Di lingkungan lokal / dev atau saat remote manifest belum tersedia,
+    // fetch dapat gagal (offline/DNS). Gunakan fallback aman tanpa melempar error.
+    const res = await fetch("https://api.govconnect.app/dict-manifest.json").catch(() => null);
+    if (!res || !res.ok) {
+      // Remote dictionary tidak tersedia / offline; gunakan kamus bawaan (bundled).
+      return;
+    }
 
-    const manifest = await res.json();
+    const manifest = await res.json().catch(() => null);
+    if (!manifest) return;
     const remoteVersion = manifest.version;
     if (!remoteVersion) return;
+
+    // T9: integritas WAJIB — tolak update tanpa hash yang benar.
+    if (!manifest.hash) {
+      console.warn("GovConnect: Update kamus tanpa hash — DITOLAK (integritas tidak terverifikasi).");
+      return;
+    }
 
     const storage = await chrome.storage.local.get("govconnect_keyword_version");
     const localVersion = storage.govconnect_keyword_version;
@@ -79,7 +126,7 @@ async function checkAndUpdateDictionaries() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-      if (manifest.hash && hashHex !== manifest.hash) {
+      if (hashHex !== manifest.hash) {
         console.warn("GovConnect: SHA-256 validation failed for dictionary update!");
         return;
       }
@@ -91,7 +138,7 @@ async function checkAndUpdateDictionaries() {
       console.log(`GovConnect: Dictionary updated to version ${remoteVersion}`);
     }
   } catch (err) {
-    console.warn("GovConnect: Failed to check dictionary updates", err);
+    // Fallback hening ke kamus bawaan jika terjadi gangguan jaringan
   }
 }
 
@@ -133,16 +180,19 @@ async function updateActionBehavior() {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "govconnect_open_sidepanel") {
     if (tab && tab.id) {
-      chrome.sidePanel.open({ tabId: tab.id }).catch(() => { });
+      if (chrome.sidePanel && typeof chrome.sidePanel.open === "function") {
+        chrome.sidePanel.open({ tabId: tab.id }).catch(() => {
+          chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_SIDEBAR" }).catch(() => {});
+        });
+      } else {
+        chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_FLOATING_SIDEBAR" }).catch(() => {});
+      }
     }
   } else if (info.menuItemId === "govconnect_open_dashboard") {
-    let res = await chrome.storage.local.get("govconnect_token");
-    let token = res.govconnect_token;
-    if (!token) token = await tryAutoSyncFromOpenTabs();
-    const url = token
-      ? `${DASHBOARD_URL}#token=${encodeURIComponent(token)}`
-      : DASHBOARD_URL;
-    chrome.tabs.create({ url });
+    // Token TIDAK lagi ditempel di URL (#token=) — hash bocor ke riwayat/Referer.
+    // Sinkronisasi sesi terjadi otomatis lewat bridge content-script (origin-verified).
+    await chrome.storage.local.get("govconnect_token");
+    chrome.tabs.create({ url: DASHBOARD_URL });
   }
 });
 
@@ -152,9 +202,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 async function tryAutoSyncFromOpenTabs() {
   try {
     const tabs = await chrome.tabs.query({});
-    const dashboardTab = tabs.find(t =>
-      t.url && (t.url.includes("localhost:5173") || t.url.includes("127.0.0.1:5173"))
-    );
+    const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
     if (dashboardTab?.id) {
       const results = await chrome.scripting.executeScript({
@@ -253,6 +301,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "CLEAR_TOKEN") {
+    memoryProfile = null;
     chrome.storage.local.remove([
       "govconnect_token",
       "govconnect_email",
@@ -263,11 +312,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "PROFILE_UPDATED") {
+  if (message.action === "PROFILE_UPDATED" || message.action === "SET_CACHED_PROFILE") {
+    // Simpan profil DI MEMORI saja (T6) — jangan tulis PII ke disk.
     if (message.profile) {
-      chrome.storage.local.set({ govconnect_cached_profile: message.profile });
+      memoryProfile = message.profile;
     }
-    return false;
+    // Bersihkan sisa cache lama yang mungkin masih tertulis di versi sebelumnya.
+    chrome.storage.local.remove("govconnect_cached_profile");
+    if (sendResponse) sendResponse({ success: true });
+    return true;
+  }
+
+  if (message.action === "GET_CACHED_PROFILE") {
+    sendResponse({ profile: memoryProfile });
+    return true;
   }
 
   if (message.action === "OPEN_SIDEPANEL") {

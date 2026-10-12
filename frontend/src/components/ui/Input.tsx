@@ -46,7 +46,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
           error
             ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       />
@@ -67,7 +67,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
           error
             ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       />
@@ -88,7 +88,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
           error
             ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       >

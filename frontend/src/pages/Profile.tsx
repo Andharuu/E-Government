@@ -12,7 +12,7 @@ import {
 
   Upload, Camera, FolderPlus, X, Eye, Calendar, AlignLeft,
 
-  FileCheck2, ChevronDown
+  FileCheck2, ChevronDown, EyeOff
 
 } from 'lucide-react';
 
@@ -145,6 +145,10 @@ export function ProfilePage() {
   // Image Preview Lightbox Modal
 
   const [previewPhoto, setPreviewPhoto] = useState<{ title: string; data: string; name: string } | null>(null);
+
+  // Pelindung PII: samarkan field sensitif (NIK, No. KK, telepon, dsb.) secara
+  // visual secara default untuk mencegah paparan saat berbagi layar / shoulder-surfing.
+  const [piiMasked, setPiiMasked] = useState(true);
 
 
 
@@ -952,6 +956,47 @@ export function ProfilePage() {
 
   }, [profile, customFields, userCategories, documentPhotos]);
 
+  const handleResetChanges = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await profileApi.get();
+      const data = res.data;
+      setProfile(data);
+      if (data.custom_fields) {
+        try {
+          const parsed = typeof data.custom_fields === 'string'
+            ? JSON.parse(data.custom_fields)
+            : data.custom_fields;
+          if (Array.isArray(parsed)) {
+            setCustomFields(parsed);
+          } else if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed.categories)) setUserCategories(parsed.categories);
+            if (Array.isArray(parsed.fields)) setCustomFields(parsed.fields);
+          }
+        } catch (e) {
+          console.error('Failed to parse custom fields on reset:', e);
+        }
+      }
+      if (data.document_photos) {
+        try {
+          const parsedPhotos = typeof data.document_photos === 'string'
+            ? JSON.parse(data.document_photos)
+            : data.document_photos;
+          if (parsedPhotos && typeof parsedPhotos === 'object') {
+            setDocumentPhotos(parsedPhotos);
+          }
+        } catch (e) {
+          console.error('Failed to parse document photos on reset:', e);
+        }
+      }
+      setHasUnsavedChanges(false);
+    } catch (err) {
+      console.error('Error resetting changes:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
 
 
   // Keyboard shortcut: Ctrl+S (dengan proteksi key-hold e.repeat & status saving)
@@ -1540,11 +1585,11 @@ export function ProfilePage() {
 
     return (
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8ECF2] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#BDD8E9]/60 pb-4">
 
         <div className="flex items-center gap-3">
 
-          <div className="w-8 h-8 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-[#0A4174] text-white flex items-center justify-center shrink-0">
 
             {icon}
 
@@ -1552,7 +1597,7 @@ export function ProfilePage() {
 
           <div>
 
-            <h2 className="text-[16px] leading-[24px] font-semibold text-[#0F172A]">{title}</h2>
+            <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">{title}</h2>
 
             <p className="text-[13px] leading-[20px] font-normal text-[#64748B]">{subtitle}</p>
 
@@ -1570,7 +1615,7 @@ export function ProfilePage() {
 
               <span>Progress</span>
 
-              <span className="text-[#2563EB] font-semibold pb-0.5 border-b-2 border-[#2563EB]">
+              <span className="text-[#0A4174] font-semibold pb-0.5 border-b-2 border-[#0A4174]">
 
                 {progress.filled}/{progress.total} data
 
@@ -1588,7 +1633,7 @@ export function ProfilePage() {
 
               onClick={() => openAddFieldModal(addCategoryTarget)}
 
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#0F172A] hover:text-[#2563EB] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#001D39] hover:text-[#0A4174] transition-colors cursor-pointer"
 
             >
 
@@ -1630,7 +1675,7 @@ export function ProfilePage() {
 
   return (
 
-    <div className="w-full space-y-8 pb-24">
+    <div className={`w-full space-y-8 pb-24 ${piiMasked ? 'pii-masked' : ''}`}>
 
       {/* Header Halaman (Sesuai Desain Minimalis GovConnect) */}
 
@@ -1638,7 +1683,7 @@ export function ProfilePage() {
 
         <div>
 
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#0F172A] tracking-[-0.02em]">Profil saya</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Profil saya</h1>
 
           <p className="text-[14px] leading-[22px] font-normal text-[#475569] mt-1">
 
@@ -1648,21 +1693,49 @@ export function ProfilePage() {
 
         </div>
 
-        <button
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
 
-          type="button"
+          <button
 
-          onClick={() => setShowAddCategoryModal(true)}
+            type="button"
 
-          className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#2563EB] hover:bg-[#1D4ED8] rounded-[10px] transition-colors cursor-pointer shrink-0 self-start sm:self-auto shadow-xs"
+            onClick={() => setPiiMasked(v => !v)}
 
-        >
+            aria-pressed={piiMasked}
 
-          <Plus className="w-4 h-4" />
+            title={piiMasked ? 'Tampilkan data sensitif' : 'Sembunyikan data sensitif'}
 
-          <span>Buat kategori baru</span>
+            className={`inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium rounded-[10px] border transition-colors cursor-pointer ${
+              piiMasked
+                ? 'text-[#0A4174] bg-[#BDD8E9]/35 border-[#BDD8E9] hover:bg-[#BDD8E9]/50'
+                : 'text-[#475569] bg-white border-[#BDD8E9]/60 hover:border-slate-300'
+            }`}
 
-        </button>
+          >
+
+            {piiMasked ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+
+            <span>{piiMasked ? 'Tampilkan data' : 'Sembunyikan data'}</span>
+
+          </button>
+
+          <button
+
+            type="button"
+
+            onClick={() => setShowAddCategoryModal(true)}
+
+            className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] rounded-[10px] transition-colors cursor-pointer shadow-xs"
+
+          >
+
+            <Plus className="w-4 h-4" />
+
+            <span>Buat kategori baru</span>
+
+          </button>
+
+        </div>
 
       </div>
 
@@ -1676,15 +1749,15 @@ export function ProfilePage() {
 
           <span>Kelengkapan profil & berkas</span>
 
-          <span className="text-[#2563EB] font-medium tabular-nums">{completeness.percentage}% lengkap</span>
+          <span className="text-[#0A4174] font-medium tabular-nums">{completeness.percentage}% lengkap</span>
 
         </div>
 
-        <div className="w-full h-1.5 bg-[#E8ECF2] rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-[#BDD8E9]/40 rounded-full overflow-hidden">
 
           <div
 
-            className="h-full bg-[#2563EB] rounded-full transition-all duration-500"
+            className="h-full bg-[#0A4174] rounded-full transition-all duration-500"
 
             style={{ width: `${completeness.percentage}%` }}
 
@@ -1696,109 +1769,58 @@ export function ProfilePage() {
 
 
 
-      {/* Dynamic Animated Popup Box Keterangan Data Disimpan */}
-
+      {/* Animated Non-blocking Toast Popup Keterangan Data Disimpan */}
       {message && (
-
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-200">
-
+        <div className="fixed top-6 right-6 z-50 pointer-events-auto">
           <style>{`
-
             @keyframes govCheckmarkStroke {
-
               0% { stroke-dashoffset: 36; }
-
               100% { stroke-dashoffset: 0; }
-
             }
-
             @keyframes govCheckScale {
-
               0% { transform: scale(0.6); opacity: 0; }
-
               60% { transform: scale(1.1); opacity: 1; }
-
               100% { transform: scale(1); opacity: 1; }
-
             }
-
           `}</style>
-
-          <div className="bg-white rounded-[20px] border border-[#E8ECF2] shadow-[0_20px_50px_rgba(15,23,42,0.2)] max-w-sm w-full p-6 text-center transform transition-all duration-300 animate-in zoom-in-95">
-
+          <div className="bg-white/95 backdrop-blur-md rounded-[18px] border border-[#BDD8E9]/70 shadow-[0_12px_36px_rgba(0,29,57,0.14)] p-4 flex items-center gap-3.5 max-w-sm sm:max-w-md animate-in slide-in-from-top-4 duration-300">
             {message.type === 'success' ? (
-
-              <div className="flex flex-col items-center">
-
-                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4 text-emerald-600 border border-emerald-100" style={{ animation: 'govCheckScale 0.4s ease-out' }}>
-
-                  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-
-                    <polyline points="20 6 9 17 4 12" style={{ strokeDasharray: 36, strokeDashoffset: 0, animation: 'govCheckmarkStroke 0.5s ease-in-out' }} />
-
+              <>
+                <div
+                  className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0"
+                  style={{ animation: 'govCheckScale 0.4s ease-out' }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" style={{ strokeDasharray: 36, strokeDashoffset: 0, animation: 'govCheckmarkStroke 0.4s ease-in-out' }} />
                   </svg>
-
                 </div>
-
-                <h3 className="text-[17px] font-semibold text-[#0F172A] mb-1">Berhasil Disimpan</h3>
-
-                <p className="text-[13px] text-[#64748B] leading-relaxed mb-5">{message.text}</p>
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setMessage(null)}
-
-                  className="w-full py-2.5 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[14px] font-medium rounded-[10px] transition-colors cursor-pointer"
-
-                >
-
-                  Selesai
-
-                </button>
-
-              </div>
-
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[14px] font-bold text-[#001D39] leading-tight">Perubahan Berhasil Disimpan</h4>
+                  <p className="text-[12px] text-[#49769F] mt-0.5 leading-snug line-clamp-2">{message.text}</p>
+                </div>
+              </>
             ) : (
-
-              <div className="flex flex-col items-center">
-
-                <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mb-4 text-rose-600 border border-rose-100">
-
-                  <AlertCircle className="w-8 h-8" />
-
+              <>
+                <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5" />
                 </div>
-
-                <h3 className="text-[17px] font-semibold text-[#0F172A] mb-1">Terjadi Kendala</h3>
-
-                <p className="text-[13px] text-[#64748B] leading-relaxed mb-5">{message.text}</p>
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setMessage(null)}
-
-                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white text-[14px] font-medium rounded-[10px] transition-colors cursor-pointer"
-
-                >
-
-                  Tutup
-
-                </button>
-
-              </div>
-
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[14px] font-bold text-[#001D39] leading-tight">Gagal Menyimpan</h4>
+                  <p className="text-[12px] text-rose-700 mt-0.5 leading-snug line-clamp-2">{message.text}</p>
+                </div>
+              </>
             )}
-
+            <button
+              type="button"
+              onClick={() => setMessage(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0 ml-1"
+              title="Tutup pemberitahuan"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-
         </div>
-
       )}
-
-
 
       {/* ========================================================================= */}
 
@@ -1806,7 +1828,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-identity" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-identity" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('identity', <User className="w-4 h-4" />,
 
@@ -1844,7 +1866,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Andharu Raffi Pratama"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -1872,7 +1894,7 @@ export function ProfilePage() {
 
               placeholder="Mr / Mrs / Ms / Dr"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -1900,7 +1922,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Andharu"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -1930,7 +1952,7 @@ export function ProfilePage() {
 
               placeholder="R"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -1958,7 +1980,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Pratama"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -1986,6 +2008,8 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               maxLength={16}
 
               value={profile?.nik || ''}
@@ -1994,7 +2018,7 @@ export function ProfilePage() {
 
               placeholder="351508xxxxxxxxxx"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2018,7 +2042,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Sidoarjo"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2044,7 +2068,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('birth_date', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2068,7 +2092,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('gender', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             >
 
@@ -2096,7 +2120,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('religion', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             >
 
@@ -2134,7 +2158,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('marital_status', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             >
 
@@ -2166,7 +2190,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('blood_type', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             >
 
@@ -2204,7 +2228,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-address" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-address" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('address', <MapPin className="w-4 h-4" />,
 
@@ -2234,13 +2258,15 @@ export function ProfilePage() {
 
               rows={2}
 
+              data-pii
+
               value={profile?.address || ''}
 
               onChange={e => handleChange('address', e.target.value)}
 
               placeholder="Contoh: Jl. Pahlawan No. 45 RT 02 / RW 03"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2266,7 +2292,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Gedung Graha Lantai 4, Kavling 12"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2292,7 +2318,7 @@ export function ProfilePage() {
 
               placeholder="Indonesia"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2318,7 +2344,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Jawa Timur"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2344,7 +2370,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Kabupaten Sidoarjo"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2370,7 +2396,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Waru"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2396,7 +2422,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Pepelegi"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2420,7 +2446,7 @@ export function ProfilePage() {
 
               placeholder="61256"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2444,7 +2470,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-contact" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-contact" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('contact', <Phone className="w-4 h-4" />,
 
@@ -2470,13 +2496,15 @@ export function ProfilePage() {
 
               type="tel"
 
+              data-pii
+
               value={profile?.phone || ''}
 
               onChange={e => handleChange('phone', e.target.value)}
 
               placeholder="Contoh: 081234567890"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2498,7 +2526,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: user@email.com"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2520,7 +2548,7 @@ export function ProfilePage() {
 
               placeholder="https://govconnect.id"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2542,7 +2570,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: 021-5551234"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2564,7 +2592,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: 021-5559876"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2586,7 +2614,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: 021-5559877"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2610,7 +2638,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-education" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-education" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('education', <GraduationCap className="w-4 h-4" />,
 
@@ -2638,7 +2666,7 @@ export function ProfilePage() {
 
               onChange={e => handleChange('education_level', e.target.value)}
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             >
 
@@ -2678,7 +2706,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Universitas Gadjah Mada"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2694,13 +2722,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.student_id || ''}
 
               onChange={e => handleChange('student_id', e.target.value)}
 
               placeholder="Contoh: 21/478921/TK/52910"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2716,13 +2746,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.nisn || ''}
 
               onChange={e => handleChange('nisn', e.target.value)}
 
               placeholder="Contoh: 0041234567"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2746,7 +2778,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-career" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-career" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('career', <Briefcase className="w-4 h-4" />,
 
@@ -2778,7 +2810,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Software Engineer / ASN"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2800,7 +2832,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: PT Teknologi Indonesia"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2822,7 +2854,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Jl. Sudirman Kav. 21, Jakarta"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2844,7 +2876,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: 15000000"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2868,7 +2900,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-family" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-family" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('family', <HeartHandshake className="w-4 h-4" />,
 
@@ -2908,13 +2940,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.mother_name || ''}
 
               onChange={e => handleChange('mother_name', e.target.value)}
 
               placeholder="Contoh: Siti Aminah"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2930,13 +2964,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.father_name || ''}
 
               onChange={e => handleChange('father_name', e.target.value)}
 
               placeholder="Contoh: Bambang Supriyanto"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2958,7 +2994,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: Rina (Saudara Kandung)"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -2974,13 +3010,15 @@ export function ProfilePage() {
 
               type="tel"
 
+              data-pii
+
               value={profile?.emergency_contact_phone || ''}
 
               onChange={e => handleChange('emergency_contact_phone', e.target.value)}
 
               placeholder="Contoh: 081987654321"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -3004,7 +3042,7 @@ export function ProfilePage() {
 
       {/* ========================================================================= */}
 
-      <section id="section-documents" className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6 scroll-mt-28">
+      <section id="section-documents" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
 
         {renderSectionHeader('documents', <FileText className="w-4 h-4" />,
 
@@ -3032,13 +3070,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.npwp || ''}
 
               onChange={e => handleChange('npwp', e.target.value)}
 
               placeholder="Contoh: 12.345.678.9-012.000 atau 16 digit NIK"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -3054,13 +3094,15 @@ export function ProfilePage() {
 
               type="text"
 
+              data-pii
+
               value={profile?.bpjs_number || ''}
 
               onChange={e => handleChange('bpjs_number', e.target.value)}
 
               placeholder="Contoh: 0001234567890"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -3082,7 +3124,7 @@ export function ProfilePage() {
 
               placeholder="Contoh: 1234-5678-9012"
 
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#E8ECF2] hover:border-slate-300 focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 rounded-[10px] transition-all text-[#0F172A] placeholder:text-[#8A97A8] outline-none font-normal"
+              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
 
             />
 
@@ -3366,15 +3408,15 @@ export function ProfilePage() {
 
             id={`section-${cat.id}`}
 
-            className="bg-white rounded-[16px] border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 space-y-6"
+            className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6"
 
           >
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8ECF2] pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#BDD8E9]/60 pb-4">
 
               <div className="flex items-center gap-3">
 
-                <div className="w-8 h-8 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#0A4174] text-white flex items-center justify-center shrink-0">
 
                   <FolderPlus className="w-4 h-4" />
 
@@ -3384,9 +3426,9 @@ export function ProfilePage() {
 
                   <div className="flex items-center gap-2">
 
-                    <h2 className="text-[16px] leading-[24px] font-semibold text-[#0F172A]">{cat.title}</h2>
+                    <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">{cat.title}</h2>
 
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-[#2563EB]">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-[#0A4174]">
 
                       Kategori Kustom
 
@@ -3410,7 +3452,7 @@ export function ProfilePage() {
 
                   onClick={() => openAddFieldModal(cat.id)}
 
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#0F172A] hover:text-[#2563EB] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#001D39] hover:text-[#0A4174] transition-colors cursor-pointer"
 
                 >
 
@@ -3799,44 +3841,6 @@ export function ProfilePage() {
         );
 
       })}
-
-
-
-      {/* Floating Bottom Bar */}
-
-      <div className="fixed bottom-6 right-8 z-30 flex items-center gap-3 bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-200 shadow-xl">
-
-        <div className="hidden sm:block text-right">
-
-          <div className="text-xs font-semibold text-slate-800">
-
-            {hasUnsavedChanges ? 'Perubahan belum disimpan' : 'Semua data tersimpan aman'}
-
-          </div>
-
-          <div className="text-[10px] text-slate-400">Tekan Simpan atau shortcut Ctrl+S</div>
-
-        </div>
-
-        <button
-
-          type="button"
-
-          onClick={handleSave}
-
-          disabled={saving}
-
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm rounded-xl shadow-md transition-all disabled:opacity-50"
-
-        >
-
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-
-          {saving ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
-
-        </button>
-
-      </div>
 
 
 
@@ -4724,40 +4728,40 @@ export function ProfilePage() {
 
 
 
-      {/* Floating Save Bar */}
-
+      {/* Discord-style Floating Unsaved Changes Bar */}
       {hasUnsavedChanges && (
-
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#0F172A] text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-5">
-
-          <span className="text-[13px] font-medium text-slate-200 flex items-center gap-2">
-
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-
-            Ada perubahan data profil belum disimpan
-
-          </span>
-
-          <button
-
-            type="button"
-
-            onClick={handleSave}
-
-            disabled={saving}
-
-            className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-medium text-[13px] rounded-full transition-colors cursor-pointer"
-
-          >
-
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-
-            <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
-
-          </button>
-
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 sm:gap-6 bg-[#001D39] text-white px-5 py-3 rounded-2xl shadow-[0_16px_40px_rgba(0,29,57,0.35)] border border-[#BDD8E9]/25 backdrop-blur-md w-[calc(100%-2rem)] max-w-xl animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-white truncate leading-tight">
+                Perhatian — Ada perubahan belum disimpan!
+              </p>
+              <p className="text-[11px] text-[#BDD8E9] hidden sm:block truncate mt-0.5">
+                Jangan lupa simpan data profil Anda sebelum berpindah halaman.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleResetChanges}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs font-medium text-[#BDD8E9] hover:text-white hover:underline transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Batalkan
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#0A4174] hover:bg-[#001D39] active:scale-95 text-white font-semibold text-xs rounded-xl border border-[#7BBDE8]/40 hover:border-[#7BBDE8] transition-all shadow-md cursor-pointer disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+            </button>
+          </div>
         </div>
-
       )}
 
     </div>

@@ -119,10 +119,10 @@ export function ActivityPage() {
       {/* Header Title & Top Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#0F172A] tracking-[-0.02em]">
+          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">
             Riwayat aktivitas
           </h1>
-          <p className="text-[14px] leading-[22px] font-normal text-[#475569] mt-0.5">
+          <p className="text-[14px] leading-[22px] font-normal text-[#49769F] mt-0.5">
             Audit log dan jejak privasi pengisian formulir autofill
           </p>
         </div>
@@ -131,7 +131,7 @@ export function ActivityPage() {
             type="button"
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-white bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] transition-colors cursor-pointer shadow-xs"
           >
             <Flaticon
               name="rotate-right"
@@ -179,11 +179,11 @@ export function ActivityPage() {
       )}
 
       {/* Table Container (Sesuai Desain Tabel Dasbor & Langsung Tampil Semua) */}
-      <Card className="overflow-hidden border border-[#E8ECF2]">
+      <Card className="overflow-hidden border border-[#BDD8E9]/60">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <Flaticon name="spinner" className="text-3xl text-blue-600 animate-spin" />
-            <p className="text-xs text-slate-500 font-medium">Memuat riwayat aktivitas autofill...</p>
+            <Flaticon name="spinner" className="text-3xl text-[#0A4174] animate-spin" />
+            <p className="text-xs text-[#49769F] font-medium">Memuat riwayat aktivitas autofill...</p>
           </div>
         ) : activities.length === 0 ? (
           <div className="p-12 text-center">
@@ -197,37 +197,37 @@ export function ActivityPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="h-11 bg-[#F6F8FB] border-b border-[#F1F4F8] text-[12px] leading-[16px] font-medium text-[#64748B]">
+                <tr className="h-11 bg-[#BDD8E9]/20 border-b border-[#BDD8E9]/40 text-[12px] leading-[16px] font-medium text-[#0A4174]">
                   <th className="py-3 px-4 w-10 text-center font-medium">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === activities.length && activities.length > 0}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded-[4px] border-[#E8ECF2] text-[#2563EB] focus:ring-[#2563EB] cursor-pointer"
+                      className="w-4 h-4 rounded-[4px] border-[#BDD8E9] text-[#0A4174] focus:ring-[#7BBDE8] cursor-pointer"
                     />
                   </th>
                   <th className="py-3 px-4 font-medium">
                     <div className="flex items-center gap-1.5">
                       <span>Tanggal</span>
-                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#64748B]" />
+                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#49769F]" />
                     </div>
                   </th>
                   <th className="py-3 px-4 font-medium">
                     <div className="flex items-center gap-1.5">
                       <span>Website target</span>
-                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#64748B]" />
+                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#49769F]" />
                     </div>
                   </th>
                   <th className="py-3 px-4 font-medium">
                     <div className="flex items-center gap-1.5">
                       <span>Field terisi</span>
-                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#64748B]" />
+                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#49769F]" />
                     </div>
                   </th>
                   <th className="py-3 px-4 font-medium">
                     <div className="flex items-center gap-1.5">
                       <span>Status</span>
-                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#64748B]" />
+                      <FontAwesome name="sort" variant="solid" className="text-[12px] text-[#49769F]" />
                     </div>
                   </th>
                   <th className="py-3 px-4 font-medium text-center">
@@ -235,14 +235,14 @@ export function ActivityPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F1F4F8]">
+              <tbody className="divide-y divide-[#BDD8E9]/30">
                 {activities.map((activity) => {
                   const isSelected = selectedIds.includes(activity.id);
                   return (
                     <tr
                       key={activity.id}
-                      className={`h-14 hover:bg-[#F8FAFC] transition-colors duration-150 ${
-                        isSelected ? 'bg-blue-50/30' : ''
+                      className={`h-14 hover:bg-[#BDD8E9]/15 transition-colors duration-150 ${
+                        isSelected ? 'bg-[#BDD8E9]/25' : ''
                       }`}
                     >
                       <td className="py-3.5 px-4 text-center">
@@ -250,10 +250,10 @@ export function ActivityPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleSelectRow(activity.id)}
-                          className="w-4 h-4 rounded-[4px] border-[#E8ECF2] text-[#2563EB] focus:ring-[#2563EB] cursor-pointer"
+                          className="w-4 h-4 rounded-[4px] border-[#BDD8E9] text-[#0A4174] focus:ring-[#7BBDE8] cursor-pointer"
                         />
                       </td>
-                      <td className="py-3.5 px-4 text-[14px] leading-[20px] font-normal text-[#475569] whitespace-nowrap tabular-nums">
+                      <td className="py-3.5 px-4 text-[14px] leading-[20px] font-normal text-[#49769F] whitespace-nowrap tabular-nums">
                         {new Date(activity.created_at).toLocaleDateString('id-ID', {
                           day: 'numeric',
                           month: 'short',
@@ -264,8 +264,8 @@ export function ActivityPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <Flaticon name="globe" className="text-[16px] text-[#64748B] shrink-0" />
-                          <span className="text-[14px] leading-[20px] font-medium text-[#0F172A] lowercase truncate max-w-[240px]">
+                          <Flaticon name="globe" className="text-[16px] text-[#49769F] shrink-0" />
+                          <span className="text-[14px] leading-[20px] font-medium text-[#001D39] lowercase truncate max-w-[240px]">
                             {activity.website_domain ||
                               (activity.target_url
                                 ? new URL(activity.target_url).hostname
@@ -273,8 +273,8 @@ export function ActivityPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-[14px] leading-[20px] font-normal text-[#475569]">
-                        <span className="font-medium text-[#0F172A] tabular-nums">
+                      <td className="py-3.5 px-4 text-[14px] leading-[20px] font-normal text-[#49769F]">
+                        <span className="font-medium text-[#001D39] tabular-nums">
                           {activity.fields_filled}
                         </span>{' '}
                         dari{' '}
@@ -305,7 +305,7 @@ export function ActivityPage() {
                               href={activity.target_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-1.5 text-[#64748B] hover:text-[#2563EB] transition-colors"
+                              className="p-1.5 text-[#49769F] hover:text-[#0A4174] transition-colors"
                               title="Buka URL Formulir"
                             >
                               <FontAwesome name="paper-plane" className="text-[14px]" />

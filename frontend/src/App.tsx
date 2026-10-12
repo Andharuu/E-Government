@@ -8,6 +8,14 @@ import { ProfilePage } from './pages/Profile';
 import { ActivityPage } from './pages/Activity';
 import { SettingsPage } from './pages/Settings';
 import { TemplatesPage } from './pages/Templates';
+import { NotificationsPage } from './pages/Notifications';
+import { PublicServicesPage, PublicServiceDetailPage } from './pages/PublicServices';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminComplaints } from './pages/admin/AdminComplaints';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminAudit } from './pages/admin/AdminAudit';
+import { AdminAnnouncements } from './pages/admin/AdminAnnouncements';
+import { UserComplaintsPage } from './pages/UserComplaints';
 import { FontAwesome } from './components/ui';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -16,12 +24,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-blue-600" />
+        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
       </div>
     );
   }
 
   return user ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_admin) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -30,7 +54,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-blue-600" />
+        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
       </div>
     );
   }
@@ -48,7 +72,18 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/activity" element={<ActivityPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/public-services" element={<PublicServicesPage />} />
+        <Route path="/public-services/:id" element={<PublicServiceDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/complaints" element={<UserComplaintsPage />} />
+      </Route>
+      <Route element={<AdminRoute><Layout /></AdminRoute>}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/complaints" element={<AdminComplaints />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/audit" element={<AdminAudit />} />
+        <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

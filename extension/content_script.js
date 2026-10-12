@@ -1423,8 +1423,8 @@ async function fillSemanticElement(el, profileKey) {
   let profile = cachedLastProfile;
   if (!profile) {
     try {
-      const storage = await chrome.storage.local.get("govconnect_cached_profile");
-      profile = storage.govconnect_cached_profile;
+      const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
+      profile = resp?.profile || null;
       if (profile) {
         cachedLastProfile = profile;
         registerCustomProfileFields(profile);
@@ -1432,21 +1432,9 @@ async function fillSemanticElement(el, profileKey) {
     } catch (e) {}
   }
 
-  // Fallback data profil default saat pengujian test-form.html jika user belum login
-  if (!profile) {
-    profile = {
-      full_name: "Budi Santoso",
-      first_name: "Budi",
-      last_name: "Santoso",
-      mother_name: "Siti Aminah",
-      father_name: "Ahmad Dahlan",
-      nik: "3171012345678901",
-      email: "budi.santoso@example.com",
-      phone: "081234567890",
-      address: "Jl. Sudirman No. 123, Jakarta"
-    };
-    cachedLastProfile = profile;
-  }
+  // Tanpa profil (belum login / tidak tersinkron) → jangan mengisi apa pun.
+  // T6/T10: tidak ada lagi fallback PII dummy hardcoded.
+  if (!profile) return;
 
   let value = profile[profileKey];
   if (!value && profileKey === "mother_name") {
@@ -2884,10 +2872,16 @@ document.addEventListener("change", (e) => {
 // Bridge Sinkronisasi Ekstensi <-> Web Dashboard GovConnect
 // ============================================================
 (function setupDashboardSync() {
-  const isGovConnectApp =
-    window.location.port === "5173" ||
-    document.title.toLowerCase().includes("govconnect") ||
-    document.getElementById("root") !== null;
+  // HANYA aktif di origin dashboard GovConnect yang diizinkan.
+  // Bridge ini TIDAK boleh berjalan di situs pihak ketiga (mencegah kebocoran token).
+  const ALLOWED_WEB_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ];
+  const webOrigin = window.location.origin;
+  const isGovConnectApp = ALLOWED_WEB_ORIGINS.includes(webOrigin);
 
   if (isGovConnectApp) {
     chrome.storage.local.get(["govconnect_token", "govconnect_email", "govconnect_one_click_mode"], (result) => {
@@ -2897,11 +2891,13 @@ document.addEventListener("change", (e) => {
         token: result.govconnect_token || null,
         email: result.govconnect_email || null,
         oneClickMode: result.govconnect_one_click_mode !== false
-      }, "*");
+      }, webOrigin); // targetOrigin spesifik, bukan "*"
     });
 
     window.addEventListener("message", (event) => {
-      if (event.source !== window || !event.data || typeof event.data !== "object") return;
+      // Verifikasi ketat: sumber window & origin harus dashboard GovConnect.
+      if (event.source !== window || event.origin !== webOrigin) return;
+      if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "GOVCONNECT_WEB_AUTH_SYNC") {
         if (event.data.token) {
@@ -2921,7 +2917,7 @@ document.addEventListener("change", (e) => {
           window.postMessage({
             type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
             oneClickMode: enabled
-          }, "*");
+          }, webOrigin);
         });
       }
 
@@ -2933,7 +2929,7 @@ document.addEventListener("change", (e) => {
             token: result.govconnect_token || null,
             email: result.govconnect_email || null,
             oneClickMode: result.govconnect_one_click_mode !== false
-          }, "*");
+          }, webOrigin);
         });
       }
     });
@@ -2944,12 +2940,13 @@ document.addEventListener("change", (e) => {
         window.postMessage({
           type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
           oneClickMode: msg.isOneClick
-        }, "*");
+        }, webOrigin);
       }
     });
 
     // Dengarkan notifikasi pembaruan profil dari web dashboard
     window.addEventListener("message", (event) => {
+      if (event.source !== window || event.origin !== webOrigin) return;
       if (event.data && event.data.type === "GOVCONNECT_PROFILE_UPDATED") {
         try {
           chrome.runtime.sendMessage({
@@ -2961,25 +2958,26 @@ document.addEventListener("change", (e) => {
     });
   }
 })();
-})();
-if (isGovConnectDashboardPage()) {
-  clearFieldMarkers();
-}
 
-(function addGovSpinStyle() {
-  if (document.getElementById("govconnect-spin-style")) return;
-  const s = document.createElement("style");
-  s.id = "govconnect-spin-style";
-  s.textContent = "@keyframes govSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
-  document.head ? document.head.appendChild(s) : document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
-})();
-
-setTimeout(async () => {
-  if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
-    try {
-      const storage = await chrome.storage.local.get(["govconnect_cached_profile", "govconnect_token"]);
-      if (storage.govconnect_cached_profile) cachedLastProfile = storage.govconnect_cached_profile;
-      await detectFields();
-    } catch (e) {}
+  if (isGovConnectDashboardPage()) {
+    clearFieldMarkers();
   }
-}, 1200);
+
+  (function addGovSpinStyle() {
+    if (document.getElementById("govconnect-spin-style")) return;
+    const s = document.createElement("style");
+    s.id = "govconnect-spin-style";
+    s.textContent = "@keyframes govSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+    document.head ? document.head.appendChild(s) : document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
+  })();
+
+  setTimeout(async () => {
+    if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
+      try {
+        const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
+        if (resp?.profile) cachedLastProfile = resp.profile;
+        await detectFields();
+      } catch (e) {}
+    }
+  }, 1200);
+})();

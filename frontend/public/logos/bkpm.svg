@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="ossRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#9F1239"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Card Segi Empat Rounded Modern -->
+  <rect width="200" height="200" rx="36" fill="#FFFFFF" stroke="#E11D48" stroke-width="4"/>
+  <!-- Pita Merah Melengkung Logo BKPM / Investasi -->
+  <g transform="translate(100, 85)">
+    <!-- Pita Kiri -->
+    <path d="M-65,25 C-30,-45 0,-45 15,-20 C-5,-15 -25,-5 -45,35 Z" fill="#BE123C"/>
+    <!-- Pita Kanan Utama -->
+    <path d="M-20,-35 C20,-50 65,-20 60,35 C40,0 15,10 -10,-10 Z" fill="url(#ossRed)"/>
+    <!-- Lingkaran Inti Emas -->
+    <circle cx="10" cy="-8" r="10" fill="#F59E0B"/>
+  </g>
+  <rect x="52" y="140" width="96" height="26" rx="6" fill="#9F1239"/>
+  <text x="100" y="158" text-anchor="middle" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="14" fill="#FFFFFF" letter-spacing="2">OSS RBA</text>
+</svg>

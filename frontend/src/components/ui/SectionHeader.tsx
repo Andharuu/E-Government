@@ -12,7 +12,7 @@ export interface SectionHeaderProps {
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
   icon,
-  iconBg = 'bg-blue-50 text-blue-600 border border-blue-100/80',
+  iconBg = 'bg-[#BDD8E9]/35 text-[#0A4174] border border-[#BDD8E9]',
   title,
   description,
   action,
@@ -20,7 +20,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 ${className}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#BDD8E9]/50 ${className}`}>
       <div className="flex items-center gap-3 min-w-0">
         {icon && (
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${iconBg}`}>
@@ -29,13 +29,13 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         )}
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base font-bold text-slate-900 tracking-tight leading-snug">
+            <h2 className="text-base font-bold text-[#001D39] tracking-tight leading-snug">
               {title}
             </h2>
             {badge && <span>{badge}</span>}
           </div>
           {description && (
-            <p className="text-xs text-slate-500 mt-0.5 truncate leading-relaxed">
+            <p className="text-xs text-[#49769F] mt-0.5 truncate leading-relaxed">
               {description}
             </p>
           )}

@@ -15,6 +15,7 @@ from app.schemas.schemas import (
 from app.services.profile_service import calculate_profile_completion
 from app.services.activity_service import (
     extract_domain,
+    sanitize_target_url,
     compute_activity_stats,
     compute_activity_analytics,
     push_activity_to_queue,
@@ -42,7 +43,11 @@ async def log_activity(
 
     activity_data = {
         "user_id": current_user.id,
-        "target_url": payload.target_url,
+        "category": payload.action or "autofill",
+        "title": f"Autofill di {domain}",
+        "description": f"{payload.fields_filled} dari {payload.fields_detected} field terisi.",
+        "source": "extension",
+        "target_url": sanitize_target_url(payload.target_url),
         "website_domain": domain,
         "action": payload.action or "autofill",
         "fields_detected": max(0, payload.fields_detected),

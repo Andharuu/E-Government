@@ -1,101 +1,116 @@
-import json
+"""Profile service with field-level PII encryption."""
+
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+from sqlalchemy.orm import Session
 
 from app.models.entities import Profile
+from app.core.encryption import field_encryption
 
-logger = logging.getLogger("govconnect.services.profile")
+logger = logging.getLogger("govconnect.profile_service")
 
-CORE_PROFILE_FIELDS = [
-    "nik", "full_name", "birth_place", "birth_date", "gender", "religion", "marital_status",
-    "blood_type", "address", "province", "city", "district", "village", "postal_code",
-    "phone", "email", "education_level", "institution", "student_id", "nisn",
-    "occupation", "organization", "work_address", "mother_name", "father_name",
-    "emergency_contact_name", "emergency_contact_phone", "npwp", "bpjs_number"
+# Fields that must be encrypted (PII)
+PII_FIELDS = [
+    # Identity
+    'nik', 'full_name', 'first_name', 'last_name',
+    'birth_place', 'birth_date', 'gender', 'religion', 'marital_status', 'blood_type',
+    # Family & emergency
+    'mother_name', 'father_name', 'emergency_contact_name', 'emergency_contact_phone',
+    # Address
+    'address', 'province', 'city', 'district', 'village', 'postal_code', 'country',
+    # Contact
+    'phone', 'email', 'website',
+    # Education
+    'nisn', 'institution', 'education_level', 'student_id',
+    # Employment & documents
+    'occupation', 'organization', 'work_address', 'income', 'npwp', 'bpjs_number', 'driver_license',
+    # Extensible
+    'custom_fields', 'document_photos',
 ]
 
 
-def calculate_profile_completion(profile: Optional[Profile]) -> float:
-    """
-    Menghitung persentase kelengkapan profil (0.0 - 100.0%) secara presisi.
-    Normalisasi parsing JSON untuk custom_fields (list / dict) & document_photos.
-    """
+def encrypt_profile_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Encrypt PII fields before saving to database."""
+    result = data.copy()
+    for field in PII_FIELDS:
+        if field in result and result[field] is not None and result[field] != "":
+            str_val = str(result[field]) if result[field] is not None else ""
+            if not field_encryption.is_encrypted(str_val):
+                result[field] = field_encryption.encrypt(str_val)
+    return result
+
+
+def decrypt_profile_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Decrypt PII fields after reading from database."""
+    result = data.copy()
+    for field in PII_FIELDS:
+        if field in result and result[field] is not None and result[field] != "":
+            str_val = str(result[field]) if result[field] is not None else ""
+            if field_encryption.is_encrypted(str_val):
+                result[field] = field_encryption.decrypt(str_val)
+    return result
+
+
+def get_profile_or_create(db: Session, user_id: int, user_email: str) -> Profile:
+    """Get existing profile or create new one."""
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     if not profile:
-        return 0.0
+        profile = Profile(user_id=user_id, email=user_email)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    return profile
 
-    filled_fields = 0
 
-    # 1. Hitung 29 atribut profil inti
-    for field_name in CORE_PROFILE_FIELDS:
-        val = getattr(profile, field_name, None)
-        if val is not None and str(val).strip():
-            filled_fields += 1
+def update_profile(db: Session, profile: Profile, data: Dict[str, Any]) -> Profile:
+    """Update profile with encrypted PII fields."""
+    encrypted_data = encrypt_profile_data(data)
+    for key, value in encrypted_data.items():
+        if hasattr(profile, key):
+            setattr(profile, key, value)
+    db.commit()
+    db.refresh(profile)
+    return profile
 
-    custom_field_total = 0
-    custom_field_filled = 0
 
-    # 2. Parsing custom_fields JSON secara aman dan presisi
-    if profile.custom_fields and str(profile.custom_fields).strip():
-        try:
-            raw_cf = json.loads(profile.custom_fields)
-            if isinstance(raw_cf, dict) and "fields" in raw_cf and isinstance(raw_cf["fields"], list):
-                # Format dari frontend Profile.tsx: { categories: [...], fields: [...] }
-                for item in raw_cf["fields"]:
-                    if isinstance(item, dict):
-                        custom_field_total += 1
-                        val = item.get("value") if "value" in item else item.get("val")
-                        if val is not None and str(val).strip():
-                            custom_field_filled += 1
-                    elif item:
-                        custom_field_total += 1
-                        custom_field_filled += 1
-            elif isinstance(raw_cf, list):
-                for item in raw_cf:
-                    if isinstance(item, dict):
-                        custom_field_total += 1
-                        val = item.get("value") if "value" in item else item.get("val")
-                        if val is not None and str(val).strip():
-                            custom_field_filled += 1
-                    elif item:
-                        custom_field_total += 1
-                        custom_field_filled += 1
-            elif isinstance(raw_cf, dict):
-                for key, item in raw_cf.items():
-                    custom_field_total += 1
-                    if isinstance(item, dict):
-                        val = item.get("value") if "value" in item else item.get("val")
-                        if val is not None and str(val).strip():
-                            custom_field_filled += 1
-                    elif item is not None and str(item).strip():
-                        custom_field_filled += 1
-        except Exception as exc:
-            logger.debug(f"Gagal mem-parsing custom_fields JSON: {exc}")
+def profile_to_dict(profile: Profile) -> Dict[str, Any]:
+    """Convert profile ORM object to dict with decrypted PII.
 
-    # 3. Parsing document_photos jika ada
-    doc_photo_filled = 0
-    if profile.document_photos and str(profile.document_photos).strip():
-        try:
-            raw_docs = json.loads(profile.document_photos)
-            if isinstance(raw_docs, dict):
-                for k, v in raw_docs.items():
-                    if v and str(v).strip():
-                        doc_photo_filled += 1
-            elif isinstance(raw_docs, list):
-                for item in raw_docs:
-                    if item:
-                        doc_photo_filled += 1
-        except Exception:
-            pass
+    Mengembalikan dict kosong bila profil None (pengguna belum memiliki profil).
+    """
+    if profile is None:
+        return {}
+    data = {}
+    for column in profile.__table__.columns:
+        val = getattr(profile, column.name)
+        data[column.name] = val
+    return decrypt_profile_data(data)
 
-    total_expected = len(CORE_PROFILE_FIELDS) + custom_field_total
-    total_filled = filled_fields + custom_field_filled + (1 if doc_photo_filled > 0 else 0)
 
-    # Tambahkan bobot dokumen jika ada
-    if doc_photo_filled > 0 and total_expected == len(CORE_PROFILE_FIELDS):
-        total_expected += 1
+def get_profile_completion(profile: Profile) -> float:
+    """Calculate how complete the profile is (0-100)."""
+    filled = 0
+    total = len(PII_FIELDS)
+    data = profile_to_dict(profile)
+    for field in PII_FIELDS:
+        val = data.get(field)
+        if val and str(val).strip() not in ('', 'None', 'null'):
+            filled += 1
+    return round((filled / total) * 100, 1) if total > 0 else 0
 
-    if total_expected <= 0:
-        return 0.0
 
-    percentage = (total_filled / total_expected) * 100.0
-    return min(100.0, round(percentage, 1))
+def calculate_profile_completion(profile: Profile) -> float:
+    return get_profile_completion(profile)
+
+
+# Core fields used for completion badge / required profile info
+CORE_PROFILE_FIELDS = [
+    'nik',
+    'full_name',
+    'birth_place',
+    'birth_date',
+    'gender',
+    'address',
+    'phone',
+    'email',
+]

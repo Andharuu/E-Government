@@ -83,16 +83,42 @@ async def request_logger_middleware(request: Request, call_next):
 
 
 # ============================================================
-# CORS Security Hardening (Perbaikan BUG-007)
+# CORS Security Hardening (Perbaikan BUG-007, T4)
 # ============================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
+    # Metode dibatasi (bukan "*") — hanya yang benar-benar dipakai aplikasi.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    # Header dibatasi ke yang dipakai (Authorization, Content-Type, dsb).
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Accept-Language",
+        "Origin",
+        "X-Requested-With",
+    ],
     expose_headers=["X-Response-Time-Ms"]
 )
+
+
+# ============================================================
+# Security Headers (T5) — defense-in-depth untuk seluruh respons
+# ============================================================
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(), microphone=(), camera=()"
+    )
+    return response
 
 
 # ============================================================
@@ -174,3 +200,12 @@ def health_check():
         "service": settings.APP_NAME,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+
+@app.get("/v1/models", tags=["Health"])
+def v1_models_fallback():
+    """Endpoint kompatibilitas untuk probe AI client/extension lokal (OpenAI API standard) agar tidak menghasilkan 404 Not Found."""
+    return {
+        "object": "list",
+        "data": []
+    }

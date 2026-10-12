@@ -21,7 +21,7 @@ export const TableHeader: React.FC<React.HTMLAttributes<HTMLTableSectionElement>
 }) => {
   return (
     <thead
-      className={`border-b border-[#E8ECF2] bg-[#F6F8FB] text-[12px] leading-[16px] font-medium text-[#64748B] ${className}`}
+      className={`border-b border-[#BDD8E9] bg-[#BDD8E9]/20 text-[12px] leading-[16px] font-medium text-[#49769F] ${className}`}
       {...props}
     >
       {children}
@@ -35,7 +35,7 @@ export const TableBody: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> 
   ...props
 }) => {
   return (
-    <tbody className={`divide-y divide-[#F1F4F8] font-normal text-[14px] leading-[20px] ${className}`} {...props}>
+    <tbody className={`divide-y divide-[#BDD8E9]/30 font-normal text-[14px] leading-[20px] ${className}`} {...props}>
       {children}
     </tbody>
   );
@@ -48,7 +48,7 @@ export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
 }) => {
   return (
     <tr
-      className={`hover:bg-[#F8FAFC] transition-colors duration-150 ${className}`}
+      className={`hover:bg-[#BDD8E9]/15 transition-colors duration-150 ${className}`}
       {...props}
     >
       {children}
@@ -62,7 +62,7 @@ export const TableHead: React.FC<React.ThHTMLAttributes<HTMLTableCellElement>> =
   ...props
 }) => {
   return (
-    <th className={`py-3.5 px-4 font-medium text-[#64748B] ${className}`} {...props}>
+    <th className={`py-3.5 px-4 font-semibold text-[#0A4174] ${className}`} {...props}>
       {children}
     </th>
   );
@@ -74,7 +74,7 @@ export const TableCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> =
   ...props
 }) => {
   return (
-    <td className={`py-3.5 px-4 text-[#0F172A] align-middle ${className}`} {...props}>
+    <td className={`py-3.5 px-4 text-[#001D39] align-middle ${className}`} {...props}>
       {children}
     </td>
   );
