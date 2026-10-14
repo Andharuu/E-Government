@@ -9,3 +9,4 @@ export * from './SectionHeader';
 export * from './StatCard';
 export * from './Flaticon';
 export * from './FontAwesome';
+export * from './CustomSelect';

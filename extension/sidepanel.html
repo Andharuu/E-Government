@@ -5,9 +5,30 @@
   <title>GovConnect Side Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="fontawesome/css/all.min.css">
   <style>
+    :root {
+      --gov-deep: #001D39;
+      --gov-navy: #0A4174;
+      --gov-steel: #49769F;
+      --gov-teal: #4E8EA2;
+      --gov-cyan: #6EA2B3;
+      --gov-sky: #7BBDE8;
+      --gov-ice: #BDD8E9;
+      --bg-page: #F6F8FB;
+      --surface: #FFFFFF;
+      --border: #BDD8E9;
+      --border-subtle: #E2EBF2;
+      --text-primary: #001D39;
+      --text-secondary: #0A4174;
+      --text-muted: #49769F;
+      --text-light: #94A3B8;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -15,25 +36,26 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #F1F5F9;
-      color: #0F172A;
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
       font-size: 13px;
       line-height: 1.45;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ---- BRAND HEADER (Sleek Minimalist Royal Blue) ---- */
+    /* ---- BRAND HEADER (GovConnect Navy Gradient) ---- */
     .app-header {
-      background: linear-gradient(135deg, #162f9c 0%, #19349e 100%);
-      padding: 12px 16px;
+      background: linear-gradient(135deg, #001D39 0%, #0A4174 100%);
+      padding: 13px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
-      box-shadow: 0 4px 14px rgba(25, 52, 158, 0.18);
+      box-shadow: 0 4px 16px rgba(0, 29, 57, 0.16);
       position: sticky;
       top: 0;
       z-index: 30;
@@ -44,14 +66,16 @@
       width: 32px;
       height: 32px;
       border-radius: 9px;
-      background: #FFFFFF;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-blur-md: blur(4px);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
       overflow: hidden;
       padding: 4px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     }
 
     .brand-logo-img {
@@ -70,7 +94,14 @@
       font-weight: 800;
       color: #FFFFFF;
       letter-spacing: -0.3px;
-      line-height: 1;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      font-size: 10.5px;
+      color: var(--gov-sky);
+      font-weight: 500;
+      margin-top: 1px;
     }
 
     .header-actions {
@@ -81,8 +112,8 @@
     }
 
     .btn-header-icon {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 8px;
       padding: 7px;
       cursor: pointer;
@@ -90,19 +121,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .btn-header-icon:hover {
-      background: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.2);
       transform: translateY(-1px);
     }
 
     /* ---- CURRENT PAGE BAR ---- */
     .page-bar {
       background: #FFFFFF;
-      border-bottom: 1px solid #E2E8F0;
-      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      padding: 9px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -115,7 +146,7 @@
       align-items: center;
       gap: 6px;
       min-width: 0;
-      color: #475569;
+      color: var(--text-muted);
       font-weight: 500;
     }
 
@@ -123,7 +154,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: #1E293B;
+      color: var(--text-primary);
       font-weight: 600;
     }
 
@@ -143,33 +174,32 @@
     /* ---- CARDS ---- */
     .card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       padding: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
       transition: box-shadow 0.2s ease, border-color 0.2s ease;
     }
 
     .card:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      border-color: #CBD5E1;
+      box-shadow: 0 4px 14px rgba(0, 29, 57, 0.06);
+      border-color: var(--gov-sky);
     }
 
-    /* ---- FLUID SCANNING STATE ---- */
+    /* ---- SCANNING LOADER ---- */
     .scanning-box {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       padding: 32px 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
       gap: 16px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 4px 16px rgba(0, 29, 57, 0.04);
     }
 
-    /* ---- FLUID & DYNAMIC LOADER (OPENING EXTENSION) ---- */
     .fluid-loader-container {
       width: 104px;
       height: 104px;
@@ -183,7 +213,7 @@
     .fluid-ring {
       position: absolute;
       border-radius: 50%;
-      border: 1.5px solid rgba(37, 99, 235, 0.25);
+      border: 1.5px solid rgba(10, 65, 116, 0.2);
       animation: fluidRingPulse 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
     }
     .fluid-ring.ring-1 {
@@ -206,16 +236,16 @@
       0% {
         transform: scale(0.65);
         opacity: 0.9;
-        border-color: rgba(37, 99, 235, 0.6);
+        border-color: rgba(10, 65, 116, 0.5);
       }
       50% {
         opacity: 0.45;
-        border-color: rgba(96, 165, 250, 0.4);
+        border-color: rgba(123, 189, 232, 0.4);
       }
       100% {
         transform: scale(1.25);
         opacity: 0;
-        border-color: rgba(37, 99, 235, 0);
+        border-color: rgba(10, 65, 116, 0);
       }
     }
 
@@ -223,8 +253,8 @@
       width: 48px;
       height: 48px;
       border-radius: 14px;
-      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-      box-shadow: 0 0 24px rgba(37, 99, 235, 0.45), 0 4px 12px rgba(30, 64, 175, 0.3);
+      background: linear-gradient(135deg, #001D39 0%, #0A4174 100%);
+      box-shadow: 0 0 24px rgba(10, 65, 116, 0.35), 0 4px 12px rgba(0, 29, 57, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -233,20 +263,20 @@
     }
 
     .fluid-orb-logo {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       object-fit: contain;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
     }
 
     @keyframes orbFloat {
       0% {
         transform: translateY(0px) scale(0.96);
-        box-shadow: 0 0 16px rgba(37, 99, 235, 0.35);
+        box-shadow: 0 0 16px rgba(10, 65, 116, 0.3);
       }
       100% {
         transform: translateY(-4px) scale(1.04);
-        box-shadow: 0 0 32px rgba(59, 130, 246, 0.6);
+        box-shadow: 0 0 28px rgba(123, 189, 232, 0.5);
       }
     }
 
@@ -255,8 +285,8 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: #3B82F6;
-      box-shadow: 0 0 8px #60A5FA;
+      background: var(--gov-sky);
+      box-shadow: 0 0 8px var(--gov-sky);
     }
     .fluid-orbit-dot.dot-1 {
       animation: orbitParticle 2.2s linear infinite;
@@ -278,12 +308,12 @@
     .scan-status-title {
       font-size: 14.5px;
       font-weight: 700;
-      color: #0F172A;
+      color: var(--text-primary);
     }
 
     .scan-status-desc {
       font-size: 12px;
-      color: #64748B;
+      color: var(--text-muted);
       line-height: 1.5;
       max-width: 240px;
     }
@@ -291,7 +321,7 @@
     .scan-progress-bar {
       width: 100%;
       height: 6px;
-      background: #E2E8F0;
+      background: var(--border-subtle);
       border-radius: 999px;
       overflow: hidden;
       margin-top: 4px;
@@ -300,7 +330,7 @@
 
     .scan-progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #2563EB, #3B82F6, #60A5FA, #2563EB);
+      background: linear-gradient(90deg, #0A4174, #4E8EA2, #7BBDE8, #0A4174);
       background-size: 200% 100%;
       border-radius: 999px;
       width: 0%;
@@ -330,23 +360,23 @@
       padding: 3px 8px;
       border-radius: 999px;
       background: #F1F5F9;
-      color: #94A3B8;
-      border: 1px solid #E2E8F0;
+      color: var(--text-light);
+      border: 1px solid var(--border-subtle);
       transition: all 0.3s ease;
     }
 
     .scan-badge-chip.active {
-      background: #EFF6FF;
-      color: #2563EB;
-      border-color: #BFDBFE;
-      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
+      background: rgba(189, 216, 233, 0.4);
+      color: var(--gov-navy);
+      border-color: var(--gov-ice);
+      box-shadow: 0 1px 3px rgba(10, 65, 116, 0.08);
     }
 
     /* ---- DYNAMIC CHECKMARK ANIMATION (ON AUTOFILL SUCCESS) ---- */
     .result-hero-box {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       padding: 24px 16px 20px;
       text-align: center;
       display: flex;
@@ -374,7 +404,7 @@
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0) 70%);
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0) 70%);
       animation: glowPulse 2s ease-in-out infinite alternate;
     }
 
@@ -468,7 +498,7 @@
       100% { transform: translate(-26px, -24px) scale(1); opacity: 0; }
     }
     @keyframes popSparkle2 {
-      0% { transform: translate(0, 0) scale(0); opacity: 1; background: #60A5FA; }
+      0% { transform: translate(0, 0) scale(0); opacity: 1; background: var(--gov-sky); }
       100% { transform: translate(26px, -24px) scale(1); opacity: 0; }
     }
     @keyframes popSparkle3 {
@@ -480,7 +510,7 @@
       100% { transform: translate(22px, 26px) scale(1); opacity: 0; }
     }
     @keyframes popSparkle5 {
-      0% { transform: translate(0, 0) scale(0); opacity: 1; background: #60A5FA; }
+      0% { transform: translate(0, 0) scale(0); opacity: 1; background: var(--gov-sky); }
       100% { transform: translate(-22px, 26px) scale(1); opacity: 0; }
     }
     @keyframes popSparkle6 {
@@ -491,14 +521,14 @@
     .result-hero-title {
       font-size: 15px;
       font-weight: 800;
-      color: #0F172A;
+      color: var(--text-primary);
       margin-top: 2px;
       animation: fadeInText 0.4s ease 0.5s both;
     }
 
     .result-hero-sub {
       font-size: 12px;
-      color: #64748B;
+      color: var(--text-muted);
       line-height: 1.4;
       animation: fadeInText 0.4s ease 0.6s both;
     }
@@ -508,28 +538,28 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ---- FIELD LIST WITH STAGGERED FLUID ENTRANCE ---- */
+    /* ---- FIELD LIST WITH STAGGERED ENTRANCE ---- */
     .field-summary-card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
-      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 13px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
     }
 
     .field-summary-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
-      color: #1E3A8A;
-      letter-spacing: -0.3px;
+      color: var(--gov-navy);
+      letter-spacing: -0.2px;
     }
 
     .field-summary-sub {
       font-size: 11px;
-      color: #64748B;
+      color: var(--text-muted);
       margin-top: 2px;
     }
 
@@ -539,17 +569,17 @@
       justify-content: space-between;
       padding: 8px 12px;
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
+      border: 1px solid var(--border);
       border-radius: 10px;
       font-size: 11px;
     }
 
     .field-list {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
       display: flex;
       flex-direction: column;
     }
@@ -558,13 +588,13 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px 14px;
+      padding: 11px 14px;
       border-bottom: 1px solid #F1F5F9;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.15s ease;
       opacity: 0;
-      transform: translateY(8px);
-      animation: fieldEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transform: translateY(6px);
+      animation: fieldEntrance 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     @keyframes fieldEntrance {
@@ -583,14 +613,14 @@
     }
 
     .field-item.is-selected {
-      background: #F0F7FF;
+      background: rgba(189, 216, 233, 0.22);
     }
 
     .field-checkbox {
       width: 17px;
       height: 17px;
       border-radius: 5px;
-      accent-color: #2563EB;
+      accent-color: var(--gov-navy);
       cursor: pointer;
       flex-shrink: 0;
     }
@@ -604,7 +634,7 @@
     .field-name {
       font-size: 12px;
       font-weight: 700;
-      color: #0F172A;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -615,7 +645,7 @@
 
     .field-profile-preview {
       font-size: 11px;
-      color: #64748B;
+      color: var(--text-muted);
       margin-top: 1px;
       white-space: nowrap;
       overflow: hidden;
@@ -623,7 +653,7 @@
     }
 
     .field-profile-val {
-      color: #1E40AF;
+      color: var(--gov-navy);
       font-weight: 600;
     }
 
@@ -644,38 +674,38 @@
 
     .tag-empty {
       background: #F8FAFC;
-      color: #94A3B8;
-      border: 1px solid #E2E8F0;
+      color: var(--text-light);
+      border: 1px solid var(--border);
     }
 
     /* ---- BUTTONS ---- */
     .btn-primary {
       width: 100%;
-      background: #2563EB;
+      background: var(--gov-navy);
       color: #FFFFFF;
       border: none;
-      border-radius: 12px;
-      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      padding: 11px 16px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       font-family: inherit;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
-      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(10, 65, 116, 0.22);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: #1D4ED8;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+      background: var(--gov-deep);
+      box-shadow: 0 4px 12px rgba(0, 29, 57, 0.3);
       transform: translateY(-1px);
     }
 
     .btn-primary:disabled {
-      background: #94A3B8;
+      background: #CBD5E1;
       cursor: not-allowed;
       box-shadow: none;
       opacity: 0.7;
@@ -684,9 +714,9 @@
     .btn-ghost {
       width: 100%;
       background: #FFFFFF;
-      color: #475569;
-      border: 1px solid #CBD5E1;
-      border-radius: 12px;
+      color: var(--gov-navy);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       padding: 10px 14px;
       font-size: 12px;
       font-weight: 600;
@@ -700,21 +730,21 @@
     }
 
     .btn-ghost:hover {
-      background: #F8FAFC;
-      color: #0F172A;
-      border-color: #94A3B8;
+      background: var(--bg-page);
+      color: var(--gov-deep);
+      border-color: var(--gov-steel);
     }
 
     /* ---- RESULT & REVIEW SCREEN ---- */
     .result-card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 14px;
-      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 15px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 10px;
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
     }
 
     .result-metric-row {
@@ -732,7 +762,7 @@
     }
 
     .result-metric-label {
-      color: #64748B;
+      color: var(--text-muted);
       font-weight: 500;
     }
 
@@ -741,20 +771,21 @@
       font-size: 13px;
     }
 
-    .text-success { color: #16A34A; }
+    .text-success { color: #059669; }
     .text-warning { color: #D97706; }
-    .text-neutral { color: #64748B; }
+    .text-neutral { color: var(--text-muted); }
 
     .review-notice {
-      background: #EFF6FF;
-      border: 1px solid #BFDBFE;
+      background: rgba(189, 216, 233, 0.35);
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
-      font-size: 11px;
-      color: #1E40AF;
+      font-size: 11.5px;
+      color: var(--gov-navy);
       line-height: 1.45;
       display: flex;
-      gap: 8px;
+      gap: 9px;
+      align-items: flex-start;
     }
 
     /* ---- AUTH SCREEN ---- */
@@ -768,26 +799,25 @@
     .auth-input-group label {
       font-size: 11.5px;
       font-weight: 600;
-      color: #334155;
+      color: var(--text-muted);
     }
 
     .auth-input-group input {
       width: 100%;
       padding: 10px 12px;
-      background: #F8FAFC;
-      border: 1px solid #CBD5E1;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
       border-radius: 10px;
       font-size: 13px;
-      color: #0F172A;
+      color: var(--text-primary);
       outline: none;
       font-family: inherit;
       transition: all 0.2s ease;
     }
 
     .auth-input-group input:focus {
-      background: #FFFFFF;
-      border-color: #2563EB;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      border-color: var(--gov-navy);
+      box-shadow: 0 0 0 3px rgba(123, 189, 232, 0.25);
     }
   </style>
 </head>
@@ -799,13 +829,14 @@
     </div>
     <div class="brand-info">
       <div class="brand-title">GovConnect</div>
+      <div class="brand-subtitle">Autofill Assistant</div>
     </div>
     <div class="header-actions">
       <button class="btn-header-icon" id="btnRefreshProfile" title="Segarkan Data Profil & Halaman">
-        <i class="fa-solid fa-rotate-right" style="font-size: 13px;"></i>
+        <i class="fa-solid fa-rotate-right" style="font-size: 12px;"></i>
       </button>
       <button class="btn-header-icon" id="btnCloseSidebar" title="Tutup Panel">
-        <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
+        <i class="fa-solid fa-xmark" style="font-size: 13px;"></i>
       </button>
     </div>
   </header>
@@ -813,7 +844,7 @@
   <!-- Page Info Bar -->
   <div class="page-bar">
     <div class="page-target">
-      <i class="fa-solid fa-globe" style="font-size: 12px; color: #64748B;"></i>
+      <i class="fa-solid fa-globe" style="font-size: 11.5px; color: var(--gov-steel);"></i>
       <span class="page-target-text" id="pageTitle">Mendeteksi tab browser...</span>
     </div>
   </div>
@@ -849,18 +880,18 @@
   <!-- ====== SCREEN: AUTH REQUIRED ====== -->
   <div id="screenAuth" class="screen">
     <div class="card">
-      <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 18px;">
+      <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(189, 216, 233, 0.4); color: var(--gov-navy); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 18px;">
         <i class="fa-regular fa-user"></i>
       </div>
-      <h2 style="font-size: 15px; font-weight: 700; color: #0F172A; text-align: center; margin-bottom: 4px;">
+      <h2 style="font-size: 15px; font-weight: 700; color: var(--text-primary); text-align: center; margin-bottom: 4px;">
         Masuk ke GovConnect
       </h2>
-      <p style="font-size: 11.5px; color: #64748B; text-align: center; margin-bottom: 14px; line-height: 1.4;">
+      <p style="font-size: 11.5px; color: var(--text-muted); text-align: center; margin-bottom: 14px; line-height: 1.4;">
         Akses data profil kependudukan terenkripsi Anda untuk pengisian formulir instan.
       </p>
 
-      <button type="button" class="btn-ghost" id="btnAutoSyncTab" style="margin-bottom: 12px; border-color: #93C5FD; color: #1D4ED8; background: #EFF6FF; display: flex; align-items: center; justify-content: center; gap: 6px;">
-        <i class="fa-solid fa-rotate-right" style="font-size: 12px;"></i>
+      <button type="button" class="btn-ghost" id="btnAutoSyncTab" style="margin-bottom: 12px; border-color: var(--border); color: var(--gov-navy); background: rgba(189, 216, 233, 0.25); display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <i class="fa-solid fa-rotate-right" style="font-size: 11px;"></i>
         <span>Sinkronkan dari Dashboard Aktif</span>
       </button>
 
@@ -874,15 +905,15 @@
         <input type="password" id="sidePassword" placeholder="••••••••">
       </div>
 
-      <div id="sideAuthAlert" style="display: none; padding: 8px 12px; background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; border-radius: 8px; font-size: 11.5px; margin-bottom: 12px; text-align: center;"></div>
+      <div id="sideAuthAlert" style="display: none; padding: 8px 12px; background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; border-radius: 8px; font-size: 11.5px; margin-bottom: 12px; text-align: center;"></div>
 
       <button class="btn-primary" id="btnSideLogin">
         <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 13px;"></i>
         <span>Masuk</span>
       </button>
 
-      <div style="text-align: center; margin-top: 10px; font-size: 11.5px;">
-        <a href="http://localhost:5173/login" target="_blank" style="color: #2563EB; text-decoration: none; font-weight: 600;">
+      <div style="text-align: center; margin-top: 12px; font-size: 11.5px;">
+        <a href="http://localhost:5173/login" target="_blank" style="color: var(--gov-navy); text-decoration: none; font-weight: 600;">
           Buka Halaman Web Login ↗
         </a>
       </div>
@@ -892,23 +923,23 @@
   <!-- ====== SCREEN: UNSUPPORTED / NO FIELDS ====== -->
   <div id="screenUnsupported" class="screen">
     <div class="card" style="text-align: center; padding: 28px 16px;">
-      <div style="width: 48px; height: 48px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 20px;">
+      <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(189, 216, 233, 0.35); color: var(--gov-navy); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 20px;">
         <i class="fa-regular fa-file-lines"></i>
       </div>
-      <h3 style="font-size: 14.5px; font-weight: 700; color: #0F172A; margin-bottom: 6px;">
+      <h3 style="font-size: 14.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
         Belum Mendeteksi Formulir
       </h3>
-      <p style="font-size: 12px; color: #64748B; line-height: 1.5; margin-bottom: 16px;">
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
         Halaman aktif ini tidak memiliki formulir publik yang dapat diisi, atau halaman masih dalam proses memuat.
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <button class="btn-primary" id="btnRetryDetect">
-          <i class="fa-solid fa-rotate-right" style="font-size: 13px;"></i>
+          <i class="fa-solid fa-rotate-right" style="font-size: 12px;"></i>
           <span>Pindai Ulang Halaman</span>
         </button>
         <a href="http://localhost:5173/test-page/dummy_form.html" target="_blank" class="btn-ghost" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <i class="fa-regular fa-file-lines" style="font-size: 13px;"></i>
+          <i class="fa-regular fa-file-lines" style="font-size: 12px;"></i>
           <span>Buka Formulir Uji Coba</span>
         </a>
       </div>
@@ -923,18 +954,21 @@
         <div class="field-summary-title" id="detectCount">0 Kolom</div>
         <div class="field-summary-sub">Cocok dengan data profil Anda</div>
       </div>
+      <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(189, 216, 233, 0.35); color: var(--gov-navy); display: flex; align-items: center; justify-content: center; font-size: 13px;">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
     </div>
 
     <!-- Selection Controls -->
     <div>
       <div class="field-controls-bar">
-        <span style="font-weight: 600; color: #475569;" id="selectionSummary">0 dipilih</span>
+        <span style="font-weight: 600; color: var(--text-muted);" id="selectionSummary">0 dipilih</span>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <button type="button" id="btnSelectAll" style="background: none; border: none; color: #2563EB; font-weight: 700; cursor: pointer; padding: 2px 4px; font-size: 11px;">
+          <button type="button" id="btnSelectAll" style="background: none; border: none; color: var(--gov-navy); font-weight: 700; cursor: pointer; padding: 2px 4px; font-size: 11px;">
             Pilih Semua
           </button>
-          <span style="color: #CBD5E1;">|</span>
-          <button type="button" id="btnDeselectAll" style="background: none; border: none; color: #64748B; font-weight: 600; cursor: pointer; padding: 2px 4px; font-size: 11px;">
+          <span style="color: var(--border);">|</span>
+          <button type="button" id="btnDeselectAll" style="background: none; border: none; color: var(--text-muted); font-weight: 600; cursor: pointer; padding: 2px 4px; font-size: 11px;">
             Batal Pilih
           </button>
         </div>
@@ -948,10 +982,10 @@
 
     <!-- Autofill button -->
     <button class="btn-primary" id="btnFill" disabled>
-      <i class="fa-solid fa-bolt" style="font-size: 13px;"></i>
+      <i class="fa-solid fa-bolt" style="font-size: 12px;"></i>
       <span>Isi Formulir Otomatis</span>
     </button>
-    <div id="statusMsg" style="font-size: 11.5px; text-align: center; color: #64748B;"></div>
+    <div id="statusMsg" style="font-size: 11.5px; text-align: center; color: var(--text-muted);"></div>
   </div>
 
   <!-- ====== SCREEN: AUTOFILL RESULT ====== -->
@@ -991,14 +1025,14 @@
       </div>
     </div>
 
-    <!-- Rincian Data Hasil Autofill (Bisa Ditampilkan dan Disembunyikan) -->
-    <div class="result-breakdown-card" style="margin-top: 12px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <!-- Rincian Data Hasil Autofill -->
+    <div class="result-breakdown-card" style="margin-top: 12px; background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 1px 3px rgba(0,29,57,0.04);">
       <button type="button" id="btnToggleResultBreakdown" style="width: 100%; padding: 11px 14px; background: #FFFFFF; border: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; transition: background 0.2s ease;">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <i class="fa-solid fa-list-check" style="font-size: 13px; color: #2563EB;"></i>
-          <span style="font-size: 12.5px; font-weight: 700; color: #0F172A;">Rincian Data Formulir</span>
+          <i class="fa-solid fa-list-check" style="font-size: 13px; color: var(--gov-navy);"></i>
+          <span style="font-size: 12.5px; font-weight: 700; color: var(--text-primary);">Rincian Data Formulir</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #64748B;">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted);">
           <span id="breakdownToggleLabel">Tampilkan</span>
           <i id="breakdownToggleChevron" class="fa-solid fa-chevron-down" style="font-size: 10px; transition: transform 0.25s ease;"></i>
         </div>
@@ -1035,7 +1069,7 @@
     </div>
 
     <div class="review-notice">
-      <i class="fa-solid fa-shield-halved" style="font-size: 18px; color: #2563EB; flex-shrink: 0; margin-top: 2px;"></i>
+      <i class="fa-solid fa-shield-halved" style="font-size: 16px; color: var(--gov-navy); flex-shrink: 0; margin-top: 1px;"></i>
       <div>
         GovConnect hanya mengisi isian data dan tidak menekan tombol submit akhir secara otomatis demi keamanan Anda.
       </div>
@@ -1047,7 +1081,7 @@
         <span>Pilih Ulang Kolom</span>
       </button>
       <button class="btn-primary" id="btnGoDashboard">
-        <i class="fa-regular fa-chart-bar" style="font-size: 13px;"></i>
+        <i class="fa-regular fa-chart-bar" style="font-size: 12px;"></i>
         <span>Buka Dashboard Analitik</span>
       </button>
     </div>

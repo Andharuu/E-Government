@@ -5,9 +5,27 @@
   <title>GovConnect</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="fontawesome/css/all.min.css">
   <style>
+    :root {
+      --gov-deep: #001D39;
+      --gov-navy: #0A4174;
+      --gov-steel: #49769F;
+      --gov-teal: #4E8EA2;
+      --gov-cyan: #6EA2B3;
+      --gov-sky: #7BBDE8;
+      --gov-ice: #BDD8E9;
+      --bg-page: #F6F8FB;
+      --surface: #FFFFFF;
+      --border: #BDD8E9;
+      --border-subtle: #E2EBF2;
+      --text-primary: #001D39;
+      --text-secondary: #0A4174;
+      --text-muted: #49769F;
+      --text-light: #94A3B8;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -15,23 +33,25 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      width: 320px;
-      background: #F8FAFC;
-      color: #0F172A;
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 324px;
+      background: var(--bg-page);
+      color: var(--text-primary);
       font-size: 13px;
       line-height: 1.4;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ---- HEADER ---- */
     .app-header {
-      background: #FFFFFF;
-      padding: 14px 16px;
-      border-bottom: 1px solid #E2E8F0;
+      background: linear-gradient(135deg, #001D39 0%, #0A4174 100%);
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 2px 10px rgba(0, 29, 57, 0.12);
     }
 
     .brand {
@@ -43,27 +63,29 @@
     .brand-icon {
       width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 9px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #FFFFFF;
-      font-weight: 700;
-      font-size: 15px;
-      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+      overflow: hidden;
+      padding: 3px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
     }
 
     .brand-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #0F172A;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #FFFFFF;
       letter-spacing: -0.2px;
+      line-height: 1.1;
     }
 
     .brand-sub {
-      font-size: 11px;
-      color: #64748B;
+      font-size: 10.5px;
+      color: var(--gov-sky);
+      font-weight: 500;
     }
 
     .sync-badge {
@@ -74,24 +96,25 @@
       border-radius: 999px;
       font-size: 10px;
       font-weight: 600;
-      background: #F0FDF4;
-      color: #16A34A;
-      border: 1px solid #DCFCE7;
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .sync-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #16A34A;
+      background: #10B981;
+      box-shadow: 0 0 6px #10B981;
     }
 
     /* ---- SCREENS ---- */
     .screen {
       display: none;
       flex-direction: column;
-      padding: 16px;
-      gap: 14px;
+      padding: 14px;
+      gap: 12px;
     }
 
     .screen.active {
@@ -101,19 +124,19 @@
     /* ---- AUTH SCREEN ---- */
     .auth-card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
       padding: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
     .auth-heading {
-      font-size: 13px;
-      font-weight: 600;
-      color: #0F172A;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
       text-align: center;
       margin-bottom: 2px;
     }
@@ -127,37 +150,36 @@
     .field label {
       font-size: 11px;
       font-weight: 600;
-      color: #475569;
+      color: var(--text-muted);
     }
 
     .field input {
       width: 100%;
       padding: 9px 12px;
-      background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 9px;
       font-size: 13px;
-      color: #0F172A;
+      color: var(--text-primary);
       outline: none;
       transition: all 0.15s ease;
       font-family: inherit;
     }
 
     .field input:focus {
-      background: #FFFFFF;
-      border-color: #2563EB;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      border-color: var(--gov-navy);
+      box-shadow: 0 0 0 3px rgba(123, 189, 232, 0.25);
     }
 
     .btn-primary {
       width: 100%;
       padding: 10px 14px;
-      background: #2563EB;
+      background: var(--gov-navy);
       color: #FFFFFF;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -165,11 +187,12 @@
       gap: 6px;
       transition: all 0.15s ease;
       font-family: inherit;
+      box-shadow: 0 2px 6px rgba(10, 65, 116, 0.2);
     }
 
     .btn-primary:hover {
-      background: #1D4ED8;
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+      background: var(--gov-deep);
+      box-shadow: 0 4px 12px rgba(0, 29, 57, 0.25);
     }
 
     .btn-primary:active {
@@ -177,7 +200,7 @@
     }
 
     .btn-primary:disabled {
-      background: #94A3B8;
+      background: #CBD5E1;
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
@@ -186,13 +209,13 @@
     .auth-toggle {
       text-align: center;
       font-size: 11px;
-      color: #64748B;
+      color: var(--text-muted);
       margin-top: 4px;
     }
 
     .auth-toggle-btn {
-      color: #2563EB;
-      font-weight: 600;
+      color: var(--gov-navy);
+      font-weight: 700;
       cursor: pointer;
       background: none;
       border: none;
@@ -209,24 +232,24 @@
     .alert-box {
       padding: 8px 12px;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11.5px;
       display: none;
       text-align: center;
     }
 
     .alert-error {
-      background: #FEF2F2;
-      color: #DC2626;
-      border: 1px solid #FEE2E2;
+      background: #FFF1F2;
+      color: #BE123C;
+      border: 1px solid #FECDD3;
     }
 
     /* ---- MAIN SCREEN (LOGGED IN) ---- */
     .profile-card {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
       padding: 14px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -239,17 +262,17 @@
     }
 
     .avatar-circle {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
-      background: #EFF6FF;
-      color: #2563EB;
-      font-weight: 700;
+      background: rgba(189, 216, 233, 0.4);
+      color: var(--gov-navy);
+      font-weight: 800;
       font-size: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #DBEAFE;
+      border: 1px solid var(--border);
       flex-shrink: 0;
     }
 
@@ -259,9 +282,9 @@
     }
 
     .profile-name {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
-      color: #0F172A;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -269,7 +292,7 @@
 
     .profile-email {
       font-size: 11px;
-      color: #64748B;
+      color: var(--text-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -277,68 +300,69 @@
 
     .profile-data-list {
       background: #F8FAFC;
-      border-radius: 8px;
-      padding: 8px 10px;
+      border-radius: 10px;
+      padding: 9px 11px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      border: 1px solid #F1F5F9;
+      border: 1px solid var(--border-subtle);
     }
 
     .data-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 11.5px;
     }
 
     .data-label {
-      color: #64748B;
+      color: var(--text-muted);
     }
 
     .data-val {
-      color: #0F172A;
+      color: var(--text-primary);
       font-weight: 600;
     }
 
     /* Progress bar */
     .meter-section {
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
       padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      box-shadow: 0 1px 3px rgba(0, 29, 57, 0.04);
     }
 
     .meter-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 11.5px;
     }
 
     .meter-title {
       font-weight: 600;
-      color: #475569;
+      color: var(--text-muted);
     }
 
     .meter-pct {
-      font-weight: 700;
-      color: #2563EB;
+      font-weight: 800;
+      color: var(--gov-navy);
     }
 
     .meter-track {
       height: 6px;
-      background: #E2E8F0;
+      background: var(--border-subtle);
       border-radius: 999px;
       overflow: hidden;
     }
 
     .meter-fill {
       height: 100%;
-      background: #2563EB;
+      background: linear-gradient(90deg, #0A4174 0%, #7BBDE8 100%);
       border-radius: 999px;
       transition: width 0.4s ease;
     }
@@ -353,24 +377,26 @@
     .btn-sidepanel {
       width: 100%;
       padding: 11px 14px;
-      background: #2563EB;
+      background: linear-gradient(135deg, #001D39 0%, #0A4174 100%);
       color: #FFFFFF;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 7px;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       font-family: inherit;
+      box-shadow: 0 3px 10px rgba(0, 29, 57, 0.18);
     }
 
     .btn-sidepanel:hover {
-      background: #1D4ED8;
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+      background: var(--gov-deep);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 14px rgba(0, 29, 57, 0.25);
     }
 
     .secondary-row {
@@ -382,11 +408,11 @@
     .btn-outline {
       padding: 8px 10px;
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 600;
-      color: #475569;
+      color: var(--text-secondary);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -397,26 +423,26 @@
     }
 
     .btn-outline:hover {
-      background: #F8FAFC;
-      border-color: #CBD5E1;
-      color: #0F172A;
+      background: var(--bg-page);
+      border-color: var(--gov-steel);
+      color: var(--gov-deep);
     }
 
     .btn-logout {
-      color: #DC2626;
+      color: #BE123C;
     }
 
     .btn-logout:hover {
-      background: #FEF2F2;
-      border-color: #FEE2E2;
-      color: #B91C1C;
+      background: #FFF1F2;
+      border-color: #FECDD3;
+      color: #9F1239;
     }
 
     .simple-spinner {
       width: 28px;
       height: 28px;
-      border: 3px solid #E2E8F0;
-      border-top-color: #2563EB;
+      border: 3px solid var(--border);
+      border-top-color: var(--gov-navy);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -430,11 +456,12 @@
   <!-- App Header -->
   <header class="app-header">
     <div class="brand">
-      <div class="brand-icon" style="overflow: hidden; padding: 3px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+      <div class="brand-icon">
         <img src="logo-white.png" alt="GovConnect" style="width: 100%; height: 100%; object-fit: contain;">
       </div>
       <div>
         <div class="brand-title">GovConnect</div>
+        <div class="brand-sub">Asisten Formulir</div>
       </div>
     </div>
     <div class="sync-badge" id="syncStatusBadge">
@@ -447,7 +474,7 @@
   <main id="loadingScreen" class="screen active">
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; gap: 14px;">
       <div class="simple-spinner"></div>
-      <span style="font-size: 12px; color: #64748B; font-weight: 500;">Memuat data profil...</span>
+      <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Memuat data profil...</span>
     </div>
   </main>
 
@@ -519,16 +546,19 @@
 
     <!-- Actions -->
     <div class="actions-grid">
-      <button class="btn-sidepanel" id="btnPopupQuickFill" style="background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%); color: #FFFFFF; border: none; margin-bottom: 4px;">
-        <span>⚡</span> Buka Asisten Formulir (Melayang)
+      <button class="btn-sidepanel" id="btnPopupQuickFill">
+        <i class="fa-solid fa-bolt" style="font-size: 13px;"></i>
+        <span>Buka Asisten Formulir (Melayang)</span>
       </button>
 
-      <div class="secondary-row" style="margin-top: 4px;">
+      <div class="secondary-row">
         <button class="btn-outline" id="btnDashboard">
-          <span>📊</span> Dashboard
+          <i class="fa-solid fa-chart-pie" style="font-size: 11px;"></i>
+          <span>Dashboard</span>
         </button>
         <button class="btn-outline btn-logout" id="btnLogout">
-          <span>🚪</span> Logout
+          <i class="fa-solid fa-arrow-right-from-bracket" style="font-size: 11px;"></i>
+          <span>Logout</span>
         </button>
       </div>
     </div>

@@ -1,7 +1,11 @@
 import { useAuth } from '../context/AuthContext';
 import { useState, useId } from 'react';
 import { authApi, activityApi } from '../services/api';
-import { Card, Button, Flaticon, FontAwesome } from '../components/ui';
+import { FontAwesome } from '../components/ui';
+
+const INPUT_CLS =
+  'w-full h-11 px-4 text-sm bg-[#101828] border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-white placeholder:text-[#6EA2B3]';
+const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] mb-2';
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -19,21 +23,19 @@ export function SettingsPage() {
   const [clearActivityMsg, setClearActivityMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
-
-
   // Kalkulasi kekuatan password dinamis
   const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return { score: 0, label: 'Belum diisi', color: 'bg-slate-200', textCol: 'text-slate-400' };
+    if (!pwd) return { score: 0, label: 'Belum diisi', color: 'bg-[#243048]', textCol: 'text-[#6EA2B3]' };
     let score = 0;
     if (pwd.length >= 8) score += 25;
     if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 25;
     if (/[0-9]/.test(pwd)) score += 25;
     if (/[^A-Za-z0-9]/.test(pwd)) score += 25;
 
-    if (score <= 25) return { score: 25, label: 'Sangat Lemah', color: 'bg-rose-500', textCol: 'text-rose-600' };
-    if (score <= 50) return { score: 50, label: 'Cukup', color: 'bg-amber-500', textCol: 'text-amber-600' };
-    if (score <= 75) return { score: 75, label: 'Kuat', color: 'bg-blue-500', textCol: 'text-blue-600' };
-    return { score: 100, label: 'Sangat Kuat', color: 'bg-emerald-500', textCol: 'text-emerald-600' };
+    if (score <= 25) return { score: 25, label: 'Sangat Lemah', color: 'bg-rose-500', textCol: 'text-rose-400' };
+    if (score <= 50) return { score: 50, label: 'Cukup', color: 'bg-amber-500', textCol: 'text-amber-400' };
+    if (score <= 75) return { score: 75, label: 'Kuat', color: 'bg-[#7BBDE8]', textCol: 'text-[#7BBDE8]' };
+    return { score: 100, label: 'Sangat Kuat', color: 'bg-emerald-500', textCol: 'text-emerald-400' };
   };
 
   const pwdCriteria = {
@@ -55,7 +57,7 @@ export function SettingsPage() {
       const res = await activityApi.clearAll();
       setClearActivityMsg({
         type: 'success',
-        text: res.data.detail || 'Seluruh riwayat aktivitas formulir berhasil dibersihkan.'
+        text: res.data.detail || 'Seluruh catatan riwayat pengisian formulir berhasil dibersihkan.',
       });
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Gagal membersihkan riwayat aktivitas';
@@ -69,349 +71,372 @@ export function SettingsPage() {
     e.preventDefault();
     setMessage(null);
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Password konfirmasi tidak cocok.' });
+      setMessage({ type: 'error', text: 'Konfirmasi kata sandi baru tidak cocok.' });
       return;
     }
     if (newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Password minimal harus 8 karakter.' });
+      setMessage({ type: 'error', text: 'Kata sandi minimal harus terdiri dari 8 karakter.' });
       return;
     }
     setSaving(true);
     try {
       const res = await authApi.changePassword(currentPassword, newPassword);
-      setMessage({ type: 'success', text: res.data.detail || 'Kata sandi berhasil diperbarui!' });
+      setMessage({ type: 'success', text: res.data.detail || 'Kata sandi akun Anda berhasil diperbarui.' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Gagal mengubah kata sandi.';
+      const detail = err.response?.data?.detail || 'Gagal mengubah kata sandi. Pastikan kata sandi saat ini sudah benar.';
       setMessage({ type: 'error', text: detail });
     } finally {
       setSaving(false);
     }
   };
 
-  const inputClass = "w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal";
-
   return (
-    <div className="w-full space-y-6 pb-12">
-      {/* Header Halaman */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="w-full max-w-4xl mx-auto space-y-6 pb-12">
+      <style>{`
+        @keyframes drawCheckmark {
+          0% {
+            stroke-dasharray: 24;
+            stroke-dashoffset: 24;
+            opacity: 0;
+            transform: scale(0.6);
+          }
+          50% {
+            opacity: 1;
+            stroke-dashoffset: 6;
+          }
+          100% {
+            stroke-dasharray: 24;
+            stroke-dashoffset: 0;
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        @keyframes pulseCheckGlow {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.7;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 0.2;
+          }
+        }
+        .verified-check-path {
+          animation: drawCheckmark 0.65s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        .verified-pulse-glow {
+          animation: pulseCheckGlow 2.5s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Pengaturan & keamanan</h1>
-          <p className="text-[14px] leading-[22px] font-normal text-[#49769F] mt-1">Kelola kredensial akun, perlindungan enkripsi data, dan preferensi privasi Anda.</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Pengaturan &amp; Keamanan Akun
+          </h1>
+          <p className="text-sm text-[#6EA2B3] mt-1">
+            Kelola kata sandi masuk, otentikasi akun, dan kendali privasi data kependudukan Anda.
+          </p>
+        </div>
+
+        {/* Badge Status Terverifikasi dengan animasi centang di sebelah kiri */}
+        <div className="flex items-center gap-2.5 bg-[#171F2F] border border-[#243048] hover:border-emerald-500/50 rounded-xl px-3.5 py-2 self-start sm:self-auto shadow-xs transition-colors">
+          <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+            <span className="absolute inset-0 rounded-full bg-emerald-500/20 verified-pulse-glow" />
+            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-emerald-400 relative z-10">
+              <circle cx="12" cy="12" r="9.5" stroke="#10B981" strokeWidth="1.8" className="opacity-40" />
+              <path
+                d="M7.5 12.5L10.5 15.5L16.5 8.5"
+                stroke="#10B981"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="verified-check-path"
+              />
+            </svg>
+          </div>
+          <span className="text-xs font-semibold text-white whitespace-nowrap">
+            Status: Terverifikasi &amp; Terlindungi
+          </span>
         </div>
       </div>
 
-      {/* Banner Ringkasan Status Akun & Keamanan Dinamis */}
-      <div className="bg-gradient-to-r from-[#001D39] via-[#0A4174] to-[#001D39] rounded-[16px] p-5 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 border border-[#BDD8E9]/20">
-        <div className="flex items-center gap-4">
-          <div className="w-13 h-13 rounded-full bg-white/10 border border-[#7BBDE8]/30 flex items-center justify-center text-white text-[20px] font-bold shadow-inner shrink-0">
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
-          </div>
+      {/* ── CARD 1: INFORMASI IDENTITAS AKUN ── */}
+      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-4">
+        <div className="flex items-start justify-between gap-4 pb-1">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[16px] leading-[22px] font-semibold text-white tracking-tight">{user?.email}</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                Terverifikasi
-              </span>
+            <h2 className="text-base font-bold text-white">Identitas &amp; Surel Terdaftar</h2>
+            <p className="text-xs text-[#6EA2B3] mt-0.5">Alamat surel utama yang digunakan untuk masuk dan notifikasi resmi</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLS}>Alamat Surel</label>
+            <div className="h-11 px-4 bg-[#101828] border border-[#243048] rounded-xl flex items-center justify-between">
+              <span className="text-sm font-semibold text-white truncate">{user?.email}</span>
+              <FontAwesome name="envelope" className="text-xs text-[#6EA2B3] shrink-0" />
             </div>
-            <p className="text-[13px] leading-[18px] text-[#BDD8E9] mt-0.5">
-              Akun Warga GovConnect • Perlindungan Kriptografi Aktif
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Standar Keamanan Sesi</label>
+            <div className="h-11 px-4 bg-[#101828] border border-[#243048] rounded-xl flex items-center justify-between">
+              <span className="text-sm font-medium text-white">Enkripsi Klien AES-256</span>
+              <FontAwesome name="shield-halved" className="text-xs text-emerald-400 shrink-0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CARD 2: GANTI KATA SANDI ── */}
+      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="flex items-center justify-between pb-1">
+          <div>
+            <h2 className="text-base font-bold text-white">Perbarui Kata Sandi Akun</h2>
+            <p className="text-xs text-[#6EA2B3] mt-0.5">
+              Gunakan kombinasi minimal 8 karakter dengan huruf besar, angka, dan simbol.
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPasswords(!showPasswords)}
+            className="inline-flex items-center gap-2 text-xs font-semibold text-[#7BBDE8] hover:text-white px-3 py-1.5 rounded-lg border border-[#243048] bg-[#101828] hover:bg-[#101828]/80 transition-colors cursor-pointer"
+          >
+            <FontAwesome name={showPasswords ? 'eye-slash' : 'eye'} className="text-xs" />
+            <span>{showPasswords ? 'Sembunyikan Sandi' : 'Tampilkan Sandi'}</span>
+          </button>
         </div>
 
-        {/* 3 Status Chips Dinamis */}
-        <div className="flex wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white/10 border border-white/15 backdrop-blur-xs">
-            <FontAwesome name="shield-halved" variant="solid" className="text-emerald-400 text-xs" />
-            <div className="text-left">
-              <p className="text-[10px] text-[#BDD8E9] uppercase tracking-wider font-semibold">Enkripsi</p>
-              <p className="text-[12px] font-medium text-white leading-tight">AES-256 Aktif</p>
-            </div>
+        {message && (
+          <div
+            className={`p-4 rounded-xl flex items-center gap-3 text-xs font-semibold border ${
+              message.type === 'success'
+                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60'
+                : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
+            }`}
+          >
+            <FontAwesome
+              name={message.type === 'success' ? 'circle-check' : 'circle-exclamation'}
+              className={`text-sm shrink-0 ${message.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}
+            />
+            <span>{message.text}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-white/10 border border-white/15 backdrop-blur-xs">
-            <FontAwesome name="database" variant="solid" className="text-[#7BBDE8] text-xs" />
-            <div className="text-left">
-              <p className="text-[10px] text-[#BDD8E9] uppercase tracking-wider font-semibold">Penyimpanan</p>
-              <p className="text-[12px] font-medium text-white leading-tight">Zero-Cloud Leak</p>
-            </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-6">
+          <div>
+            <label htmlFor={currentPasswordId} className={LABEL_CLS}>
+              Kata Sandi Saat Ini <span className="text-rose-400">*</span>
+            </label>
+            <input
+              id={currentPasswordId}
+              type={showPasswords ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              className={INPUT_CLS}
+              placeholder="Masukkan kata sandi lama Anda"
+              required
+            />
           </div>
 
-        </div>
-      </div>
-
-      {/* Grid 2 Kolom Tertata */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Kolom Kiri: Kredensial & Ganti Kata Sandi (7 Kolom) */}
-        <div className="lg:col-span-7 space-y-6">
-          <Card className="p-6 lg:p-7 space-y-5 shadow-xs border border-[#BDD8E9]/60">
-            {/* Header: Icon FontAwesome Tanpa Background, Deskripsi Sejajar */}
-            <div className="flex items-start gap-3 border-b border-[#BDD8E9]/30 pb-4">
-              <FontAwesome name="user-shield" variant="solid" className="text-[20px] text-[#0A4174] shrink-0 mt-0.5" />
-              <div>
-                <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">Akun & keamanan sandi</h2>
-                <p className="text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5">Kelola identitas email terdaftar dan perbarui kata sandi akun</p>
-              </div>
-            </div>
-
-            {/* Email Field */}
-            <div>
-              <label className="block text-[13px] leading-[20px] font-medium text-[#49769F] mb-1.5">
-                Alamat email terdaftar
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor={newPasswordId} className="block text-xs font-semibold uppercase tracking-wider text-[#6EA2B3]">
+                Kata Sandi Baru <span className="text-rose-400">*</span>
               </label>
-              <div className="flex items-center gap-2 max-w-xl">
-                <div className="flex-1 bg-[#BDD8E9]/15 border border-[#BDD8E9]/60 rounded-[10px] h-10 px-3.5 flex items-center justify-between text-[14px] text-[#001D39]">
-                  <span className="font-medium text-[#001D39]">{user?.email}</span>
-                  <span className="text-[11px] font-semibold text-[#0A4174] bg-[#BDD8E9]/35 px-2 py-0.5 rounded-[6px]">
-                    Akun Utama
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Form Ganti Password Dinamis */}
-            <div className="pt-4 border-t border-[#BDD8E9]/30">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[14px] leading-[20px] font-semibold text-[#001D39]">Ganti kata sandi</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords(!showPasswords)}
-                  className="text-[13px] font-medium text-[#0A4174] hover:text-[#001D39] flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Flaticon name={showPasswords ? "eye-crossed" : "eye"} className="text-xs" />
-                  <span>{showPasswords ? 'Sembunyikan' : 'Tampilkan'} password</span>
-                </button>
-              </div>
-
-              {message && (
-                <div
-                  className={`mb-4 p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold border shadow-2xs transition-all ${
-                    message.type === 'success'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-rose-50 text-rose-800 border-rose-200'
-                  }`}
-                >
-                  {message.type === 'success' ? (
-                    <Flaticon name="check" className="text-xs text-emerald-600 shrink-0" />
-                  ) : (
-                    <Flaticon name="info" className="text-xs text-rose-600 shrink-0" />
-                  )}
-                  <span>{message.text}</span>
-                </div>
+              {newPassword && (
+                <span className={`text-xs font-bold ${strength.textCol}`}>
+                  Kekuatan: {strength.label}
+                </span>
               )}
+            </div>
+            <input
+              id={newPasswordId}
+              type={showPasswords ? 'text' : 'password'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              className={INPUT_CLS}
+              placeholder="Minimal 8 karakter kombinasi huruf, angka, dan simbol"
+              required
+            />
 
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div>
-                  <label htmlFor={currentPasswordId} className="block text-[13px] leading-[20px] font-medium text-[#475569] mb-1.5">
-                    Kata sandi saat ini <span className="text-[#E11D48]">*</span>
-                  </label>
-                  <input
-                    id={currentPasswordId}
-                    type={showPasswords ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                    className={inputClass}
-                    placeholder="Masukkan kata sandi lama"
-                    required
+            {newPassword && (
+              <div className="mt-3 space-y-2">
+                <div className="w-full bg-[#101828] h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${strength.color} transition-all duration-300 rounded-full`}
+                    style={{ width: `${strength.score}%` }}
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor={newPasswordId} className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-                      Kata sandi baru <span className="text-[#E11D48]">*</span>
-                    </label>
-                    {newPassword && (
-                      <span className={`text-[12px] font-semibold ${strength.textCol}`}>
-                        {strength.label}
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    id={newPasswordId}
-                    type={showPasswords ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    className={inputClass}
-                    placeholder="Minimal 8 karakter"
-                    required
-                  />
-
-                  {/* Dynamic Password Strength Progress Bar */}
-                  {newPassword && (
-                    <div className="mt-2 space-y-2">
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${strength.color} transition-all duration-300 rounded-full`}
-                          style={{ width: `${strength.score}%` }}
-                        />
-                      </div>
-
-                      {/* Interactive Checklist Criteria */}
-                      <div className="grid grid-cols-2 gap-2 pt-1 text-[11.5px]">
-                        <div className={`flex items-center gap-1.5 ${pwdCriteria.minLen ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                          <FontAwesome name={pwdCriteria.minLen ? "circle-check" : "circle"} variant="solid" className="text-[10px]" />
-                          <span>Minimal 8 karakter</span>
-                        </div>
-                        <div className={`flex items-center gap-1.5 ${pwdCriteria.hasUpperLower ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                          <FontAwesome name={pwdCriteria.hasUpperLower ? "circle-check" : "circle"} variant="solid" className="text-[10px]" />
-                          <span>Huruf besar & kecil</span>
-                        </div>
-                        <div className={`flex items-center gap-1.5 ${pwdCriteria.hasNumber ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                          <FontAwesome name={pwdCriteria.hasNumber ? "circle-check" : "circle"} variant="solid" className="text-[10px]" />
-                          <span>Mengandung angka (0-9)</span>
-                        </div>
-                        <div className={`flex items-center gap-1.5 ${pwdCriteria.hasSpecial ? 'text-emerald-600 font-medium' : 'text-slate-400'}`}>
-                          <FontAwesome name={pwdCriteria.hasSpecial ? "circle-check" : "circle"} variant="solid" className="text-[10px]" />
-                          <span>Simbol khusus (@, #, $)</span>
-                        </div>
-                      </div>
+                <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                  {(
+                    [
+                      [pwdCriteria.minLen, 'Minimal 8 karakter'],
+                      [pwdCriteria.hasUpperLower, 'Huruf besar & kecil'],
+                      [pwdCriteria.hasNumber, 'Mengandung angka (0-9)'],
+                      [pwdCriteria.hasSpecial, 'Simbol khusus (@, #, $)'],
+                    ] as const
+                  ).map(([ok, label]) => (
+                    <div
+                      key={label}
+                      className={`flex items-center gap-2 ${
+                        ok ? 'text-emerald-400 font-semibold' : 'text-[#6EA2B3]'
+                      }`}
+                    >
+                      <FontAwesome name={ok ? 'circle-check' : 'circle'} className="text-[10px]" />
+                      <span>{label}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor={confirmPasswordId} className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-                      Konfirmasi kata sandi baru <span className="text-[#E11D48]">*</span>
-                    </label>
-                    {passwordsMatch && (
-                      <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                        <FontAwesome name="check" variant="solid" className="text-[10px]" />
-                        Password cocok
-                      </span>
-                    )}
-                    {passwordsMismatch && (
-                      <span className="text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-                        <FontAwesome name="xmark" variant="solid" className="text-[10px]" />
-                        Belum sama
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    id={confirmPasswordId}
-                    type={showPasswords ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    className={`${inputClass} ${passwordsMismatch ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200' : ''}`}
-                    placeholder="Ulangi kata sandi baru"
-                    required
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={saving || (!!confirmPassword && !passwordsMatch)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] transition-colors cursor-pointer shadow-xs"
-                  >
-                    <FontAwesome
-                      name={saving ? "spinner" : "lock"}
-                      variant="solid"
-                      className={`text-xs ${saving ? 'animate-spin' : ''}`}
-                    />
-                    <span>{saving ? 'Menyimpan perubahan...' : 'Perbarui kata sandi'}</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </Card>
-        </div>
-
-        {/* Kolom Kanan: Manajemen Privasi & Sesi (5 Kolom) */}
-        <div className="lg:col-span-5 space-y-6">
-
-          {/* Card Manajemen Privasi & Sesi */}
-          <Card className="p-6 lg:p-7 space-y-5 border-rose-100/80 shadow-xs border">
-            <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
-              <FontAwesome name="shield-halved" variant="solid" className="text-[20px] text-[#E11D48] shrink-0 mt-0.5" />
-              <div>
-                <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">Manajemen privasi & sesi</h2>
-                <p className="text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5">Pembersihan data riwayat pengisian dan sesi akun</p>
-              </div>
-            </div>
-
-            {clearActivityMsg && (
-              <div
-                className={`p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold border shadow-2xs transition-all ${
-                  clearActivityMsg.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-rose-50 text-rose-800 border-rose-200'
-                }`}
-              >
-                {clearActivityMsg.type === 'success' ? (
-                  <Flaticon name="check" className="text-xs text-emerald-600 shrink-0" />
-                ) : (
-                  <Flaticon name="info" className="text-xs text-rose-600 shrink-0" />
-                )}
-                <span>{clearActivityMsg.text}</span>
               </div>
             )}
+          </div>
 
-            {/* Clear History Box */}
-            <div className="p-4 rounded-[12px] bg-[#FFF8F8] border border-[#FDE2E6] space-y-3">
-              <div>
-                <p className="text-[14px] leading-[20px] font-medium text-[#001D39]">Bersihkan riwayat aktivitas</p>
-                <p className="text-[12.5px] leading-[18px] font-normal text-[#49769F] mt-0.5">
-                  Menghapus seluruh log formulir dan domain yang pernah diisi untuk privasi maksimal.
-                </p>
-              </div>
-
-              {!showConfirmClear ? (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setShowConfirmClear(true)}
-                  disabled={clearingActivity}
-                  icon={<Flaticon name="trash" className="text-xs" />}
-                  className="font-semibold text-[13px]"
-                >
-                  Hapus riwayat
-                </Button>
-              ) : (
-                <div className="pt-1 space-y-2">
-                  <p className="text-[12px] font-semibold text-rose-800">
-                    Konfirmasi: Hapus SELURUH riwayat aktivitas? Tindakan ini tidak dapat dibatalkan.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={handleClearActivities}
-                      loading={clearingActivity}
-                      className="font-semibold text-[12px]"
-                    >
-                      Ya, hapus sekarang
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmClear(false)}
-                      className="px-3 py-1.5 text-[12px] font-medium text-[#49769F] hover:text-[#001D39] bg-white border border-[#BDD8E9]/70 rounded-[8px] cursor-pointer"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor={confirmPasswordId} className="block text-xs font-semibold uppercase tracking-wider text-[#6EA2B3]">
+                Konfirmasi Kata Sandi Baru <span className="text-rose-400">*</span>
+              </label>
+              {passwordsMatch && (
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <FontAwesome name="circle-check" className="text-xs" />
+                  <span>Kata sandi cocok</span>
+                </span>
+              )}
+              {passwordsMismatch && (
+                <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                  <FontAwesome name="circle-xmark" className="text-xs" />
+                  <span>Belum cocok</span>
+                </span>
               )}
             </div>
+            <input
+              id={confirmPasswordId}
+              type={showPasswords ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className={`${INPUT_CLS} ${
+                passwordsMismatch ? 'border-rose-500 focus:border-rose-400 focus:ring-rose-500/20' : ''
+              }`}
+              placeholder="Ketik ulang kata sandi baru"
+              required
+            />
+          </div>
 
-            {/* Logout Button */}
-            <div className="pt-2">
+          {/* Action Button */}
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={saving || (!!confirmPassword && !passwordsMatch)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] active:bg-[#7BBDE8] transition-colors cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FontAwesome name={saving ? 'spinner' : 'lock'} spin={saving} className="text-xs" />
+              <span>{saving ? 'Menyimpan Sandi...' : 'Perbarui Kata Sandi'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ── CARD 3: KENDALI PRIVASI & RIWAYAT AKTIVITAS ── */}
+      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="pb-1">
+          <h2 className="text-base font-bold text-white">Privasi &amp; Riwayat Formulir</h2>
+          <p className="text-xs text-[#6EA2B3] mt-0.5">
+            Kendali pembersihan data lokal dan sesi login akun pada perangkat ini.
+          </p>
+        </div>
+
+        {clearActivityMsg && (
+          <div
+            className={`p-4 rounded-xl flex items-center gap-3 text-xs font-semibold border ${
+              clearActivityMsg.type === 'success'
+                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60'
+                : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
+            }`}
+          >
+            <FontAwesome
+              name={clearActivityMsg.type === 'success' ? 'circle-check' : 'circle-exclamation'}
+              className={`text-sm shrink-0 ${clearActivityMsg.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}
+            />
+            <span>{clearActivityMsg.text}</span>
+          </div>
+        )}
+
+        {/* Clear Activities Block */}
+        <div className="p-5 rounded-xl bg-[#101828] border border-[#243048] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-white">Bersihkan Riwayat Pengisian Formulir</h3>
+              <p className="text-xs text-[#6EA2B3] mt-1">
+                Menghapus jejak log domain formulir yang pernah diisi oleh ekstensi autofill untuk kerahasiaan.
+              </p>
+            </div>
+
+            {!showConfirmClear ? (
               <button
                 type="button"
-                onClick={logout}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[#49769F] bg-white hover:border-[#0A4174] hover:text-[#0A4174] border border-[#BDD8E9]/70 rounded-[10px] transition-colors cursor-pointer"
+                onClick={() => setShowConfirmClear(true)}
+                disabled={clearingActivity}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 rounded-xl transition-colors cursor-pointer shrink-0"
               >
-                <Flaticon name="sign-out-alt" className="text-[16px] text-inherit" />
-                <span>Keluar dari akun (logout)</span>
+                <FontAwesome name="trash" className="text-xs" />
+                <span>Hapus Riwayat</span>
               </button>
+            ) : null}
+          </div>
+
+          {showConfirmClear && (
+            <div className="p-4 rounded-xl bg-[#171F2F] border border-rose-500/40 space-y-3">
+              <p className="text-xs font-bold text-rose-300">
+                Apakah Anda yakin ingin menghapus seluruh log riwayat aktivitas? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleClearActivities}
+                  disabled={clearingActivity}
+                  className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  {clearingActivity ? 'Menghapus...' : 'Ya, Hapus Sekarang'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmClear(false)}
+                  className="px-4 py-2 text-xs font-medium text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-lg transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
             </div>
-          </Card>
+          )}
+        </div>
+
+        {/* Logout Session Action */}
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            <h3 className="text-sm font-bold text-white">Keluar dari Akun (Logout)</h3>
+            <p className="text-xs text-[#6EA2B3] mt-0.5">Mengakhiri sesi aman Anda pada peramban ini</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-300 hover:text-white hover:bg-rose-600 bg-rose-500/15 border border-rose-500/30 rounded-xl transition-colors cursor-pointer shadow-xs"
+          >
+            <FontAwesome name="right-from-bracket" className="text-xs" />
+            <span>Keluar Akun</span>
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
+export default SettingsPage;

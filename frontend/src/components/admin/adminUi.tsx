@@ -4,17 +4,17 @@ import { FontAwesome } from '../ui';
 /* ─── Shared admin UI primitives (clean white/navy government theme) ─── */
 
 export const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
-  diterima: { label: 'Diterima', cls: 'bg-[#BDD8E9]/40 text-[#0A4174] border-[#6EA2B3]/50', dot: 'bg-[#0A4174]' },
-  diproses: { label: 'Diproses', cls: 'bg-[#4E8EA2]/15 text-[#0A4174] border-[#4E8EA2]/40', dot: 'bg-[#4E8EA2]' },
-  proses: { label: 'Diproses', cls: 'bg-[#4E8EA2]/15 text-[#0A4174] border-[#4E8EA2]/40', dot: 'bg-[#4E8EA2]' },
-  selesai: { label: 'Selesai', cls: 'bg-[#6EA2B3]/25 text-[#001D39] border-[#4E8EA2]/40', dot: 'bg-[#4E8EA2]' },
+  diterima: { label: 'Diterima', cls: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  diproses: { label: 'Diproses', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  proses: { label: 'Diproses', cls: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  selesai: { label: 'Selesai', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
   ditolak: { label: 'Ditolak', cls: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
 };
 
 export const PRIORITY_META: Record<string, { label: string; cls: string }> = {
   tinggi: { label: 'Tinggi', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
   sedang: { label: 'Sedang', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  rendah: { label: 'Rendah', cls: 'bg-[#BDD8E9]/25 text-[#49769F] border-[#BDD8E9]' },
+  rendah: { label: 'Rendah', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -26,8 +26,8 @@ export const CATEGORY_LABEL: Record<string, string> = {
 
 /* ─── Report type (layanan vs keamanan) ─── */
 export const REPORT_TYPE_META: Record<string, { label: string; cls: string; dot: string; icon: string }> = {
-  layanan: { label: 'Layanan', cls: 'bg-[#BDD8E9]/25 text-[#49769F] border-[#BDD8E9]', dot: 'bg-[#6EA2B3]', icon: 'inbox' },
-  keamanan: { label: 'Keamanan & Bug', cls: 'bg-[#BDD8E9]/40 text-[#0A4174] border-[#4E8EA2]/40', dot: 'bg-[#0A4174]', icon: 'shield-exclamation' },
+  layanan: { label: 'Layanan', cls: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', icon: 'inbox' },
+  keamanan: { label: 'Keamanan & Bug', cls: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', icon: 'shield-exclamation' },
 };
 
 export function ReportTypeBadge({ type }: { type?: string }) {
@@ -93,7 +93,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
 
 export function AdminCard({ className = '', children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={`bg-white rounded-2xl border border-[#BDD8E9]/60 shadow-sm ${className}`}>
+    <div className={`bg-white rounded-2xl border border-[#E8ECF2] shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
       {children}
     </div>
   );
@@ -103,14 +103,14 @@ export function SectionTitle({ icon, title, subtitle, action }: {
   icon: string; title: string; subtitle?: string; action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#BDD8E9]/40">
+    <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E8ECF2]">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-xl bg-[#BDD8E9]/35 text-[#0A4174] flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-[#EFF4FF] text-[#2563EB] flex items-center justify-center shrink-0">
           <FontAwesome name={icon} className="text-sm" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-[#001D39] truncate">{title}</h2>
-          {subtitle && <p className="text-xs text-[#49769F] mt-0.5 truncate">{subtitle}</p>}
+          <h2 className="text-sm font-bold text-[#0F172A] truncate">{title}</h2>
+          {subtitle && <p className="text-xs text-[#64748B] mt-0.5 truncate">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -123,20 +123,20 @@ export function KpiCard({ label, value, icon, tone = 'blue', hint }: {
   tone?: 'blue' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'slate'; hint?: string;
 }) {
   const tones: Record<string, string> = {
-    blue: 'bg-[#BDD8E9]/35 text-[#0A4174]',
-    emerald: 'bg-[#4E8EA2]/15 text-[#0A4174]',
+    blue: 'bg-[#EFF4FF] text-[#2563EB]',
+    emerald: 'bg-emerald-50 text-emerald-600',
     amber: 'bg-amber-50 text-amber-600',
     rose: 'bg-rose-50 text-rose-600',
-    indigo: 'bg-[#6EA2B3]/25 text-[#001D39]',
-    slate: 'bg-[#BDD8E9]/20 text-[#49769F]',
+    indigo: 'bg-violet-50 text-violet-600',
+    slate: 'bg-slate-100 text-slate-600',
   };
   return (
     <AdminCard className="p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-[#49769F] truncate">{label}</p>
-          <p className="text-[28px] leading-tight font-black text-[#001D39] mt-1.5 tracking-tight">{value}</p>
-          {hint && <p className="text-[11px] text-[#6EA2B3] mt-1 font-medium">{hint}</p>}
+          <p className="text-xs font-semibold text-[#64748B] truncate">{label}</p>
+          <p className="text-[28px] leading-tight font-black text-[#0F172A] mt-1.5 tracking-tight">{value}</p>
+          {hint && <p className="text-[11px] text-[#94A3B8] mt-1 font-medium">{hint}</p>}
         </div>
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tones[tone]}`}>
           <FontAwesome name={icon} className="text-base" />

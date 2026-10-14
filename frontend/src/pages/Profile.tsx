@@ -1,959 +1,470 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-
 import { profileApi, type Profile } from '../services/api';
+import { FontAwesome } from '../components/ui';
 
+const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
+  identity: [
+    'full_name', 'nik', 'birth_place', 'birth_date', 'gender', 'religion',
+    'marital_status', 'blood_type', 'title', 'first_name', 'middle_initial', 'last_name'
+  ],
+  address: [
+    'address', 'address_line_2', 'rt_rw', 'village', 'district', 'city',
+    'province', 'postal_code', 'country'
+  ],
+  contact: [
+    'phone', 'email', 'home_phone', 'work_telephone', 'fax', 'website'
+  ],
+  education: [
+    'education_level', 'institution', 'major_field', 'student_id', 'nisn', 'gpa_score'
+  ],
+  career: [
+    'occupation', 'organization', 'work_address', 'income'
+  ],
+  family: [
+    'mother_name', 'father_name', 'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation'
+  ],
+  documents: [
+    'npwp', 'bpjs_number', 'driver_license'
+  ],
+};
 import {
-
-  Loader2, Save, AlertCircle, User, MapPin, Phone,
-
+  Save, AlertCircle, User, MapPin, Phone,
   GraduationCap, Briefcase, HeartHandshake, FileText, Sparkles,
-
-  Plus, Trash2, Edit3, Copy, Check, Info,
-
-  Upload, Camera, FolderPlus, X, Eye, Calendar, AlignLeft,
-
-  FileCheck2, ChevronDown, EyeOff
-
+  Plus, Trash2, Edit3, Copy, Check,
+  Upload, Camera, FolderPlus, X, Eye,
+  EyeOff, Search, Layers, RefreshCw
 } from 'lucide-react';
 
-
-
 import type {
-
   CustomFieldType,
-
   CustomFieldItem,
-
   UserCategory,
-
   DocumentPhoto,
-
   DocumentPhotosMap,
-
 } from '../types/profile';
-
 import {
-
   STANDARD_CATEGORIES,
-
   PHOTO_DOCUMENT_SLOTS,
-
   RICH_CATEGORY_PRESETS,
-
   type RichPreset,
-
 } from '../constants/profilePresets';
-
 import { compressImage } from '../utils/image';
 
-
-
 export type {
-
   CustomFieldType,
-
   CustomFieldItem,
-
   UserCategory,
-
   DocumentPhoto,
-
   DocumentPhotosMap,
-
   RichPreset,
-
 };
 
-
-
 export function ProfilePage() {
-
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [customFields, setCustomFields] = useState<CustomFieldItem[]>([]);
-
   const [userCategories, setUserCategories] = useState<UserCategory[]>([]);
-
   const [documentPhotos, setDocumentPhotos] = useState<DocumentPhotosMap>({});
-
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
-
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-
+  // Active Category Workspace State ('all' or category id like 'identity', 'address', etc.)
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('identity');
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
 
   // Modal / Form Tambah Custom Field
-
   const [showAddFieldModal, setShowAddFieldModal] = useState(false);
-
   const [targetCategory, setTargetCategory] = useState('identity');
-
   const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
-
   const [newLabel, setNewLabel] = useState('');
-
   const [newKey, setNewKey] = useState('');
-
   const [newValue, setNewValue] = useState('');
-
   const [newPhotoData, setNewPhotoData] = useState<DocumentPhoto | null>(null);
-
   const [fieldError, setFieldError] = useState('');
 
-
-
-  // Inline Category Creator inside Modal
-
-  const [showInlineCategoryCreator, setShowInlineCategoryCreator] = useState(false);
-
-  const [inlineCategoryTitle, setInlineCategoryTitle] = useState('');
-
-  const [inlineCategoryDesc, setInlineCategoryDesc] = useState('');
-
-
-
-  // Modal Standalone Buat Kategori Baru (di luar)
-
+  // Modal Standalone Buat Kategori Baru
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-
   const [newCategoryTitle, setNewCategoryTitle] = useState('');
-
   const [newCategoryDesc, setNewCategoryDesc] = useState('');
-
   const [categoryError, setCategoryError] = useState('');
 
-
-
   // Inline Editing Custom Field State
-
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
-
   const [editLabel, setEditLabel] = useState('');
-
   const [editKey, setEditKey] = useState('');
-
   const [editValue, setEditValue] = useState('');
 
-
-
   // Image Preview Lightbox Modal
-
   const [previewPhoto, setPreviewPhoto] = useState<{ title: string; data: string; name: string } | null>(null);
-
-  // Pelindung PII: samarkan field sensitif (NIK, No. KK, telepon, dsb.) secara
-  // visual secara default untuk mencegah paparan saat berbagi layar / shoulder-surfing.
-  const [piiMasked, setPiiMasked] = useState(true);
-
 
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
   const modalPhotoInputRef = useRef<HTMLInputElement | null>(null);
-
   const isSavingRef = useRef(false);
-
   const lastSaveTimestampRef = useRef<number>(0);
 
-
-
   const slugify = (text: string) => {
-
     return text
-
       .toLowerCase()
-
       .trim()
-
       .replace(/[^a-z0-9]+/g, '_')
-
       .replace(/^_+|_+$/g, '');
-
   };
-
-
 
   const handleLabelChange = (val: string) => {
-
     setNewLabel(val);
-
     if (!newKey || newKey === slugify(newLabel)) {
-
       setNewKey(slugify(val));
-
     }
-
   };
-
-
 
   useEffect(() => {
-
     profileApi.get()
-
       .then(res => {
-
         const data = res.data;
-
         setProfile(data);
 
-
-
-        // Parse custom_fields (support { categories: [], fields: [] } and flat array)
-
+        // Parse custom_fields
         if (data.custom_fields) {
-
           try {
-
             const parsed = typeof data.custom_fields === 'string'
-
               ? JSON.parse(data.custom_fields)
-
               : data.custom_fields;
 
-
-
             if (parsed && typeof parsed === 'object') {
-
               if (Array.isArray(parsed.fields)) {
-
                 setCustomFields(parsed.fields);
-
                 if (Array.isArray(parsed.categories)) {
-
                   setUserCategories(parsed.categories);
-
                 }
-
               } else if (Array.isArray(parsed)) {
-
                 setCustomFields(parsed.map((item, idx) => ({
-
                   id: item.id || `cf_${idx}_${Date.now()}`,
-
                   category: item.category || 'documents',
-
                   key: item.key || `field_${idx}`,
-
                   label: item.label || item.key,
-
                   value: item.value || '',
-
                   type: item.type || 'text',
-
                   photoData: item.photoData,
-
                   photoName: item.photoName,
-
                   photoSize: item.photoSize,
-
                 })));
-
               }
-
             }
-
           } catch (e) {
-
             console.error('Failed to parse custom_fields:', e);
-
           }
-
         }
-
-
 
         // Parse document_photos
-
         if (data.document_photos) {
-
           try {
-
             const parsedDocs = typeof data.document_photos === 'string'
-
               ? JSON.parse(data.document_photos)
-
               : data.document_photos;
-
             if (parsedDocs && typeof parsedDocs === 'object') {
-
               setDocumentPhotos(parsedDocs);
-
             }
-
           } catch (e) {
-
             console.error('Failed to parse document_photos:', e);
-
           }
-
         }
-
       })
-
       .catch(console.error)
-
       .finally(() => setLoading(false));
-
   }, []);
 
-
-
   const handleChange = (key: string, value: string) => {
-
     setProfile(prev => {
-
       if (!prev) return null;
-
       const updated = { ...prev, [key]: value };
-
-      // Auto-sync First Name & Last Name jika Full Name berubah dan belum diset
-
       if (key === 'full_name' && value.trim()) {
-
         const parts = value.trim().split(/\s+/);
-
         if (!updated.first_name) updated.first_name = parts[0] || '';
-
         if (!updated.last_name) updated.last_name = parts.slice(1).join(' ') || parts[0] || '';
-
       }
-
       return updated;
-
     });
-
     setHasUnsavedChanges(true);
-
   };
-
-
 
   const getExtendedField = (key: string, defaultVal: string = '') => {
-
     if (profile && (profile as any)[key] !== undefined && (profile as any)[key] !== null && String((profile as any)[key]).trim() !== '') {
-
       return String((profile as any)[key]);
-
     }
-
     const cf = customFields.find(f => f.key === key);
-
     return cf?.value !== undefined && cf?.value !== null ? cf.value : defaultVal;
-
   };
-
-
 
   const handleExtendedChange = (key: string, value: string, category: string, label: string, type: CustomFieldType = 'text') => {
-
     setProfile(prev => {
-
       if (!prev) return null;
-
       const updated = { ...prev, [key]: value };
-
-      // Sinkronkan nama lengkap jika first_name atau last_name diedit
-
       if (key === 'first_name' || key === 'last_name') {
-
         const fn = key === 'first_name' ? value : (updated.first_name || '');
-
         const ln = key === 'last_name' ? value : (updated.last_name || '');
-
         const mi = getExtendedField('middle_initial');
-
         if (fn || ln) {
-
           updated.full_name = [fn, mi ? `${mi}.` : '', ln].filter(Boolean).join(' ');
-
         }
-
       }
-
       return updated;
-
     });
-
-
 
     setCustomFields(prev => {
-
       const exists = prev.some(f => f.key === key);
-
       if (exists) {
-
         return prev.map(f => f.key === key ? { ...f, value } : f);
-
       } else {
-
         return [
-
           ...prev,
-
           {
-
             id: `cf_${key}_${Date.now()}`,
-
             category,
-
             key,
-
             label,
-
             value,
-
             type,
-
           }
-
         ];
-
       }
-
     });
 
-
-
     setHasUnsavedChanges(true);
-
   };
-
-
 
   // Upload Foto Dokumen Resmi Standar
-
   const handleStandardPhotoUpload = async (slotId: string, file: File) => {
-
     try {
-
       const compressed = await compressImage(file);
-
       setDocumentPhotos(prev => ({
-
         ...prev,
-
         [slotId]: compressed,
-
       }));
-
       setHasUnsavedChanges(true);
-
-      setMessage({ type: 'success', text: `Foto ${file.name} berhasil dimuat dan siap untuk autofill!` });
-
+      setMessage({ type: 'success', text: `Berkas ${file.name} berhasil dimuat.` });
       setTimeout(() => setMessage(null), 3000);
-
     } catch (err) {
-
       console.error('Failed to compress image:', err);
-
       setMessage({ type: 'error', text: 'Gagal memproses berkas gambar.' });
-
     }
-
   };
-
-
 
   const handleRemoveStandardPhoto = (slotId: string) => {
-
     setDocumentPhotos(prev => {
-
       const updated = { ...prev };
-
       delete updated[slotId];
-
       return updated;
-
     });
-
     setHasUnsavedChanges(true);
-
   };
-
-
 
   // Upload Foto untuk Kolom Kustom di Modal
-
   const handleModalPhotoSelected = async (file: File) => {
-
     try {
-
       const compressed = await compressImage(file);
-
       setNewPhotoData(compressed);
-
       setNewValue(compressed.name);
-
       if (!newLabel) {
-
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-
         setNewLabel(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
-
         setNewKey(slugify(cleanName));
-
       }
-
     } catch (err) {
-
       console.error('Failed to compress modal image:', err);
-
       setFieldError('Gagal memproses berkas gambar.');
-
     }
-
   };
-
-
-
-  // Buka Modal Tambah Field dengan kategori tertentu
 
   const openAddFieldModal = (categoryId: string) => {
-
     setTargetCategory(categoryId);
-
     setNewFieldType('text');
-
     setNewLabel('');
-
     setNewKey('');
-
     setNewValue('');
-
     setNewPhotoData(null);
-
     setFieldError('');
-
-    setShowInlineCategoryCreator(false);
-
     setShowAddFieldModal(true);
-
   };
-
-
-
-  // Pilih preset di modal
 
   const applyPresetToModal = (preset: RichPreset) => {
-
     setNewFieldType(preset.type);
-
     setNewLabel(preset.label);
-
     setNewKey(preset.key);
-
     setNewValue(preset.type === 'image' ? '' : (preset.placeholder || ''));
-
     setNewPhotoData(null);
-
     setFieldError('');
-
   };
-
-
-
-  // Buat kategori baru langsung dari form modal
-
-  const handleCreateCategoryInline = (e: React.FormEvent) => {
-
-    e.preventDefault();
-
-    const title = inlineCategoryTitle.trim();
-
-    if (!title) return;
-
-
-
-    const catId = `cat_${slugify(title)}_${Date.now().toString(36)}`;
-
-    const newCat: UserCategory = {
-
-      id: catId,
-
-      title,
-
-      description: inlineCategoryDesc.trim() || 'Kategori kustom pengguna',
-
-    };
-
-
-
-    setUserCategories(prev => [...prev, newCat]);
-
-    setTargetCategory(catId);
-
-    setShowInlineCategoryCreator(false);
-
-    setInlineCategoryTitle('');
-
-    setInlineCategoryDesc('');
-
-    setHasUnsavedChanges(true);
-
-  };
-
-
-
-  // Submit Field Kustom Baru
 
   const handleSaveNewField = (e: React.FormEvent) => {
-
     e.preventDefault();
-
     setFieldError('');
-
-
-
     const trimmedLabel = newLabel.trim();
-
     const finalKey = (newKey.trim() || slugify(trimmedLabel)).trim();
 
-
-
     if (!trimmedLabel) {
-
-      setFieldError('Nama data / label wajib diisi.');
-
+      setFieldError('Nama data wajib diisi.');
       return;
-
     }
-
     if (!finalKey) {
-
-      setFieldError('Kunci atribut (key) tidak boleh kosong.');
-
+      setFieldError('Kunci atribut tidak boleh kosong.');
       return;
-
     }
-
-
 
     if (newFieldType === 'image') {
-
       if (!newPhotoData?.data) {
-
-        setFieldError('Silakan pilih atau unggah berkas gambar foto.');
-
+        setFieldError('Silakan pilih berkas gambar foto.');
         return;
-
       }
-
     } else {
-
       if (!newValue.trim()) {
-
         setFieldError('Nilai data wajib diisi.');
-
         return;
-
       }
-
     }
-
-
 
     if (customFields.some(f => f.key === finalKey)) {
-
       setFieldError(`Kunci atribut "${finalKey}" sudah digunakan.`);
-
       return;
-
     }
 
-
-
     const newItem: CustomFieldItem = {
-
       id: `cf_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-
       category: targetCategory,
-
       key: finalKey,
-
       label: trimmedLabel,
-
       value: newFieldType === 'image' ? (newPhotoData?.name || 'document.jpg') : newValue.trim(),
-
       type: newFieldType,
-
       photoData: newFieldType === 'image' ? newPhotoData?.data : undefined,
-
       photoName: newFieldType === 'image' ? newPhotoData?.name : undefined,
-
       photoSize: newFieldType === 'image' ? newPhotoData?.size : undefined,
-
     };
-
-
 
     setCustomFields(prev => [...prev, newItem]);
 
-
-
-    // Jika berupa gambar, daftarkan juga ke documentPhotos agar autofill file input langsung mengenali
-
     if (newFieldType === 'image' && newPhotoData) {
-
       setDocumentPhotos(prev => ({
-
         ...prev,
-
         [finalKey]: newPhotoData,
-
       }));
-
     }
-
-
 
     setShowAddFieldModal(false);
-
     setHasUnsavedChanges(true);
-
   };
-
-
-
-  // Submit Kategori Baru dari Modal Luar
 
   const handleCreateCategoryStandalone = (e: React.FormEvent) => {
-
     e.preventDefault();
-
     setCategoryError('');
-
-
-
     const title = newCategoryTitle.trim();
-
     if (!title) {
-
       setCategoryError('Nama kategori wajib diisi.');
-
       return;
-
     }
-
-
 
     const catId = `cat_${slugify(title)}_${Date.now().toString(36)}`;
-
     const newCat: UserCategory = {
-
       id: catId,
-
       title,
-
-      description: newCategoryDesc.trim() || 'Kategori kustom pengguna',
-
+      description: newCategoryDesc.trim() || 'Kategori data kustom pengguna',
     };
 
-
-
     setUserCategories(prev => [...prev, newCat]);
-
     setShowAddCategoryModal(false);
-
     setNewCategoryTitle('');
-
     setNewCategoryDesc('');
-
+    setActiveCategoryId(catId);
     setHasUnsavedChanges(true);
-
-    openAddFieldModal(catId);
-
   };
-
-
 
   const handleDeleteCategory = (catId: string) => {
-
     if (!confirm('Hapus kategori kustom ini beserta semua data di dalamnya?')) return;
-
     setUserCategories(prev => prev.filter(c => c.id !== catId));
-
     setCustomFields(prev => prev.filter(f => f.category !== catId));
-
+    setActiveCategoryId('identity');
     setHasUnsavedChanges(true);
-
   };
-
-
-
-  // Inline Edit Custom Field
 
   const startEditField = (field: CustomFieldItem) => {
-
     setEditingFieldId(field.id);
-
     setEditLabel(field.label);
-
     setEditKey(field.key);
-
     setEditValue(field.value);
-
   };
-
-
 
   const saveEditField = (id: string) => {
-
     if (!editLabel.trim() || !editKey.trim() || !editValue.trim()) return;
-
     setCustomFields(prev =>
-
       prev.map(f => f.id === id ? { ...f, label: editLabel.trim(), key: editKey.trim(), value: editValue.trim() } : f)
-
     );
-
     setEditingFieldId(null);
-
     setHasUnsavedChanges(true);
-
   };
-
-
 
   const handleDeleteField = (id: string, key?: string) => {
-
     setCustomFields(prev => prev.filter(f => f.id !== id));
-
     if (key) {
-
       setDocumentPhotos(prev => {
-
         const updated = { ...prev };
-
         delete updated[key];
-
         return updated;
-
       });
-
     }
-
     setHasUnsavedChanges(true);
-
   };
-
-
 
   const handleCopy = (text: string, key: string) => {
-
     navigator.clipboard.writeText(text);
-
     setCopiedKey(key);
-
     setTimeout(() => setCopiedKey(null), 1800);
-
   };
 
-
-
   // Simpan Seluruh Profil ke Backend
-
   const handleSave = useCallback(async () => {
-
-    // 1. Guard konkurensi: cegah eksekusi berulang jika proses simpan sedang berjalan
-
     if (isSavingRef.current || !profile) return;
-
-
-
-    // 2. Cooldown guard: minimal jeda 800ms antar panggilan simpan
-
     const now = Date.now();
-
     if (now - lastSaveTimestampRef.current < 800 && lastSaveTimestampRef.current !== 0) {
-
       return;
-
     }
-
-
-
     lastSaveTimestampRef.current = now;
-
     isSavingRef.current = true;
-
     setSaving(true);
-
     setMessage(null);
 
-
-
     try {
-
       const customPayload = {
-
         categories: userCategories,
-
         fields: customFields,
-
       };
-
-
 
       const payload: Partial<Profile> = {
-
         ...profile,
-
         custom_fields: JSON.stringify(customPayload),
-
         document_photos: JSON.stringify(documentPhotos),
-
       };
 
-
-
       const res = await profileApi.update(payload);
-
       setProfile(res.data);
-
       setHasUnsavedChanges(false);
 
-      
-
-      // Beritahu ekstensi GovConnect bahwa profil telah diperbarui
-
       try {
-
         localStorage.setItem('govconnect_profile_updated_at', Date.now().toString());
-
         window.postMessage({ type: 'GOVCONNECT_PROFILE_UPDATED', profile: res.data }, '*');
-
       } catch (storageErr) {
-
         console.warn('Gagal sinkronisasi event ekstensi:', storageErr);
-
       }
 
-
-
-      setMessage({ type: 'success', text: 'Semua data profil, berkas foto, dan kolom kustom berhasil disimpan!' });
-
+      setMessage({ type: 'success', text: 'Semua perubahan profil berhasil disimpan.' });
       setTimeout(() => setMessage(null), 4000);
-
     } catch (err: any) {
-
       console.error('Error saving profile:', err);
-
-      setMessage({ type: 'error', text: err?.response?.data?.detail || 'Gagal menyimpan profil. Silakan coba lagi.' });
-
+      setMessage({ type: 'error', text: err?.response?.data?.detail || 'Gagal menyimpan profil. Silakan coba kembali.' });
     } finally {
-
       isSavingRef.current = false;
-
       setSaving(false);
-
     }
-
   }, [profile, customFields, userCategories, documentPhotos]);
 
   const handleResetChanges = useCallback(async () => {
@@ -997,824 +508,787 @@ export function ProfilePage() {
     }
   }, []);
 
-
-
-  // Keyboard shortcut: Ctrl+S (dengan proteksi key-hold e.repeat & status saving)
-
+  // Keyboard shortcut: Ctrl+S
   useEffect(() => {
-
     const handleKeyDown = (e: KeyboardEvent) => {
-
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-
         e.preventDefault();
-
-
-
-        // Cegah eksekusi jika tombol ditahan (auto-repeat OS) atau sedang menyimpan
-
-        if (e.repeat || isSavingRef.current) {
-
-          return;
-
-        }
-
-
-
+        if (e.repeat || isSavingRef.current) return;
         handleSave();
-
       }
-
     };
-
     window.addEventListener('keydown', handleKeyDown);
-
     return () => window.removeEventListener('keydown', handleKeyDown);
-
   }, [handleSave]);
 
-
+  const isKeyFilled = useCallback((key: string): boolean => {
+    const extVal = getExtendedField(key);
+    if (extVal && extVal.trim() !== '') return true;
+    const rawVal = profile ? (profile as any)[key] : null;
+    return Boolean(rawVal && String(rawVal).trim() !== '');
+  }, [profile, getExtendedField]);
 
   // Kelengkapan Profil (Completeness)
-
   const completeness = useMemo(() => {
-
     if (!profile) return { percentage: 0, filled: 0, total: 0 };
-
-
-
-    const coreKeys = [
-
-      'full_name', 'nik', 'birth_place', 'birth_date', 'gender', 'religion', 'marital_status',
-
-      'blood_type', 'address', 'province', 'city', 'district', 'village', 'postal_code',
-
-      'phone', 'email', 'education_level', 'institution', 'student_id', 'nisn',
-
-      'occupation', 'organization', 'work_address', 'mother_name', 'father_name',
-
-      'emergency_contact_name', 'emergency_contact_phone', 'npwp', 'bpjs_number'
-
-    ];
-
-
-
+    const allStandardKeys = Object.values(ALL_CATEGORY_FIELD_KEYS).flat();
     let filledCount = 0;
 
-    coreKeys.forEach(k => {
-
-      const val = profile[k];
-
-      if (val && String(val).trim() !== '') filledCount++;
-
+    allStandardKeys.forEach(k => {
+      if (isKeyFilled(k)) filledCount++;
     });
-
-
-
-    customFields.forEach(cf => {
-
-      if (cf.type === 'image' ? cf.photoData : (cf.value && cf.value.trim() !== '')) {
-
-        filledCount++;
-
-      }
-
-    });
-
-
 
     PHOTO_DOCUMENT_SLOTS.forEach(slot => {
-
       if (documentPhotos[slot.id]?.data) filledCount++;
-
     });
 
+    const standardKeySet = new Set(allStandardKeys);
+    const extraCustomFields = customFields.filter(f => !standardKeySet.has(f.key));
+    extraCustomFields.forEach(cf => {
+      if (cf.type === 'image' ? Boolean(cf.photoData) : Boolean(cf.value && cf.value.trim() !== '')) {
+        filledCount++;
+      }
+    });
 
-
-    const totalTracked = coreKeys.length + customFields.length + PHOTO_DOCUMENT_SLOTS.length;
-
+    const totalTracked = allStandardKeys.length + PHOTO_DOCUMENT_SLOTS.length + extraCustomFields.length;
     const percentage = totalTracked > 0 ? Math.round((filledCount / totalTracked) * 100) : 0;
-
-
-
     return { percentage, filled: filledCount, total: totalTracked };
+  }, [profile, customFields, documentPhotos, isKeyFilled]);
 
-  }, [profile, customFields, documentPhotos]);
+  // Hitung jumlah data per kategori
+  const getCategoryStats = useCallback((catId: string) => {
+    if (!profile) return { filled: 0, total: 0 };
+    let filled = 0;
+    let total = 0;
 
+    const standardKeys = ALL_CATEGORY_FIELD_KEYS[catId] || [];
+    standardKeys.forEach(k => {
+      total++;
+      if (isKeyFilled(k)) filled++;
+    });
 
+    if (catId === 'documents') {
+      PHOTO_DOCUMENT_SLOTS.forEach(slot => {
+        total++;
+        if (documentPhotos[slot.id]?.data) filled++;
+      });
+    }
+
+    const standardKeySet = new Set(Object.values(ALL_CATEGORY_FIELD_KEYS).flat());
+    const extraCustomFields = customFields.filter(f => f.category === catId && !standardKeySet.has(f.key));
+    extraCustomFields.forEach(f => {
+      total++;
+      if (f.type === 'image' ? Boolean(f.photoData) : Boolean(f.value?.trim())) filled++;
+    });
+
+    return { filled, total };
+  }, [profile, customFields, documentPhotos, isKeyFilled]);
 
   // Semua kategori yang tersedia
-
   const allCategories = useMemo(() => {
-
     return [
-
-      ...STANDARD_CATEGORIES.map(c => ({ ...c, isCustom: false })),
-
-      ...userCategories.map(c => ({ ...c, icon: FolderPlus, desc: c.description, isCustom: true }))
-
+      ...STANDARD_CATEGORIES.map(c => ({
+        id: c.id,
+        title: c.title,
+        desc: c.desc,
+        icon: c.iconName,
+        isCustom: false,
+      })),
+      ...userCategories.map(c => ({
+        id: c.id,
+        title: c.title,
+        desc: c.description,
+        icon: 'folder',
+        isCustom: true,
+      }))
     ];
-
   }, [userCategories]);
 
+  // Filter kategori berdasarkan pencarian
+  const filteredCategories = useMemo(() => {
+    if (!categorySearchQuery.trim()) return allCategories;
+    const q = categorySearchQuery.toLowerCase();
+    return allCategories.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.desc.toLowerCase().includes(q)
+    );
+  }, [allCategories, categorySearchQuery]);
 
+  // Render input field reusable dengan copy button dan PII masking
+  const renderField = (
+    label: string,
+    key: string,
+    value: string,
+    onValueChange: (val: string) => void,
+    options?: {
+      placeholder?: string;
+      type?: 'text' | 'date' | 'select' | 'textarea';
+      selectOptions?: string[];
+      isPii?: boolean;
+      badge?: string;
+    }
+  ) => {
+    const type = options?.type ?? 'text';
 
-  // Helper render Custom Fields di dalam Setiap Kategori
+    return (
+      <div className="space-y-2" key={key}>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] flex items-center gap-2">
+            <span>{label}</span>
+          </label>
+          {value && (
+            <button
+              type="button"
+              onClick={() => handleCopy(value, key)}
+              title="Salin nilai"
+              className="inline-flex items-center gap-1 text-xs text-[#6EA2B3] hover:text-[#7BBDE8] transition-colors cursor-pointer"
+            >
+              {copiedKey === key ? (
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Tersalin
+                </span>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Salin</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
-  const renderCategoryCustomFields = (catId: string, catTitle: string) => {
+        {type === 'select' ? (
+          <div className="relative">
+            <select
+              value={value}
+              onChange={e => onValueChange(e.target.value)}
+              className="w-full h-11 pl-4 pr-10 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all appearance-none cursor-pointer"
+            >
+              <option value="" className="bg-[#101828] text-[#6EA2B3]">Pilih opsi...</option>
+              {options?.selectOptions?.map(opt => (
+                <option key={opt} value={opt} className="bg-[#101828] text-white py-1">{opt}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6EA2B3]">
+              <FontAwesome name="chevron-down" className="text-xs" />
+            </div>
+          </div>
+        ) : type === 'date' ? (
+          <input
+            type="date"
+            value={value}
+            onChange={e => onValueChange(e.target.value)}
+            className="w-full h-11 px-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-75 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+          />
+        ) : type === 'textarea' ? (
+          <textarea
+            value={value}
+            onChange={e => onValueChange(e.target.value)}
+            placeholder={options?.placeholder || `Masukkan ${label.toLowerCase()}...`}
+            rows={3}
+            className="w-full p-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all resize-none placeholder:text-[#6EA2B3]"
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={e => onValueChange(e.target.value)}
+            placeholder={options?.placeholder || `Masukkan ${label.toLowerCase()}...`}
+            className="w-full h-11 px-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all placeholder:text-[#6EA2B3]"
+          />
+        )}
+      </div>
+    );
+  };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="w-10 h-10 border-4 border-[#7BBDE8] border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-semibold text-[#6EA2B3]">Memuat profil kependudukan...</span>
+      </div>
+    );
+  }
+
+  // Render konten per kategori
+  const renderCategoryContent = (catId: string) => {
     const fieldsInCat = customFields.filter(f => f.category === catId);
 
     return (
-
-      <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
-
-        <div className="flex items-center justify-between">
-
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-
-            Data Kustom pada {catTitle} ({fieldsInCat.length})
-
-          </span>
-
-          <button
-
-            type="button"
-
-            onClick={() => openAddFieldModal(catId)}
-
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-
-          >
-
-            <Plus className="w-3.5 h-3.5" />
-
-            + Tambah Data di Kategori Ini
-
-          </button>
-
-        </div>
-
-
-
-        {fieldsInCat.length > 0 && (
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-
-            {fieldsInCat.map(field => {
-
-              const isEditing = editingFieldId === field.id;
-
-              const isImage = field.type === 'image';
-
-
-
-              // Tampilan Kartu Berkas Gambar
-
-              if (isImage) {
-
-                return (
-
-                  <div
-
-                    key={field.id}
-
-                    className="p-3.5 bg-blue-50/40 hover:bg-blue-50/70 rounded-xl border border-blue-200 shadow-sm flex items-center justify-between gap-3 transition-all"
-
-                  >
-
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-
-                      {field.photoData ? (
-
-                        <div
-
-                          onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-
-                          className="w-12 h-12 rounded-lg bg-slate-100 border border-blue-200 overflow-hidden cursor-pointer flex-shrink-0 relative group"
-
-                        >
-
-                          <img src={field.photoData} alt={field.label} className="w-full h-full object-cover" />
-
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-
-                            <Eye className="w-3.5 h-3.5" />
-
-                          </div>
-
-                        </div>
-
-                      ) : (
-
-                        <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-
-                          <Camera className="w-6 h-6" />
-
-                        </div>
-
-                      )}
-
-                      <div className="min-w-0 flex-1 space-y-0.5">
-
-                        <div className="flex items-center gap-1.5">
-
-                          <span className="text-xs font-bold text-slate-900 truncate">{field.label}</span>
-
-                          <span className="text-[9px] font-mono text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
-
-                            {field.key}
-
-                          </span>
-
-                        </div>
-
-                        <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
-
-                          <FileCheck2 className="w-3 h-3" />
-
-                          {field.photoName || field.value} {field.photoSize ? `(${Math.round(field.photoSize / 1024)} KB)` : ''} · Siap Autofill
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div className="flex items-center gap-1 flex-shrink-0">
-
-                      {field.photoData && (
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-
-                          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg"
-
-                          title="Lihat foto"
-
-                        >
-
-                          <Eye className="w-3.5 h-3.5" />
-
-                        </button>
-
-                      )}
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => handleDeleteField(field.id, field.key)}
-
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-
-                        title="Hapus"
-
-                      >
-
-                        <Trash2 className="w-3.5 h-3.5" />
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                );
-
-              }
-
-
-
-              // Tampilan Kartu Teks / Tanggal / Textarea
-
-              if (isEditing) {
-
-                return (
-
-                  <div key={field.id} className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-300 space-y-2.5">
-
-                    <div className="grid grid-cols-2 gap-2">
-
-                      <div>
-
-                        <label className="text-[10px] font-semibold text-slate-600">Label</label>
-
-                        <input
-
-                          type="text"
-
-                          value={editLabel}
-
-                          onChange={e => setEditLabel(e.target.value)}
-
-                          className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded"
-
-                        />
-
-                      </div>
-
-                      <div>
-
-                        <label className="text-[10px] font-semibold text-slate-600">Kunci</label>
-
-                        <input
-
-                          type="text"
-
-                          value={editKey}
-
-                          onChange={e => setEditKey(slugify(e.target.value))}
-
-                          className="w-full px-2.5 py-1 text-xs font-mono bg-white border border-slate-300 rounded"
-
-                        />
-
-                      </div>
-
-                    </div>
-
-                    <div>
-
-                      <label className="text-[10px] font-semibold text-slate-600">Nilai</label>
-
-                      <input
-
-                        type="text"
-
-                        value={editValue}
-
-                        onChange={e => setEditValue(e.target.value)}
-
-                        className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded"
-
-                      />
-
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-1">
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => setEditingFieldId(null)}
-
-                        className="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200/60 rounded"
-
-                      >
-
-                        Batal
-
-                      </button>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => saveEditField(field.id)}
-
-                        className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
-
-                      >
-
-                        Simpan
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                );
-
-              }
-
-
-
-              return (
-
-                <div
-
-                  key={field.id}
-
-                  className="p-3 bg-slate-50/70 hover:bg-white rounded-xl border border-slate-200 hover:border-slate-300 flex items-center justify-between gap-2.5 transition-all shadow-sm"
-
-                >
-
-                  <div className="min-w-0 flex-1 space-y-0.5">
-
-                    <div className="flex items-center gap-1.5">
-
-                      <span className="text-xs font-bold text-slate-900 truncate">{field.label}</span>
-
-                      <span className="text-[9px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-
-                        {field.key}
-
-                      </span>
-
-                      {field.type === 'date' && (
-
-                        <span className="text-[9px] text-amber-700 bg-amber-50 px-1 rounded">Tanggal</span>
-
-                      )}
-
-                    </div>
-
-                    <div className="text-xs font-medium text-slate-700 truncate">{field.value}</div>
-
-                  </div>
-
-
-
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => handleCopy(field.value, field.id)}
-
-                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg"
-
-                      title="Salin nilai"
-
-                    >
-
-                      {copiedKey === field.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-
-                    </button>
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => startEditField(field)}
-
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-
-                      title="Edit"
-
-                    >
-
-                      <Edit3 className="w-3.5 h-3.5" />
-
-                    </button>
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => handleDeleteField(field.id)}
-
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-
-                      title="Hapus"
-
-                    >
-
-                      <Trash2 className="w-3.5 h-3.5" />
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              );
-
+      <div className="space-y-6" key={catId}>
+        {/* Konten Standar berdasarkan ID */}
+        {catId === 'identity' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {renderField('Nama Lengkap (Sesuai KTP)', 'full_name', profile?.full_name || '', v => handleChange('full_name', v), { badge: 'Wajib KTP' })}
+            {renderField('NIK (Nomor Induk Kependudukan)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
+            {renderField('Tempat Lahir', 'birth_place', profile?.birth_place || '', v => handleChange('birth_place', v))}
+            {renderField('Tanggal Lahir', 'birth_date', profile?.birth_date || '', v => handleChange('birth_date', v), { type: 'date' })}
+            {renderField('Jenis Kelamin', 'gender', profile?.gender || '', v => handleChange('gender', v), {
+              type: 'select',
+              selectOptions: ['Laki-laki', 'Perempuan']
             })}
-
+            {renderField('Agama', 'religion', profile?.religion || '', v => handleChange('religion', v), {
+              type: 'select',
+              selectOptions: ['Islam', 'Kristen Protestan', 'Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya']
+            })}
+            {renderField('Status Perkawinan', 'marital_status', profile?.marital_status || '', v => handleChange('marital_status', v), {
+              type: 'select',
+              selectOptions: ['Belum Kawin', 'Kawin', 'Cerai Hidup', 'Cerai Mati']
+            })}
+            {renderField('Golongan Darah', 'blood_type', profile?.blood_type || '', v => handleChange('blood_type', v), {
+              type: 'select',
+              selectOptions: ['A', 'B', 'AB', 'O', 'Tidak Tahu']
+            })}
+            {renderField('Title / Gelar Sapaan', 'title', getExtendedField('title'), v => handleExtendedChange('title', v, 'identity', 'Title / Sapaan'))}
+            {renderField('Nama Depan (First Name)', 'first_name', profile?.first_name || '', v => handleChange('first_name', v))}
+            {renderField('Inisial Tengah', 'middle_initial', getExtendedField('middle_initial'), v => handleExtendedChange('middle_initial', v, 'identity', 'Inisial Tengah'))}
+            {renderField('Nama Belakang (Last Name)', 'last_name', profile?.last_name || '', v => handleChange('last_name', v))}
           </div>
-
         )}
 
-      </div>
-
-    );
-
-  };
-
-
-
-  const getCategoryProgress = useCallback((catId: string) => {
-
-    if (!profile) return { filled: 0, total: 0 };
-
-    const fieldMapping: Record<string, string[]> = {
-
-      identity: ['full_name', 'nik', 'birth_place', 'birth_date', 'gender', 'religion', 'marital_status', 'blood_type'],
-
-      address: ['address', 'province', 'city', 'district', 'village', 'postal_code'],
-
-      contact: ['phone', 'email'],
-
-      education: ['education_level', 'institution', 'student_id', 'nisn'],
-
-      career: ['occupation', 'organization', 'work_address'],
-
-      family: ['mother_name', 'father_name', 'emergency_contact_name', 'emergency_contact_phone'],
-
-      documents: ['npwp', 'bpjs_number']
-
-    };
-
-
-
-    const keys = fieldMapping[catId] || [];
-
-    let filled = keys.filter(k => (profile as Record<string, any>)[k] && String((profile as Record<string, any>)[k]).trim() !== '').length;
-
-    let total = keys.length;
-
-
-
-    const cfs = customFields.filter(f => f.category === catId);
-
-    filled += cfs.filter(f => f.type === 'image' ? !!f.photoData : (f.value && f.value.trim() !== '')).length;
-
-    total += cfs.length;
-
-
-
-    if (catId === 'documents') {
-
-      PHOTO_DOCUMENT_SLOTS.forEach(slot => {
-
-        total++;
-
-        if (documentPhotos[slot.id]?.data) filled++;
-
-      });
-
-    }
-
-
-
-    return { filled, total };
-
-  }, [profile, customFields, documentPhotos]);
-
-
-
-  const renderSectionHeader = (
-
-    categoryId: string,
-
-    icon: React.ReactNode,
-
-    title: string,
-
-    subtitle: string,
-
-    addCategoryTarget?: string,
-
-    addCategoryButtonText?: string
-
-  ) => {
-
-    const progress = getCategoryProgress(categoryId);
-
-    return (
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#BDD8E9]/60 pb-4">
-
-        <div className="flex items-center gap-3">
-
-          <div className="w-8 h-8 rounded-full bg-[#0A4174] text-white flex items-center justify-center shrink-0">
-
-            {icon}
-
+        {catId === 'address' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="md:col-span-2 lg:col-span-3">
+              {renderField('Alamat Domisili Utama', 'address', profile?.address || '', v => handleChange('address', v), { isPii: true, type: 'textarea' })}
+            </div>
+            {renderField('Alamat Baris 2 (Gedung/Kavling)', 'address_line_2', getExtendedField('address_line_2'), v => handleExtendedChange('address_line_2', v, 'address', 'Address Line 2'))}
+            {renderField('RT / RW', 'rt_rw', getExtendedField('rt_rw'), v => handleExtendedChange('rt_rw', v, 'address', 'RT / RW'))}
+            {renderField('Kelurahan / Desa', 'village', profile?.village || '', v => handleChange('village', v))}
+            {renderField('Kecamatan', 'district', profile?.district || '', v => handleChange('district', v))}
+            {renderField('Kota / Kabupaten', 'city', profile?.city || '', v => handleChange('city', v))}
+            {renderField('Provinsi', 'province', profile?.province || '', v => handleChange('province', v))}
+            {renderField('Kode Pos', 'postal_code', profile?.postal_code || '', v => handleChange('postal_code', v))}
+            {renderField('Negara (Country)', 'country', getExtendedField('country', 'Indonesia'), v => handleExtendedChange('country', v, 'address', 'Negara'))}
           </div>
+        )}
 
-          <div>
-
-            <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">{title}</h2>
-
-            <p className="text-[13px] leading-[20px] font-normal text-[#64748B]">{subtitle}</p>
-
+        {catId === 'contact' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {renderField('Nomor HP / WhatsApp Utama', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
+            {renderField('Alamat Surel / Email', 'email', profile?.email || '', v => handleChange('email', v))}
+            {renderField('Telepon Rumah', 'home_phone', getExtendedField('home_phone'), v => handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'), { isPii: true })}
+            {renderField('Telepon Kantor', 'work_telephone', getExtendedField('work_telephone'), v => handleExtendedChange('work_telephone', v, 'contact', 'Telepon Kantor'))}
+            {renderField('Nomor Fax', 'fax', getExtendedField('fax'), v => handleExtendedChange('fax', v, 'contact', 'Nomor Fax'))}
+            {renderField('Situs Web / Portofolio', 'website', getExtendedField('website'), v => handleExtendedChange('website', v, 'contact', 'Website'))}
           </div>
+        )}
 
-        </div>
+        {catId === 'education' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {renderField('Jenjang Pendidikan Terakhir', 'education_level', profile?.education_level || '', v => handleChange('education_level', v), {
+              type: 'select',
+              selectOptions: ['SD/Sederajat', 'SMP/Sederajat', 'SMA/SMK/Sederajat', 'D1/D2/D3', 'D4/S1', 'S2', 'S3', 'Lainnya']
+            })}
+            {renderField('Nama Universitas / Sekolah', 'institution', profile?.institution || '', v => handleChange('institution', v))}
+            {renderField('Program Studi / Jurusan', 'major_field', getExtendedField('major_field'), v => handleExtendedChange('major_field', v, 'education', 'Jurusan'))}
+            {renderField('Nomor Induk Mahasiswa (NIM/NPM)', 'student_id', profile?.student_id || '', v => handleChange('student_id', v))}
+            {renderField('NISN (Nomor Induk Siswa Nasional)', 'nisn', profile?.nisn || '', v => handleChange('nisn', v), { isPii: true })}
+            {renderField('Nilai IPK / Nilai Akhir', 'gpa_score', getExtendedField('gpa_score'), v => handleExtendedChange('gpa_score', v, 'education', 'IPK'))}
+          </div>
+        )}
 
+        {catId === 'career' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {renderField('Profesi / Pekerjaan Saat Ini', 'occupation', profile?.occupation || '', v => handleChange('occupation', v))}
+            {renderField('Nama Lembaga / Perusahaan', 'organization', profile?.organization || '', v => handleChange('organization', v))}
+            {renderField('Alamat Kantor / Tempat Kerja', 'work_address', profile?.work_address || '', v => handleChange('work_address', v))}
+            {renderField('Penghasilan Bulanan (Est.)', 'income', getExtendedField('income'), v => handleExtendedChange('income', v, 'career', 'Penghasilan'), { isPii: true })}
+          </div>
+        )}
 
+        {catId === 'family' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {renderField('Nama Ibu Kandung', 'mother_name', profile?.mother_name || '', v => handleChange('mother_name', v), { isPii: true, badge: 'Validasi Bank/Dukcapil' })}
+            {renderField('Nama Ayah Kandung', 'father_name', profile?.father_name || '', v => handleChange('father_name', v))}
+            {renderField('Nama Kontak Darurat', 'emergency_contact_name', profile?.emergency_contact_name || '', v => handleChange('emergency_contact_name', v))}
+            {renderField('Nomor Kontak Darurat', 'emergency_contact_phone', profile?.emergency_contact_phone || '', v => handleChange('emergency_contact_phone', v), { isPii: true })}
+            {renderField('Hubungan Kontak Darurat', 'emergency_contact_relation', getExtendedField('emergency_contact_relation'), v => handleExtendedChange('emergency_contact_relation', v, 'family', 'Hubungan Kontak Darurat'))}
+          </div>
+        )}
 
-        <div className="flex items-center gap-5 shrink-0">
-
-          {progress.total > 0 && (
-
-            <div className="flex items-center gap-2 text-[12px] font-medium text-[#64748B]">
-
-              <span>Progress</span>
-
-              <span className="text-[#0A4174] font-semibold pb-0.5 border-b-2 border-[#0A4174]">
-
-                {progress.filled}/{progress.total} data
-
-              </span>
-
+        {catId === 'documents' && (
+          <div className="space-y-6">
+            {/* Nomor Dokumen Resmi */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {renderField('Nomor Pokok Wajib Pajak (NPWP)', 'npwp', profile?.npwp || '', v => handleChange('npwp', v), { isPii: true, badge: '16/15 Digit' })}
+              {renderField('Nomor BPJS Kesehatan', 'bpjs_number', profile?.bpjs_number || '', v => handleChange('bpjs_number', v), { isPii: true, badge: '13 Digit' })}
+              {renderField('Nomor SIM (Surat Izin Mengemudi)', 'driver_license', getExtendedField('driver_license'), v => handleExtendedChange('driver_license', v, 'documents', 'Nomor SIM'), { isPii: true })}
             </div>
 
-          )}
+            {/* Berkas Foto Dokumen Resmi */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-white">Berkas Foto Resmi &amp; Lampiran Autofill</h3>
+                <p className="text-xs text-[#6EA2B3] mt-0.5">
+                  Foto dienkripsi secara lokal dan otomatis diunggah oleh ekstensi GovConnect pada formulir pendaftaran.
+                </p>
+              </div>
 
-          {addCategoryTarget && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {PHOTO_DOCUMENT_SLOTS.map(slot => {
+                  const photo = documentPhotos[slot.id];
+                  const hasPhoto = !!photo?.data;
 
+                  return (
+                    <div
+                      key={slot.id}
+                      className={`rounded-2xl border transition-colors p-4 flex flex-col justify-between ${
+                        hasPhoto
+                          ? 'bg-[#101828] border-[#243048]'
+                          : 'bg-[#101828] border-dashed border-[#243048] hover:border-[#7BBDE8]'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        ref={el => { fileInputRefs.current[slot.id] = el; }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleStandardPhotoUpload(slot.id, file);
+                        }}
+                        className="hidden"
+                      />
+
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <Camera className="w-4 h-4 text-[#7BBDE8] shrink-0" />
+                            <div>
+                              <div className="text-xs font-bold text-white leading-tight">{slot.title}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {hasPhoto ? (
+                          <div className="relative group rounded-xl overflow-hidden border border-[#243048] bg-[#101828] aspect-[16/10] mb-3 flex items-center justify-center">
+                            <img src={photo.data} alt={slot.title} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-[#101828]/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewPhoto({ title: slot.title, data: photo.data, name: photo.name })}
+                                className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-[#7BBDE8]" />
+                                <span>Lihat</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => fileInputRefs.current[slot.id]?.click()}
+                                className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
+                              >
+                                <Upload className="w-3.5 h-3.5 text-[#7BBDE8]" />
+                                <span>Ganti</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => fileInputRefs.current[slot.id]?.click()}
+                            className="rounded-xl border border-dashed border-[#243048] aspect-[16/10] mb-3 flex flex-col items-center justify-center p-3 text-center cursor-pointer hover:bg-[#171F2F] transition-colors"
+                          >
+                            <Upload className="w-6 h-6 text-[#6EA2B3] mb-1.5" />
+                            <span className="text-xs font-semibold text-[#7BBDE8]">Unggah Foto Berkas</span>
+                            <span className="text-[10px] text-[#6EA2B3] mt-0.5">JPG / PNG maksimal 5MB</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-2">
+                        <span className="text-[#6EA2B3] truncate text-[11px]">
+                          {hasPhoto ? photo.name : slot.desc}
+                        </span>
+                        {hasPhoto && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStandardPhoto(slot.id)}
+                            className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold cursor-pointer shrink-0 ml-2 text-xs"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Hapus</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Fields pada Kategori ini */}
+        <div className="pt-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white uppercase tracking-wider">
+              Kolom Kustom Tambahan ({fieldsInCat.length})
+            </span>
             <button
-
               type="button"
-
-              onClick={() => openAddFieldModal(addCategoryTarget)}
-
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#001D39] hover:text-[#0A4174] transition-colors cursor-pointer"
-
+              onClick={() => openAddFieldModal(catId)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
             >
-
               <Plus className="w-3.5 h-3.5" />
-
-              <span>{addCategoryButtonText || 'Tambah data'}</span>
-
+              <span>Tambah Kolom</span>
             </button>
+          </div>
 
+          {fieldsInCat.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {fieldsInCat.map(field => {
+                const isEditing = editingFieldId === field.id;
+                const isImage = field.type === 'image';
+
+                if (isImage) {
+                  return (
+                    <div
+                      key={field.id}
+                      className="p-4 bg-[#101828] rounded-xl border border-[#243048] flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {field.photoData ? (
+                          <div
+                            onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
+                            className="w-12 h-12 rounded-lg bg-[#171F2F] border border-[#243048] overflow-hidden cursor-pointer shrink-0"
+                          >
+                            <img src={field.photoData} alt={field.label} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-[#171F2F] border border-[#243048] flex items-center justify-center shrink-0 text-[#6EA2B3]">
+                            <Camera className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{field.label}</p>
+                          <p className="text-[11px] text-[#6EA2B3] font-mono truncate">{field.key}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteField(field.id, field.key)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-800/40 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={field.id}
+                    className="p-4 bg-[#101828] rounded-xl border border-[#243048] space-y-3"
+                  >
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <input
+                          className="w-full h-10 px-3 text-xs rounded-lg border border-[#7BBDE8] bg-[#171F2F] text-white outline-none"
+                          value={editLabel}
+                          onChange={e => setEditLabel(e.target.value)}
+                          placeholder="Label data"
+                        />
+                        <input
+                          className="w-full h-10 px-3 text-xs rounded-lg border border-[#243048] bg-[#171F2F] text-white outline-none"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          placeholder="Nilai data"
+                        />
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingFieldId(null)}
+                            className="px-3 py-1.5 text-xs text-[#6EA2B3] hover:text-white hover:bg-[#171F2F] rounded-lg"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveEditField(field.id)}
+                            className="px-3.5 py-1.5 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-lg"
+                          >
+                            Simpan
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white truncate">{field.label}</span>
+                            <span className="text-[11px] text-[#6EA2B3] font-mono">({field.key})</span>
+                          </div>
+                          <p className="text-xs text-[#6EA2B3] truncate mt-1 font-medium">{field.value || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(field.value, field.key)}
+                            className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
+                            title="Salin nilai"
+                          >
+                            {copiedKey === field.key ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEditField(field)}
+                            className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
+                            title="Edit data"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteField(field.id, field.key)}
+                            className="p-1.5 text-rose-400 hover:text-rose-300 rounded-lg transition-colors cursor-pointer"
+                            title="Hapus data"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-[#6EA2B3] italic">
+              Belum ada kolom kustom tambahan pada kategori ini.
+            </p>
           )}
-
         </div>
-
       </div>
-
     );
-
   };
 
-
-
-  if (loading) {
-
-    return (
-
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-
-        <span className="text-sm font-medium text-slate-500">Memuat profil GovConnect...</span>
-
-      </div>
-
-    );
-
-  }
-
-
-
   return (
-
-    <div className={`w-full space-y-8 pb-24 ${piiMasked ? 'pii-masked' : ''}`}>
-
-      {/* Header Halaman (Sesuai Desain Minimalis GovConnect) */}
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-
+    <div className="w-full space-y-6 pb-24">
+      {/* ── Page Header (F-Shape: Title Top-Left, CTAs Top-Right) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Profil saya</h1>
-
-          <p className="text-[14px] leading-[22px] font-normal text-[#475569] mt-1">
-
-            Kelola identitas, foto dokumen asli, dan data kustom (kolom teks maupun berkas gambar) per kategori untuk autofill otomatis oleh ekstensi GovConnect.
-
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Profil Saya
+          </h1>
+          <p className="text-sm text-[#6EA2B3] mt-1">
+            Kelola data identitas kependudukan, kontak, berkas foto resmi, dan kolom kustom untuk autofill resmi.
           </p>
-
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-
+        {/* Action Toolbar with clear text labels */}
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          {/* Add Category Trigger */}
           <button
-
             type="button"
-
-            onClick={() => setPiiMasked(v => !v)}
-
-            aria-pressed={piiMasked}
-
-            title={piiMasked ? 'Tampilkan data sensitif' : 'Sembunyikan data sensitif'}
-
-            className={`inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium rounded-[10px] border transition-colors cursor-pointer ${
-              piiMasked
-                ? 'text-[#0A4174] bg-[#BDD8E9]/35 border-[#BDD8E9] hover:bg-[#BDD8E9]/50'
-                : 'text-[#475569] bg-white border-[#BDD8E9]/60 hover:border-slate-300'
-            }`}
-
-          >
-
-            {piiMasked ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-
-            <span>{piiMasked ? 'Tampilkan data' : 'Sembunyikan data'}</span>
-
-          </button>
-
-          <button
-
-            type="button"
-
             onClick={() => setShowAddCategoryModal(true)}
-
-            className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] rounded-[10px] transition-colors cursor-pointer shadow-xs"
-
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
-
-            <Plus className="w-4 h-4" />
-
-            <span>Buat kategori baru</span>
-
+            <FolderPlus className="w-4 h-4" />
+            <span>Kategori Baru</span>
           </button>
-
         </div>
-
       </div>
 
-
-
-      {/* Kelengkapan Profil & Berkas Bar */}
-
-      <div className="space-y-2">
-
-        <div className="flex items-center justify-between text-[13px] leading-[20px] font-medium text-[#475569]">
-
-          <span>Kelengkapan profil & berkas</span>
-
-          <span className="text-[#0A4174] font-medium tabular-nums">{completeness.percentage}% lengkap</span>
-
+      {/* ── Profile Completeness Bar (Strict 8px Grid) ── */}
+      <div className="bg-[#171F2F] rounded-2xl border border-[#243048] p-4 space-y-2 shadow-sm">
+        <div className="flex items-center justify-between text-xs font-semibold">
+          <span className="text-white flex items-center gap-2">
+            <span>Kelengkapan Profil &amp; Berkas</span>
+            <span className="text-[#6EA2B3] font-normal">
+              ({completeness.filled} dari {completeness.total} data terisi)
+            </span>
+          </span>
+          <span className="text-[#7BBDE8] font-bold tabular-nums">
+            {completeness.percentage}% Lengkap
+          </span>
         </div>
-
-        <div className="w-full h-1.5 bg-[#BDD8E9]/40 rounded-full overflow-hidden">
-
+        <div className="w-full h-2 bg-[#101828] rounded-full overflow-hidden">
           <div
-
-            className="h-full bg-[#0A4174] rounded-full transition-all duration-500"
-
+            className="h-full bg-[#7BBDE8] rounded-full transition-all duration-500"
             style={{ width: `${completeness.percentage}%` }}
-
           />
-
         </div>
-
       </div>
 
+      {/* ── Main Profile Workspace (Focused Category Navigation) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Sidebar / Category Navigator (3 cols on lg) - STICKY FOLLOWING USER SCROLL */}
+        <div className="lg:col-span-4 xl:col-span-3 space-y-4 sticky top-6 self-start z-10">
+          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm overflow-hidden">
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#6EA2B3] flex items-center gap-2">
+                  <FontAwesome name="layer-group" className="text-sm text-[#7BBDE8]" />
+                  <span>Kategori Data</span>
+                </span>
+              </div>
 
+              {/* Category Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={categorySearchQuery}
+                  onChange={e => setCategorySearchQuery(e.target.value)}
+                  placeholder="Cari kategori..."
+                  className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none transition-colors placeholder:text-[#6EA2B3]"
+                />
+                <FontAwesome name="search" className="text-xs text-[#6EA2B3] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
 
-      {/* Animated Non-blocking Toast Popup Keterangan Data Disimpan */}
+            {/* Category Navigation List */}
+            <div className="p-2 space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setActiveCategoryId('all')}
+                className={`w-full text-left p-3 rounded-xl transition-colors flex items-center justify-between cursor-pointer ${
+                  activeCategoryId === 'all'
+                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
+                    : 'text-[#6EA2B3] hover:bg-[#101828] hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FontAwesome
+                    name="layer-group"
+                    className={`text-base shrink-0 ${activeCategoryId === 'all' ? 'text-[#101828]' : 'text-[#7BBDE8]'}`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate">Semua Kategori</p>
+                    <p className={`text-[11px] truncate ${activeCategoryId === 'all' ? 'text-[#101828]/80' : 'text-[#6EA2B3]'}`}>
+                      Tampilan penuh
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {filteredCategories.map(cat => {
+                const isActive = activeCategoryId === cat.id;
+
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    className={`w-full text-left p-3 rounded-xl transition-colors flex items-center justify-between cursor-pointer ${
+                      isActive
+                        ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
+                        : 'text-[#6EA2B3] hover:bg-[#101828] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Icon without wrapper */}
+                      {cat.id === 'identity' && <FontAwesome name="user" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'address' && <FontAwesome name="map-pin" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'contact' && <FontAwesome name="phone" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'education' && <FontAwesome name="graduation-cap" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'career' && <FontAwesome name="briefcase" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'family' && <FontAwesome name="users" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.id === 'documents' && <FontAwesome name="file-lines" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+                      {cat.isCustom && <FontAwesome name="folder" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold truncate">{cat.title}</p>
+                        <p className={`text-[11px] truncate ${isActive ? 'text-[#101828]/80' : 'text-[#6EA2B3]'}`}>
+                          {cat.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Content Area: Active Category Editor (9 cols on lg) */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+          {activeCategoryId === 'all' ? (
+            <div className="space-y-6">
+              {allCategories.map(cat => (
+                <div key={cat.id} className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 space-y-6">
+                  <div className="flex items-start justify-between gap-4 pb-2">
+                    <div>
+                      <h2 className="text-base font-bold text-white">{cat.title}</h2>
+                      <p className="text-xs text-[#6EA2B3] mt-0.5">{cat.desc}</p>
+                    </div>
+                    {cat.isCustom && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus Kategori</span>
+                      </button>
+                    )}
+                  </div>
+                  {renderCategoryContent(cat.id)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            (() => {
+              const currentCat = allCategories.find(c => c.id === activeCategoryId) || allCategories[0];
+              return (
+                <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 sm:p-8 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                    <div>
+                      <h2 className="text-lg font-bold text-white">{currentCat.title}</h2>
+                      <p className="text-xs text-[#6EA2B3] mt-0.5">{currentCat.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                      {currentCat.isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(currentCat.id)}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-xl transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus Kategori</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openAddFieldModal(currentCat.id)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tambah Data</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {renderCategoryContent(currentCat.id)}
+                </div>
+              );
+            })()
+          )}
+        </div>
+      </div>
+
+      {/* ── Toast Notification Popup ── */}
       {message && (
         <div className="fixed top-6 right-6 z-50 pointer-events-auto">
-          <style>{`
-            @keyframes govCheckmarkStroke {
-              0% { stroke-dashoffset: 36; }
-              100% { stroke-dashoffset: 0; }
-            }
-            @keyframes govCheckScale {
-              0% { transform: scale(0.6); opacity: 0; }
-              60% { transform: scale(1.1); opacity: 1; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-          `}</style>
-          <div className="bg-white/95 backdrop-blur-md rounded-[18px] border border-[#BDD8E9]/70 shadow-[0_12px_36px_rgba(0,29,57,0.14)] p-4 flex items-center gap-3.5 max-w-sm sm:max-w-md animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-md p-4 flex items-center gap-3 max-w-sm sm:max-w-md">
             {message.type === 'success' ? (
-              <>
-                <div
-                  className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0"
-                  style={{ animation: 'govCheckScale 0.4s ease-out' }}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" style={{ strokeDasharray: 36, strokeDashoffset: 0, animation: 'govCheckmarkStroke 0.4s ease-in-out' }} />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[14px] font-bold text-[#001D39] leading-tight">Perubahan Berhasil Disimpan</h4>
-                  <p className="text-[12px] text-[#49769F] mt-0.5 leading-snug line-clamp-2">{message.text}</p>
-                </div>
-              </>
+              <div className="w-8 h-8 rounded-full bg-emerald-950/40 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-800/40">
+                <Check className="w-4 h-4" />
+              </div>
             ) : (
-              <>
-                <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[14px] font-bold text-[#001D39] leading-tight">Gagal Menyimpan</h4>
-                  <p className="text-[12px] text-rose-700 mt-0.5 leading-snug line-clamp-2">{message.text}</p>
-                </div>
-              </>
+              <div className="w-8 h-8 rounded-full bg-rose-950/40 text-rose-400 flex items-center justify-center shrink-0 border border-rose-800/40">
+                <AlertCircle className="w-4 h-4" />
+              </div>
             )}
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs font-bold text-white leading-tight">
+                {message.type === 'success' ? 'Berhasil Disimpan' : 'Gagal Menyimpan'}
+              </h4>
+              <p className="text-xs text-[#6EA2B3] mt-0.5 line-clamp-2">{message.text}</p>
+            </div>
             <button
               type="button"
               onClick={() => setMessage(null)}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0 ml-1"
-              title="Tutup pemberitahuan"
+              className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+              title="Tutup notifikasi"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1822,2932 +1296,21 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-
-      {/* SECTION 1: IDENTITAS KEPENDUDUKAN (KTP) */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-identity" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('identity', <User className="w-4 h-4" />,
-
-          'Identitas & kependudukan (sesuai KTP)',
-
-          'Data identitas utama kependudukan warga negara Republik Indonesia.',
-
-          'identity',
-
-          'Tambah data identitas'
-
-        )}
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-          {/* Nama Lengkap */}
-
-          <div className="space-y-1.5 lg:col-span-2">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Nama Lengkap <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.full_name || ''}
-
-              onChange={e => handleChange('full_name', e.target.value)}
-
-              placeholder="Contoh: Andharu Raffi Pratama"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Title / Sapaan */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Title / Sapaan (RoboForm)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={getExtendedField('title')}
-
-              onChange={e => handleExtendedChange('title', e.target.value, 'identity', 'Title / Sapaan')}
-
-              placeholder="Mr / Mrs / Ms / Dr"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Nama Depan (First Name) */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Nama Depan (First Name)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.first_name || getExtendedField('first_name')}
-
-              onChange={e => handleExtendedChange('first_name', e.target.value, 'identity', 'Nama Depan')}
-
-              placeholder="Contoh: Andharu"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Inisial Tengah (Middle Initial) */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Inisial Tengah (Middle Initial)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              maxLength={2}
-
-              value={getExtendedField('middle_initial')}
-
-              onChange={e => handleExtendedChange('middle_initial', e.target.value, 'identity', 'Inisial Tengah')}
-
-              placeholder="R"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Nama Belakang (Last Name) */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Nama Belakang (Last Name)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.last_name || getExtendedField('last_name')}
-
-              onChange={e => handleExtendedChange('last_name', e.target.value, 'identity', 'Nama Belakang')}
-
-              placeholder="Contoh: Pratama"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* NIK */}
-
-          <div className="space-y-1.5">
-
-            <div className="flex items-center justify-between">
-
-              <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-                NIK (Nomor Induk Kependudukan) <span className="text-rose-500">*</span>
-
-              </label>
-
-              <span className="text-[10px] text-slate-400 font-mono">16 Digit</span>
-
-            </div>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              maxLength={16}
-
-              value={profile?.nik || ''}
-
-              onChange={e => handleChange('nik', e.target.value)}
-
-              placeholder="351508xxxxxxxxxx"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Tempat Lahir */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Tempat Lahir</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.birth_place || ''}
-
-              onChange={e => handleChange('birth_place', e.target.value)}
-
-              placeholder="Contoh: Sidoarjo"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Tanggal Lahir */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Tanggal Lahir <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="date"
-
-              value={profile?.birth_date || ''}
-
-              onChange={e => handleChange('birth_date', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          {/* Jenis Kelamin */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Jenis Kelamin <span className="text-rose-500">*</span>
-
-            </label>
-
-            <select
-
-              value={profile?.gender || ''}
-
-              onChange={e => handleChange('gender', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            >
-
-              <option value="">-- Pilih Jenis Kelamin --</option>
-
-              <option value="Laki-laki">Laki-laki</option>
-
-              <option value="Perempuan">Perempuan</option>
-
-            </select>
-
-          </div>
-
-
-
-          {/* Agama */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Agama</label>
-
-            <select
-
-              value={profile?.religion || ''}
-
-              onChange={e => handleChange('religion', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            >
-
-              <option value="">-- Pilih Agama --</option>
-
-              <option value="Islam">Islam</option>
-
-              <option value="Kristen Protestan">Kristen Protestan</option>
-
-              <option value="Katolik">Katolik</option>
-
-              <option value="Hindu">Hindu</option>
-
-              <option value="Buddha">Buddha</option>
-
-              <option value="Khonghucu">Khonghucu</option>
-
-              <option value="Lainnya">Lainnya / Penghayat</option>
-
-            </select>
-
-          </div>
-
-
-
-          {/* Status Perkawinan */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Status Perkawinan</label>
-
-            <select
-
-              value={profile?.marital_status || ''}
-
-              onChange={e => handleChange('marital_status', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            >
-
-              <option value="">-- Pilih Status Perkawinan --</option>
-
-              <option value="Belum Kawin">Belum Kawin</option>
-
-              <option value="Kawin">Kawin</option>
-
-              <option value="Cerai Hidup">Cerai Hidup</option>
-
-              <option value="Cerai Mati">Cerai Mati</option>
-
-            </select>
-
-          </div>
-
-
-
-          {/* Golongan Darah */}
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Golongan Darah</label>
-
-            <select
-
-              value={profile?.blood_type || ''}
-
-              onChange={e => handleChange('blood_type', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            >
-
-              <option value="">-- Pilih Golongan Darah --</option>
-
-              <option value="A">A</option>
-
-              <option value="B">B</option>
-
-              <option value="AB">AB</option>
-
-              <option value="O">O</option>
-
-              <option value="Tidak Tahu">Tidak Tahu</option>
-
-            </select>
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Identity */}
-
-        {renderCategoryCustomFields('identity', 'Identitas')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 2: ALAMAT & DOMISILI */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-address" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('address', <MapPin className="w-4 h-4" />,
-
-          'Alamat lengkap & domisili',
-
-          'Alamat tempat tinggal resmi dan kode pos untuk pengiriman serta berkas.',
-
-          'address',
-
-          'Tambah data alamat'
-
-        )}
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-          <div className="space-y-1.5 lg:col-span-3">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Alamat Jalan / RT / RW / No. Rumah (Address Line 1) <span className="text-rose-500">*</span>
-
-            </label>
-
-            <textarea
-
-              rows={2}
-
-              data-pii
-
-              value={profile?.address || ''}
-
-              onChange={e => handleChange('address', e.target.value)}
-
-              placeholder="Contoh: Jl. Pahlawan No. 45 RT 02 / RW 03"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5 lg:col-span-2">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Alamat Baris 2 / Gedung / Kavling (Address Line 2)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={getExtendedField('address_line_2')}
-
-              onChange={e => handleExtendedChange('address_line_2', e.target.value, 'address', 'Address Line 2')}
-
-              placeholder="Contoh: Gedung Graha Lantai 4, Kavling 12"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Negara (Country)
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.country || getExtendedField('country', 'Indonesia')}
-
-              onChange={e => handleExtendedChange('country', e.target.value, 'address', 'Negara')}
-
-              placeholder="Indonesia"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Provinsi <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.province || ''}
-
-              onChange={e => handleChange('province', e.target.value)}
-
-              placeholder="Contoh: Jawa Timur"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Kabupaten / Kota <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.city || ''}
-
-              onChange={e => handleChange('city', e.target.value)}
-
-              placeholder="Contoh: Kabupaten Sidoarjo"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Kecamatan <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.district || ''}
-
-              onChange={e => handleChange('district', e.target.value)}
-
-              placeholder="Contoh: Waru"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">
-
-              Kelurahan / Desa <span className="text-rose-500">*</span>
-
-            </label>
-
-            <input
-
-              type="text"
-
-              value={profile?.village || ''}
-
-              onChange={e => handleChange('village', e.target.value)}
-
-              placeholder="Contoh: Pepelegi"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Kode Pos</label>
-
-            <input
-
-              type="text"
-
-              maxLength={5}
-
-              value={profile?.postal_code || ''}
-
-              onChange={e => handleChange('postal_code', e.target.value)}
-
-              placeholder="61256"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Address */}
-
-        {renderCategoryCustomFields('address', 'Alamat')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 3: KONTAK PRIBADI */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-contact" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('contact', <Phone className="w-4 h-4" />,
-
-          'Kontak pribadi',
-
-          'Nomor telepon, ponsel, dan surel aktif untuk komunikasi.',
-
-          'contact',
-
-          'Tambah data kontak'
-
-        )}
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor Telepon / WhatsApp <span className="text-rose-500">*</span></label>
-
-            <input
-
-              type="tel"
-
-              data-pii
-
-              value={profile?.phone || ''}
-
-              onChange={e => handleChange('phone', e.target.value)}
-
-              placeholder="Contoh: 081234567890"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Alamat Email Aktif <span className="text-rose-500">*</span></label>
-
-            <input
-
-              type="email"
-
-              value={profile?.email || ''}
-
-              onChange={e => handleChange('email', e.target.value)}
-
-              placeholder="Contoh: user@email.com"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Situs Web (Website / URL)</label>
-
-            <input
-
-              type="url"
-
-              value={profile?.website || getExtendedField('website')}
-
-              onChange={e => handleExtendedChange('website', e.target.value, 'contact', 'Website')}
-
-              placeholder="https://govconnect.id"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Telepon Rumah (Home Phone)</label>
-
-            <input
-
-              type="tel"
-
-              value={getExtendedField('home_phone')}
-
-              onChange={e => handleExtendedChange('home_phone', e.target.value, 'contact', 'Telepon Rumah')}
-
-              placeholder="Contoh: 021-5551234"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Telepon Kantor (Work Phone)</label>
-
-            <input
-
-              type="tel"
-
-              value={getExtendedField('work_telephone')}
-
-              onChange={e => handleExtendedChange('work_telephone', e.target.value, 'contact', 'Telepon Kantor')}
-
-              placeholder="Contoh: 021-5559876"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor Fax</label>
-
-            <input
-
-              type="tel"
-
-              value={getExtendedField('fax')}
-
-              onChange={e => handleExtendedChange('fax', e.target.value, 'contact', 'Nomor Fax')}
-
-              placeholder="Contoh: 021-5559877"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Contact */}
-
-        {renderCategoryCustomFields('contact', 'Kontak')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 4: PENDIDIKAN & AKADEMIK */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-education" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('education', <GraduationCap className="w-4 h-4" />,
-
-          'Pendidikan & akademik',
-
-          'Informasi riwayat akademik untuk formulir beasiswa atau pendaftaran universitas.',
-
-          'education',
-
-          'Tambah data pendidikan'
-
-        )}
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Jenjang Pendidikan</label>
-
-            <select
-
-              value={profile?.education_level || ''}
-
-              onChange={e => handleChange('education_level', e.target.value)}
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            >
-
-              <option value="">-- Pilih Jenjang --</option>
-
-              <option value="SD / Sederajat">SD / Sederajat</option>
-
-              <option value="SMP / Sederajat">SMP / Sederajat</option>
-
-              <option value="SMA / SMK / Sederajat">SMA / SMK / Sederajat</option>
-
-              <option value="Diploma (D1 - D4)">Diploma (D1 - D4)</option>
-
-              <option value="Sarjana (S1)">Sarjana (S1)</option>
-
-              <option value="Magister (S2)">Magister (S2)</option>
-
-              <option value="Doktoral (S3)">Doktoral (S3)</option>
-
-            </select>
-
-          </div>
-
-
-
-          <div className="space-y-1.5 lg:col-span-3">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nama Sekolah / Universitas</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.institution || ''}
-
-              onChange={e => handleChange('institution', e.target.value)}
-
-              placeholder="Contoh: Universitas Gadjah Mada"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5 lg:col-span-2">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor Induk Mahasiswa (NIM)</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.student_id || ''}
-
-              onChange={e => handleChange('student_id', e.target.value)}
-
-              placeholder="Contoh: 21/478921/TK/52910"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5 lg:col-span-2">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">NISN (Nomor Induk Siswa Nasional)</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.nisn || ''}
-
-              onChange={e => handleChange('nisn', e.target.value)}
-
-              placeholder="Contoh: 0041234567"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Education */}
-
-        {renderCategoryCustomFields('education', 'Pendidikan')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 5: PEKERJAAN & KARIR */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-career" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('career', <Briefcase className="w-4 h-4" />,
-
-          'Pekerjaan & karir',
-
-          'Profesi saat ini, instansi/perusahaan, dan detail lokasi kerja.',
-
-          'career',
-
-          'Tambah data pekerjaan'
-
-        )}
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Pekerjaan / Profesi</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.occupation || ''}
-
-              onChange={e => handleChange('occupation', e.target.value)}
-
-              placeholder="Contoh: Software Engineer / ASN"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nama Instansi / Perusahaan</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.organization || ''}
-
-              onChange={e => handleChange('organization', e.target.value)}
-
-              placeholder="Contoh: PT Teknologi Indonesia"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Alamat Kantor / Tempat Kerja</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.work_address || ''}
-
-              onChange={e => handleChange('work_address', e.target.value)}
-
-              placeholder="Contoh: Jl. Sudirman Kav. 21, Jakarta"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Penghasilan / Gaji per Bulan (Income)</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.income || getExtendedField('income')}
-
-              onChange={e => handleExtendedChange('income', e.target.value, 'career', 'Penghasilan')}
-
-              placeholder="Contoh: 15000000"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Career */}
-
-        {renderCategoryCustomFields('career', 'Pekerjaan')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 6: KELUARGA & KONTAK DARURAT */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-family" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('family', <HeartHandshake className="w-4 h-4" />,
-
-          'Data keluarga & kontak darurat',
-
-          'Informasi orang tua serta kontak darurat yang dapat dihubungi.',
-
-          'family',
-
-          'Tambah data keluarga'
-
-        )}
-
-
-
-        <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-blue-800">
-
-          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-
-          <span>
-
-            <b>Penting:</b> Nama ibu kandung sangat sering dibutuhkan sebagai verifikasi keamanan standar pada perbankan, beasiswa, dan instansi kependudukan.
-
-          </span>
-
-        </div>
-
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nama Lengkap Ibu Kandung</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.mother_name || ''}
-
-              onChange={e => handleChange('mother_name', e.target.value)}
-
-              placeholder="Contoh: Siti Aminah"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nama Lengkap Ayah</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.father_name || ''}
-
-              onChange={e => handleChange('father_name', e.target.value)}
-
-              placeholder="Contoh: Bambang Supriyanto"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nama Kontak Darurat</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.emergency_contact_name || ''}
-
-              onChange={e => handleChange('emergency_contact_name', e.target.value)}
-
-              placeholder="Contoh: Rina (Saudara Kandung)"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor Telepon Kontak Darurat</label>
-
-            <input
-
-              type="tel"
-
-              data-pii
-
-              value={profile?.emergency_contact_phone || ''}
-
-              onChange={e => handleChange('emergency_contact_phone', e.target.value)}
-
-              placeholder="Contoh: 081987654321"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Family */}
-
-        {renderCategoryCustomFields('family', 'Keluarga')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION 7: DOKUMEN RESMI & BERKAS FOTO DOKUMEN */}
-
-      {/* ========================================================================= */}
-
-      <section id="section-documents" className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6 scroll-mt-28">
-
-        {renderSectionHeader('documents', <FileText className="w-4 h-4" />,
-
-          'Dokumen resmi & berkas foto dokumen',
-
-          'Nomor dokumen negara serta berkas foto asli untuk autofill upload berkas instan.',
-
-          'documents',
-
-          'Tambah data dokumen'
-
-        )}
-
-
-
-        {/* Text Numbers: NPWP, BPJS, Driver License */}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">NPWP (Nomor Pokok Wajib Pajak)</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.npwp || ''}
-
-              onChange={e => handleChange('npwp', e.target.value)}
-
-              placeholder="Contoh: 12.345.678.9-012.000 atau 16 digit NIK"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor Kartu BPJS (Kesehatan / Ketenagakerjaan)</label>
-
-            <input
-
-              type="text"
-
-              data-pii
-
-              value={profile?.bpjs_number || ''}
-
-              onChange={e => handleChange('bpjs_number', e.target.value)}
-
-              placeholder="Contoh: 0001234567890"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-
-
-          <div className="space-y-1.5">
-
-            <label className="block text-[13px] leading-[20px] font-medium text-[#475569]">Nomor SIM / Driver License (RoboForm)</label>
-
-            <input
-
-              type="text"
-
-              value={profile?.driver_license || getExtendedField('driver_license')}
-
-              onChange={e => handleExtendedChange('driver_license', e.target.value, 'documents', 'Nomor SIM')}
-
-              placeholder="Contoh: 1234-5678-9012"
-
-              className="w-full h-10 px-3 text-[14px] leading-[20px] font-mono bg-white border border-[#BDD8E9]/70 hover:border-[#6EA2B3] focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 rounded-[10px] transition-all text-[#001D39] placeholder:text-[#6EA2B3] outline-none font-normal"
-
-            />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Berkas & Foto Dokumen Asli */}
-
-        <div className="space-y-4 pt-2">
-
-          <div>
-
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-
-              <Camera className="w-4 h-4 text-blue-600" />
-
-              Unggah Berkas & Foto Dokumen (Autofill Berkas)
-
-            </h3>
-
-            <p className="text-xs text-slate-500 mt-0.5">
-
-              Foto dienkripsi dan disimpan secara lokal. Ekstensi GovConnect akan mengisikan berkas ini otomatis pada formulir web berkas.
-
-            </p>
-
-          </div>
-
-
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-            {PHOTO_DOCUMENT_SLOTS.map(slot => {
-
-              const photo = documentPhotos[slot.id];
-
-              const hasPhoto = !!photo?.data;
-
-
-
-              return (
-
-                <div
-
-                  key={slot.id}
-
-                  className={`rounded-2xl border transition-all p-4 flex flex-col justify-between ${
-
-                    hasPhoto
-
-                      ? 'bg-blue-50/30 border-blue-200 hover:border-blue-300 shadow-sm'
-
-                      : 'bg-slate-50/70 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50/20'
-
-                  }`}
-
-                >
-
-                  <input
-
-                    type="file"
-
-                    accept="image/jpeg,image/png,image/webp,image/jpg"
-
-                    ref={el => { fileInputRefs.current[slot.id] = el; }}
-
-                    onChange={e => {
-
-                      const file = e.target.files?.[0];
-
-                      if (file) handleStandardPhotoUpload(slot.id, file);
-
-                    }}
-
-                    className="hidden"
-
-                  />
-
-
-
-                  <div>
-
-                    <div className="flex items-start justify-between gap-2 mb-3">
-
-                      <div className="flex items-center gap-2">
-
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${hasPhoto ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-
-                          <slot.icon className="w-4 h-4" />
-
-                        </div>
-
-                        <div>
-
-                          <div className="text-xs font-bold text-slate-900 leading-tight">{slot.title}</div>
-
-                          <span className="text-[10px] text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded font-medium">
-
-                            {slot.badge}
-
-                          </span>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-
-
-                    {hasPhoto ? (
-
-                      <div className="relative group rounded-xl overflow-hidden border border-blue-200 bg-white aspect-[16/10] mb-3 flex items-center justify-center">
-
-                        <img src={photo.data} alt={slot.title} className="w-full h-full object-cover" />
-
-                        <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => setPreviewPhoto({ title: slot.title, data: photo.data, name: photo.name })}
-
-                            className="p-2 bg-white text-slate-800 rounded-lg hover:bg-slate-100 shadow-sm"
-
-                            title="Lihat ukuran penuh"
-
-                          >
-
-                            <Eye className="w-4 h-4" />
-
-                          </button>
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => fileInputRefs.current[slot.id]?.click()}
-
-                            className="p-2 bg-white text-blue-600 rounded-lg hover:bg-slate-100 shadow-sm"
-
-                            title="Ganti Foto"
-
-                          >
-
-                            <Upload className="w-4 h-4" />
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    ) : (
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => fileInputRefs.current[slot.id]?.click()}
-
-                        className="w-full aspect-[16/10] mb-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors p-3"
-
-                      >
-
-                        <Upload className="w-5 h-5 text-slate-400" />
-
-                        <span className="text-xs font-medium">Pilih / Unggah Berkas</span>
-
-                        <span className="text-[10px] text-slate-400">JPG, PNG, WebP</span>
-
-                      </button>
-
-                    )}
-
-
-
-                    <p className="text-[11px] text-slate-500 leading-relaxed mb-3">{slot.desc}</p>
-
-                  </div>
-
-
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-
-                    {hasPhoto ? (
-
-                      <>
-
-                        <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-
-                          <Check className="w-3 h-3" />
-
-                          {Math.round(photo.size / 1024)} KB · Siap
-
-                        </span>
-
-                        <div className="flex items-center gap-1">
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => fileInputRefs.current[slot.id]?.click()}
-
-                            className="text-[11px] text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-100/50"
-
-                          >
-
-                            Ganti
-
-                          </button>
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => handleRemoveStandardPhoto(slot.id)}
-
-                            className="text-[11px] text-rose-600 hover:text-rose-800 font-medium px-2 py-1 rounded hover:bg-rose-100/50"
-
-                          >
-
-                            Hapus
-
-                          </button>
-
-                        </div>
-
-                      </>
-
-                    ) : (
-
-                      <span className="text-[10px] text-slate-400">Belum ada foto</span>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-              );
-
-            })}
-
-          </div>
-
-        </div>
-
-
-
-        {/* Custom Fields in Documents */}
-
-        {renderCategoryCustomFields('documents', 'Dokumen Resmi')}
-
-      </section>
-
-
-
-      {/* ========================================================================= */}
-
-      {/* SECTION UNTUK KATEGORI KUSTOM YANG DIBUAT SENDIRI OLEH USER */}
-
-      {/* ========================================================================= */}
-
-      {userCategories.map(cat => {
-
-        const fieldsInCat = customFields.filter(f => f.category === cat.id);
-
-
-
-        return (
-
-          <section
-
-            key={cat.id}
-
-            id={`section-${cat.id}`}
-
-            className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] p-6 space-y-6"
-
-          >
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#BDD8E9]/60 pb-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="w-8 h-8 rounded-full bg-[#0A4174] text-white flex items-center justify-center shrink-0">
-
-                  <FolderPlus className="w-4 h-4" />
-
-                </div>
-
-                <div>
-
-                  <div className="flex items-center gap-2">
-
-                    <h2 className="text-[16px] leading-[24px] font-semibold text-[#001D39]">{cat.title}</h2>
-
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-[#0A4174]">
-
-                      Kategori Kustom
-
-                    </span>
-
-                  </div>
-
-                  <p className="text-[13px] leading-[20px] font-normal text-[#64748B]">{cat.description}</p>
-
-                </div>
-
-              </div>
-
-
-
-              <div className="flex items-center gap-3 shrink-0">
-
-                <button
-
-                  type="button"
-
-                  onClick={() => openAddFieldModal(cat.id)}
-
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#001D39] hover:text-[#0A4174] transition-colors cursor-pointer"
-
-                >
-
-                  <Plus className="w-3.5 h-3.5" />
-
-                  <span>Tambah data di kategori ini</span>
-
-                </button>
-
-                <button
-
-                  type="button"
-
-                  onClick={() => handleDeleteCategory(cat.id)}
-
-                  className="p-1.5 text-[#64748B] hover:text-rose-600 hover:bg-rose-50 rounded-[8px] transition-colors cursor-pointer"
-
-                  title="Hapus kategori ini"
-
-                >
-
-                  <Trash2 className="w-4 h-4" />
-
-                </button>
-
-              </div>
-
-            </div>
-
-
-
-            {fieldsInCat.length === 0 ? (
-
-              <div className="p-8 text-center bg-slate-50/60 rounded-xl border border-dashed border-slate-200 space-y-2">
-
-                <p className="text-sm font-medium text-slate-700">Kategori ini belum memiliki kolom data</p>
-
-                <button
-
-                  type="button"
-
-                  onClick={() => openAddFieldModal(cat.id)}
-
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-50 shadow-sm"
-
-                >
-
-                  <Plus className="w-3.5 h-3.5" />
-
-                  Tambah Data Pertama ke "{cat.title}"
-
-                </button>
-
-              </div>
-
-            ) : (
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-
-                {fieldsInCat.map(field => {
-
-                  const isEditing = editingFieldId === field.id;
-
-                  const isImage = field.type === 'image';
-
-
-
-                  if (isImage) {
-
-                    return (
-
-                      <div
-
-                        key={field.id}
-
-                        className="p-3.5 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-xl border border-indigo-200 shadow-sm flex items-center justify-between gap-3 transition-all"
-
-                      >
-
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-
-                          {field.photoData ? (
-
-                            <div
-
-                              onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-
-                              className="w-12 h-12 rounded-lg bg-slate-100 border border-indigo-200 overflow-hidden cursor-pointer flex-shrink-0 relative group"
-
-                            >
-
-                              <img src={field.photoData} alt={field.label} className="w-full h-full object-cover" />
-
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-
-                                <Eye className="w-3.5 h-3.5" />
-
-                              </div>
-
-                            </div>
-
-                          ) : (
-
-                            <div className="w-12 h-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
-
-                              <Camera className="w-6 h-6" />
-
-                            </div>
-
-                          )}
-
-                          <div className="min-w-0 flex-1 space-y-0.5">
-
-                            <div className="flex items-center gap-1.5">
-
-                              <span className="text-xs font-bold text-slate-900 truncate">{field.label}</span>
-
-                              <span className="text-[9px] font-mono text-indigo-700 bg-indigo-100/70 px-1.5 py-0.5 rounded">
-
-                                {field.key}
-
-                              </span>
-
-                            </div>
-
-                            <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
-
-                              <FileCheck2 className="w-3 h-3" />
-
-                              {field.photoName || field.value} {field.photoSize ? `(${Math.round(field.photoSize / 1024)} KB)` : ''} · Berkas Siap
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-
-
-                        <div className="flex items-center gap-1 flex-shrink-0">
-
-                          {field.photoData && (
-
-                            <button
-
-                              type="button"
-
-                              onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-
-                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg"
-
-                              title="Lihat foto"
-
-                            >
-
-                              <Eye className="w-3.5 h-3.5" />
-
-                            </button>
-
-                          )}
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => handleDeleteField(field.id, field.key)}
-
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-
-                            title="Hapus"
-
-                          >
-
-                            <Trash2 className="w-3.5 h-3.5" />
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    );
-
-                  }
-
-
-
-                  if (isEditing) {
-
-                    return (
-
-                      <div key={field.id} className="p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-300 space-y-2.5">
-
-                        <div className="grid grid-cols-2 gap-2">
-
-                          <div>
-
-                            <label className="text-[10px] font-semibold text-slate-600">Label</label>
-
-                            <input
-
-                              type="text"
-
-                              value={editLabel}
-
-                              onChange={e => setEditLabel(e.target.value)}
-
-                              className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded"
-
-                            />
-
-                          </div>
-
-                          <div>
-
-                            <label className="text-[10px] font-semibold text-slate-600">Kunci</label>
-
-                            <input
-
-                              type="text"
-
-                              value={editKey}
-
-                              onChange={e => setEditKey(slugify(e.target.value))}
-
-                              className="w-full px-2.5 py-1 text-xs font-mono bg-white border border-slate-300 rounded"
-
-                            />
-
-                          </div>
-
-                        </div>
-
-                        <div>
-
-                          <label className="text-[10px] font-semibold text-slate-600">Nilai</label>
-
-                          <input
-
-                            type="text"
-
-                            value={editValue}
-
-                            onChange={e => setEditValue(e.target.value)}
-
-                            className="w-full px-2.5 py-1 text-xs bg-white border border-slate-300 rounded"
-
-                          />
-
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-1">
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => setEditingFieldId(null)}
-
-                            className="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200/60 rounded"
-
-                          >
-
-                            Batal
-
-                          </button>
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => saveEditField(field.id)}
-
-                            className="px-3 py-1 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700"
-
-                          >
-
-                            Simpan
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    );
-
-                  }
-
-
-
-                  return (
-
-                    <div
-
-                      key={field.id}
-
-                      className="p-3.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm flex items-center justify-between gap-3 transition-all"
-
-                    >
-
-                      <div className="min-w-0 flex-1 space-y-1">
-
-                        <div className="flex items-center gap-2">
-
-                          <span className="text-xs font-bold text-slate-900 truncate">{field.label}</span>
-
-                          <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-
-                            {field.key}
-
-                          </span>
-
-                        </div>
-
-                        <div className="text-sm font-medium text-slate-700 truncate">{field.value}</div>
-
-                      </div>
-
-
-
-                      <div className="flex items-center gap-1 flex-shrink-0">
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => handleCopy(field.value, field.id)}
-
-                          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-
-                          title="Salin nilai"
-
-                        >
-
-                          {copiedKey === field.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-
-                        </button>
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => startEditField(field)}
-
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-
-                          title="Edit"
-
-                        >
-
-                          <Edit3 className="w-3.5 h-3.5" />
-
-                        </button>
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => handleDeleteField(field.id)}
-
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-
-                          title="Hapus"
-
-                        >
-
-                          <Trash2 className="w-3.5 h-3.5" />
-
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                  );
-
-                })}
-
-              </div>
-
-            )}
-
-          </section>
-
-        );
-
-      })}
-
-
-
-      {/* ========================================================================= */}
-
-      {/* MODAL: TAMBAH DATA KUSTOM KE DALAM KATEGORI */}
-
-      {/* Dilengkapi Banyak Opsi (Kolom / Gambar / Tanggal / Catatan) */}
-
-      {/* Serta Tombol Buat Kategori Baru Langsung di Dalam Form Ini */}
-
-      {/* ========================================================================= */}
-
-      {showAddFieldModal && (
-
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200 my-8">
-
-            {/* Header Modal */}
-
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-
-              <div className="flex items-center gap-2.5">
-
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-
-                  <Sparkles className="w-5 h-5" />
-
-                </div>
-
-                <div>
-
-                  <h3 className="text-base font-bold text-slate-900">Tambah Data Kustom</h3>
-
-                  <p className="text-xs text-slate-500">Pilih opsi format isian: teks, gambar/foto dokumen, tanggal, atau catatan.</p>
-
-                </div>
-
-              </div>
-
-              <button
-
-                type="button"
-
-                onClick={() => setShowAddFieldModal(false)}
-
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-
-              >
-
-                <X className="w-4 h-4" />
-
-              </button>
-
-            </div>
-
-
-
-            {/* SELEKTOR KATEGORI + TOMBOL BUAT KATEGORI BARU LANGSUNG DI FORM INI */}
-
-            <div className="space-y-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
-
-              <div className="flex items-center justify-between">
-
-                <label className="text-xs font-bold text-slate-700">Kategori Penempatan Data</label>
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setShowInlineCategoryCreator(!showInlineCategoryCreator)}
-
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs transition-colors"
-
-                >
-
-                  <FolderPlus className="w-3.5 h-3.5" />
-
-                  {showInlineCategoryCreator ? 'Tutup Kategori Baru' : '+ Buat Kategori Baru'}
-
-                </button>
-
-              </div>
-
-
-
-              {/* Inline Form Pembuatan Kategori Baru */}
-
-              {showInlineCategoryCreator ? (
-
-                <div className="p-3 bg-white rounded-xl border border-blue-300 shadow-sm space-y-2.5 animate-in fade-in duration-150">
-
-                  <div className="flex items-center justify-between">
-
-                    <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
-
-                      <FolderPlus className="w-3.5 h-3.5 text-blue-600" />
-
-                      Nama Kategori Baru Anda:
-
-                    </span>
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => setShowInlineCategoryCreator(false)}
-
-                      className="text-[11px] text-slate-400 hover:text-slate-600"
-
-                    >
-
-                      Batal
-
-                    </button>
-
-                  </div>
-
-                  <input
-
-                    type="text"
-
-                    value={inlineCategoryTitle}
-
-                    onChange={e => setInlineCategoryTitle(e.target.value)}
-
-                    placeholder="Misal: Kendaraan Pribadi / Finansial / Asuransi"
-
-                    className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                  <input
-
-                    type="text"
-
-                    value={inlineCategoryDesc}
-
-                    onChange={e => setInlineCategoryDesc(e.target.value)}
-
-                    placeholder="Keterangan singkat kategori (opsional)"
-
-                    className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                  <div className="flex justify-end">
-
-                    <button
-
-                      type="button"
-
-                      onClick={handleCreateCategoryInline}
-
-                      disabled={!inlineCategoryTitle.trim()}
-
-                      className="px-3.5 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 shadow-sm"
-
-                    >
-
-                      Simpan & Pilih Kategori Ini
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              ) : (
-
-                <div className="relative">
-
-                  <select
-
-                    value={targetCategory}
-
-                    onChange={e => {
-
-                      if (e.target.value === '__create_new__') {
-
-                        setShowInlineCategoryCreator(true);
-
-                      } else {
-
-                        setTargetCategory(e.target.value);
-
-                      }
-
-                    }}
-
-                    className="w-full px-3 py-2 text-xs font-medium bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer"
-
-                  >
-
-                    {allCategories.map(cat => (
-
-                      <option key={cat.id} value={cat.id}>
-
-                        {cat.isCustom ? `📁 [Kategori Kustom] ${cat.title}` : `📍 ${cat.title}`}
-
-                      </option>
-
-                    ))}
-
-                    <option value="__create_new__">✨ + Buat Kategori Baru Sendiri...</option>
-
-                  </select>
-
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-
-                </div>
-
-              )}
-
-            </div>
-
-
-
-            {/* BANYAK OPSI TIPE DATA: KOLOM TEKS, BERKAS FOTO, TANGGAL, TEKS PANJANG */}
-
-            <div className="space-y-1.5">
-
-              <label className="text-xs font-bold text-slate-700">Pilih Tipe / Format Isian Data:</label>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setNewFieldType('text')}
-
-                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col items-center sm:items-start gap-1.5 ${
-
-                    newFieldType === 'text'
-
-                      ? 'bg-blue-50 border-blue-600 text-blue-800 shadow-2xs ring-1 ring-blue-500'
-
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-
-                  }`}
-
-                >
-
-                  <span className="p-1 rounded-lg bg-blue-100 text-blue-700"><FileText className="w-4 h-4" /></span>
-
-                  <span className="text-xs font-bold">Kolom Teks</span>
-
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">Angka / huruf biasa</span>
-
-                </button>
-
-
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setNewFieldType('image')}
-
-                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col items-center sm:items-start gap-1.5 ${
-
-                    newFieldType === 'image'
-
-                      ? 'bg-emerald-50 border-emerald-600 text-emerald-800 shadow-2xs ring-1 ring-emerald-500'
-
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-
-                  }`}
-
-                >
-
-                  <span className="p-1 rounded-lg bg-emerald-100 text-emerald-700"><Camera className="w-4 h-4" /></span>
-
-                  <span className="text-xs font-bold">Berkas / Foto</span>
-
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">Autofill unggah file</span>
-
-                </button>
-
-
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setNewFieldType('date')}
-
-                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col items-center sm:items-start gap-1.5 ${
-
-                    newFieldType === 'date'
-
-                      ? 'bg-amber-50 border-amber-600 text-amber-800 shadow-2xs ring-1 ring-amber-500'
-
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-
-                  }`}
-
-                >
-
-                  <span className="p-1 rounded-lg bg-amber-100 text-amber-700"><Calendar className="w-4 h-4" /></span>
-
-                  <span className="text-xs font-bold">Tanggal</span>
-
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">Masa berlaku / tgl</span>
-
-                </button>
-
-
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setNewFieldType('textarea')}
-
-                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col items-center sm:items-start gap-1.5 ${
-
-                    newFieldType === 'textarea'
-
-                      ? 'bg-purple-50 border-purple-600 text-purple-800 shadow-2xs ring-1 ring-purple-500'
-
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-
-                  }`}
-
-                >
-
-                  <span className="p-1 rounded-lg bg-purple-100 text-purple-700"><AlignLeft className="w-4 h-4" /></span>
-
-                  <span className="text-xs font-bold">Teks Panjang</span>
-
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">Catatan / alamat</span>
-
-                </button>
-
-              </div>
-
-            </div>
-
-
-
-            {/* BANYAK PILIHAN SARAN CEPAT / PRESET SESUAI KATEGORI & TIPE */}
-
-            <div className="space-y-1.5">
-
-              <span className="text-[11px] font-semibold text-slate-600 block">Saran Rekomendasi Populer (Klik untuk mengisi):</span>
-
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-
-                {(RICH_CATEGORY_PRESETS[targetCategory] || RICH_CATEGORY_PRESETS.other).map(preset => (
-
-                  <button
-
-                    key={preset.key}
-
-                    type="button"
-
-                    onClick={() => applyPresetToModal(preset)}
-
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-colors ${
-
-                      preset.type === 'image'
-
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-
-                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-700'
-
-                    }`}
-
-                  >
-
-                    <span>{preset.type === 'image' ? '🖼️' : preset.type === 'date' ? '📅' : '📝'}</span>
-
-                    <span>{preset.label}</span>
-
-                  </button>
-
-                ))}
-
-              </div>
-
-            </div>
-
-
-
-            <form onSubmit={handleSaveNewField} className="space-y-4 pt-1">
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                <div className="space-y-1">
-
-                  <label className="text-xs font-semibold text-slate-700">Nama Data / Label</label>
-
-                  <input
-
-                    type="text"
-
-                    value={newLabel}
-
-                    onChange={e => handleLabelChange(e.target.value)}
-
-                    placeholder={newFieldType === 'image' ? 'Contoh: Foto SIM C / STNK' : 'Contoh: Nomor Rekening BCA'}
-
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                </div>
-
-
-
-                <div className="space-y-1">
-
-                  <div className="flex items-center justify-between">
-
-                    <label className="text-xs font-semibold text-slate-700">Kunci Atribut</label>
-
-                    <span className="text-[10px] text-slate-400 font-mono">Untuk autofill</span>
-
-                  </div>
-
-                  <input
-
-                    type="text"
-
-                    value={newKey}
-
-                    onChange={e => setNewKey(slugify(e.target.value))}
-
-                    placeholder="nomor_rekening"
-
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                </div>
-
-              </div>
-
-
-
-              {/* INPUT NILAI SESUAI TIPE DATA YANG DIPILIH */}
-
-              {newFieldType === 'image' ? (
-
-                <div className="space-y-2">
-
-                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-
-                    <span>Pilih Berkas / Foto Gambar</span>
-
-                    <span className="text-[10px] text-slate-400">JPG, PNG, WebP</span>
-
-                  </label>
-
-
-
-                  <input
-
-                    type="file"
-
-                    accept="image/*"
-
-                    ref={modalPhotoInputRef}
-
-                    onChange={e => {
-
-                      const file = e.target.files?.[0];
-
-                      if (file) handleModalPhotoSelected(file);
-
-                    }}
-
-                    className="hidden"
-
-                  />
-
-
-
-                  {newPhotoData ? (
-
-                    <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200 flex items-center justify-between gap-3">
-
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-
-                        <img
-
-                          src={newPhotoData.data}
-
-                          alt="Preview"
-
-                          className="w-14 h-14 object-cover rounded-lg border border-blue-200 flex-shrink-0"
-
-                        />
-
-                        <div className="min-w-0 flex-1">
-
-                          <div className="text-xs font-bold text-slate-900 truncate">{newPhotoData.name}</div>
-
-                          <div className="text-[11px] text-emerald-700 font-medium">
-
-                            {Math.round(newPhotoData.size / 1024)} KB · Siap diisi ke form web
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => modalPhotoInputRef.current?.click()}
-
-                        className="px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-slate-700"
-
-                      >
-
-                        Ganti Berkas
-
-                      </button>
-
-                    </div>
-
-                  ) : (
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => modalPhotoInputRef.current?.click()}
-
-                      className="w-full py-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/30 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer"
-
-                    >
-
-                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-
-                        <Upload className="w-5 h-5" />
-
-                      </div>
-
-                      <span className="text-xs font-bold text-slate-700">Pilih Berkas Foto dari Komputer</span>
-
-                      <span className="text-[10px] text-slate-400">Foto akan otomatis dikompresi dan siap untuk autofill berkas</span>
-
-                    </button>
-
-                  )}
-
-                </div>
-
-              ) : newFieldType === 'date' ? (
-
-                <div className="space-y-1">
-
-                  <label className="text-xs font-semibold text-slate-700">Pilih Tanggal</label>
-
-                  <input
-
-                    type="date"
-
-                    value={newValue}
-
-                    onChange={e => setNewValue(e.target.value)}
-
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                </div>
-
-              ) : newFieldType === 'textarea' ? (
-
-                <div className="space-y-1">
-
-                  <label className="text-xs font-semibold text-slate-700">Nilai Isian Teks Panjang</label>
-
-                  <textarea
-
-                    rows={3}
-
-                    value={newValue}
-
-                    onChange={e => setNewValue(e.target.value)}
-
-                    placeholder="Masukkan rincian alamat, catatan, atau informasi panjang..."
-
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                </div>
-
-              ) : (
-
-                <div className="space-y-1">
-
-                  <label className="text-xs font-semibold text-slate-700">Nilai Isian Kolom</label>
-
-                  <input
-
-                    type="text"
-
-                    value={newValue}
-
-                    onChange={e => setNewValue(e.target.value)}
-
-                    placeholder="Contoh: 123-456-7890 / B 1234 XYZ"
-
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                  />
-
-                </div>
-
-              )}
-
-
-
-              {fieldError && (
-
-                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center gap-1.5">
-
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-
-                  {fieldError}
-
-                </div>
-
-              )}
-
-
-
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setShowAddFieldModal(false)}
-
-                  className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl"
-
-                >
-
-                  Batal
-
-                </button>
-
-                <button
-
-                  type="submit"
-
-                  className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
-
-                >
-
-                  Tambahkan ke Profil
-
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
-        </div>
-
-      )}
-
-
-
-      {/* ========================================================================= */}
-
-      {/* MODAL: BUAT KATEGORI BARU STANDALONE */}
-
-      {/* ========================================================================= */}
-
-      {showAddCategoryModal && (
-
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-
-              <div className="flex items-center gap-2.5">
-
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-
-                  <FolderPlus className="w-4 h-4" />
-
-                </div>
-
-                <div>
-
-                  <h3 className="text-base font-bold text-slate-900">Buat Kategori Baru</h3>
-
-                  <p className="text-xs text-slate-500">Kelompokkan data khusus sesuai kebutuhan Anda</p>
-
-                </div>
-
-              </div>
-
-              <button
-
-                type="button"
-
-                onClick={() => setShowAddCategoryModal(false)}
-
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-
-              >
-
-                <X className="w-4 h-4" />
-
-              </button>
-
-            </div>
-
-
-
-            <form onSubmit={handleCreateCategoryStandalone} className="space-y-4">
-
-              <div className="space-y-1.5">
-
-                <label className="text-xs font-semibold text-slate-700">Nama Kategori</label>
-
-                <input
-
-                  type="text"
-
-                  value={newCategoryTitle}
-
-                  onChange={e => setNewCategoryTitle(e.target.value)}
-
-                  placeholder="Contoh: Kendaraan Pribadi / Finansial / Asuransi"
-
-                  className="w-full px-3 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                />
-
-              </div>
-
-
-
-              <div className="space-y-1.5">
-
-                <label className="text-xs font-semibold text-slate-700">Keterangan Singkat (Opsional)</label>
-
-                <input
-
-                  type="text"
-
-                  value={newCategoryDesc}
-
-                  onChange={e => setNewCategoryDesc(e.target.value)}
-
-                  placeholder="Contoh: Data plat nomor, nomor mesin, dan STNK"
-
-                  className="w-full px-3 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-
-                />
-
-              </div>
-
-
-
-              {categoryError && (
-
-                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center gap-1.5">
-
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-
-                  {categoryError}
-
-                </div>
-
-              )}
-
-
-
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setShowAddCategoryModal(false)}
-
-                  className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl"
-
-                >
-
-                  Batal
-
-                </button>
-
-                <button
-
-                  type="submit"
-
-                  className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm"
-
-                >
-
-                  Buat Kategori
-
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
-        </div>
-
-      )}
-
-
-
-      {/* ========================================================================= */}
-
-      {/* LIGHTBOX MODAL: PREVIEW FOTO DOKUMEN UKURAN PENUH */}
-
-      {/* ========================================================================= */}
-
-      {previewPhoto && (
-
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-
-              <div>
-
-                <h4 className="text-sm font-bold text-slate-900">{previewPhoto.title}</h4>
-
-                <p className="text-xs text-slate-500">{previewPhoto.name}</p>
-
-              </div>
-
-              <button
-
-                type="button"
-
-                onClick={() => setPreviewPhoto(null)}
-
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-
-              >
-
-                <X className="w-5 h-5" />
-
-              </button>
-
-            </div>
-
-            <div className="rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center max-h-[70vh]">
-
-              <img
-
-                src={previewPhoto.data}
-
-                alt={previewPhoto.title}
-
-                className="max-h-[70vh] w-auto object-contain rounded-lg"
-
-              />
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
-
-
-
-      {/* Discord-style Floating Unsaved Changes Bar */}
+      {/* ── Floating Unsaved Changes Dock Bar ── */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 sm:gap-6 bg-[#001D39] text-white px-5 py-3 rounded-2xl shadow-[0_16px_40px_rgba(0,29,57,0.35)] border border-[#BDD8E9]/25 backdrop-blur-md w-[calc(100%-2rem)] max-w-xl animate-in slide-in-from-bottom-5 duration-200">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-white truncate leading-tight">
-                Perhatian — Ada perubahan belum disimpan!
-              </p>
-              <p className="text-[11px] text-[#BDD8E9] hidden sm:block truncate mt-0.5">
-                Jangan lupa simpan data profil Anda sebelum berpindah halaman.
-              </p>
-            </div>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl bg-[#171F2F] text-white rounded-2xl border border-[#243048] shadow-lg px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8] animate-pulse shrink-0" />
+            <p className="text-xs font-semibold truncate text-[#6EA2B3]">
+              Ada perubahan data profil yang belum disimpan
+            </p>
           </div>
-          <div className="flex items-center gap-2.5 shrink-0">
+
+          <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={handleResetChanges}
-              disabled={saving}
-              className="px-3 py-1.5 text-xs font-medium text-[#BDD8E9] hover:text-white hover:underline transition-colors cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 text-xs font-medium text-[#6EA2B3] hover:text-white rounded-xl transition-colors cursor-pointer"
             >
               Batalkan
             </button>
@@ -4755,17 +1318,295 @@ export function ProfilePage() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#0A4174] hover:bg-[#001D39] active:scale-95 text-white font-semibold text-xs rounded-xl border border-[#7BBDE8]/40 hover:border-[#7BBDE8] transition-all shadow-md cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>{saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}</span>
             </button>
           </div>
         </div>
       )}
 
+      {/* ── Modal Tambah Custom Field ── */}
+      {showAddFieldModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-[#243048] flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white">Tambah Kolom Kustom</h3>
+                <p className="text-xs text-[#6EA2B3] mt-0.5">Tambahkan data spesifik untuk kebutuhan pengisian form</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddFieldModal(false)}
+                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+                title="Tutup dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewField} className="p-6 space-y-4">
+              {/* Presets Quick Selector */}
+              {RICH_CATEGORY_PRESETS[targetCategory]?.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                    Rekomendasi Kolom Cepat
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2 bg-[#101828] rounded-xl border border-[#243048]">
+                    {RICH_CATEGORY_PRESETS[targetCategory].slice(0, 8).map(preset => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => applyPresetToModal(preset)}
+                        className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#171F2F] border border-[#243048] hover:border-[#7BBDE8] text-[#6EA2B3] hover:text-white transition-colors cursor-pointer"
+                      >
+                        + {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tipe Data */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                  Tipe Data
+                </label>
+                <div className="grid grid-cols-4 gap-2 p-1 bg-[#101828] rounded-xl border border-[#243048] text-center text-xs font-semibold">
+                  {(['text', 'date', 'textarea', 'image'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setNewFieldType(t)}
+                      className={`py-1.5 rounded-lg capitalize transition-colors cursor-pointer ${
+                        newFieldType === t
+                          ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
+                          : 'text-[#6EA2B3] hover:text-white'
+                      }`}
+                    >
+                      {t === 'image' ? 'Berkas' : t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Label */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                  Label Data <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  value={newLabel}
+                  onChange={e => handleLabelChange(e.target.value)}
+                  placeholder="Contoh: Nomor Paspor, Foto Ijazah"
+                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
+                  required
+                />
+              </div>
+
+              {/* Key */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                  Kunci Atribut Autofill <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  value={newKey}
+                  onChange={e => setNewKey(slugify(e.target.value))}
+                  placeholder="contoh: nomor_paspor"
+                  className="w-full h-11 px-4 text-xs font-mono rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
+                  required
+                />
+              </div>
+
+              {/* Value or Photo Upload */}
+              {newFieldType === 'image' ? (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                    Unggah Berkas Gambar <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={modalPhotoInputRef}
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleModalPhotoSelected(file);
+                    }}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => modalPhotoInputRef.current?.click()}
+                    className="p-5 rounded-xl border border-dashed border-[#243048] hover:border-[#7BBDE8] bg-[#101828] hover:bg-[#171F2F] text-center cursor-pointer transition-colors"
+                  >
+                    {newPhotoData ? (
+                      <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
+                        <Check className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{newPhotoData.name}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Upload className="w-5 h-5 text-[#6EA2B3] mx-auto" />
+                        <p className="text-xs font-semibold text-[#7BBDE8]">Pilih berkas foto</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : newFieldType === 'textarea' ? (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                    Nilai Data <span className="text-rose-400">*</span>
+                  </label>
+                  <textarea
+                    value={newValue}
+                    onChange={e => setNewValue(e.target.value)}
+                    rows={3}
+                    placeholder="Isi catatan data..."
+                    className="w-full p-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none resize-none placeholder:text-[#6EA2B3]"
+                    required
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                    Nilai Data <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type={newFieldType === 'date' ? 'date' : 'text'}
+                    value={newValue}
+                    onChange={e => setNewValue(e.target.value)}
+                    placeholder="Isi nilai data..."
+                    className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
+                    required
+                  />
+                </div>
+              )}
+
+              {fieldError && (
+                <p className="text-xs text-rose-400 font-semibold">{fieldError}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#243048]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFieldModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl shadow-xs"
+                >
+                  Tambahkan Kolom
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Kategori Baru ── */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-[#243048] flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white">Buat Kategori Kustom Baru</h3>
+                <p className="text-xs text-[#6EA2B3] mt-0.5">Kelompokkan data khusus sesuai kebutuhan pengisian form</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCategoryModal(false)}
+                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+                title="Tutup dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategoryStandalone} className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                  Nama Kategori <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  value={newCategoryTitle}
+                  onChange={e => setNewCategoryTitle(e.target.value)}
+                  placeholder="Contoh: Dokumen Kendaraan, Rekening Bank"
+                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
+                  Deskripsi Kategori (Opsional)
+                </label>
+                <input
+                  value={newCategoryDesc}
+                  onChange={e => setNewCategoryDesc(e.target.value)}
+                  placeholder="Contoh: STNK, BPKB, dan nomor plat kendaraan"
+                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
+                />
+              </div>
+
+              {categoryError && (
+                <p className="text-xs text-rose-400 font-semibold">{categoryError}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#243048]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl shadow-xs"
+                >
+                  Buat Kategori
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lightbox Image Preview Modal ── */}
+      {previewPhoto && (
+        <div
+          onClick={() => setPreviewPhoto(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-[#171F2F] rounded-2xl border border-[#243048] max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl flex flex-col cursor-default"
+          >
+            <div className="p-4 border-b border-[#243048] flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-white">{previewPhoto.title}</h4>
+                <p className="text-xs text-[#6EA2B3]">{previewPhoto.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+                title="Tutup pratinjau"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-[#101828] flex items-center justify-center overflow-auto max-h-[75vh]">
+              <img src={previewPhoto.data} alt={previewPhoto.title} className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-
   );
-
 }
+
+export default ProfilePage;

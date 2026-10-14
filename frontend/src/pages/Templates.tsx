@@ -86,7 +86,7 @@ const DEFAULT_TEMPLATES: ServiceTemplate[] = [
     description: 'Template formulir portal SSCASN untuk pendaftaran seleksi Calon Pegawai Negeri Sipil & PPPK.',
     badgeColor: 'violet',
     iconName: 'graduation-cap',
-    logoUrl: '/logos/bkn.svg',
+    logoUrl: '/logos/bkn.png',
     fields: [
       { key: 'nik', label: 'Nomor Induk Kependudukan (NIK)', required: true, categoryGroup: 'Identitas' },
       { key: 'family_card_number', label: 'Nomor Kartu Keluarga (KK)', required: true, categoryGroup: 'Identitas' },
@@ -216,7 +216,6 @@ export function TemplatesPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [customTemplates, setCustomTemplates] = useState<ServiceTemplate[]>([]);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<ServiceTemplate | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
@@ -260,26 +259,28 @@ export function TemplatesPage() {
     return [...customTemplates, ...DEFAULT_TEMPLATES];
   }, [customTemplates]);
 
+  // Kategori filter pills with icons and item counts
+  const templateCategories = useMemo(() => {
+    return [
+      { id: 'all', label: 'Semua Template', icon: 'layer-group', count: allTemplates.length },
+      { id: 'dukcapil', label: 'Dukcapil', icon: 'id-card', count: allTemplates.filter(t => t.category === 'dukcapil').length },
+      { id: 'polisi', label: 'Kepolisian', icon: 'shield-halved', count: allTemplates.filter(t => t.category === 'polisi').length },
+      { id: 'bkn', label: 'SSCASN / BKN', icon: 'graduation-cap', count: allTemplates.filter(t => t.category === 'bkn').length },
+      { id: 'pajak', label: 'Perpajakan', icon: 'file-invoice-dollar', count: allTemplates.filter(t => t.category === 'pajak').length },
+      { id: 'bpjs', label: 'BPJS', icon: 'heart', count: allTemplates.filter(t => t.category === 'bpjs').length },
+      { id: 'imigrasi', label: 'Imigrasi', icon: 'passport', count: allTemplates.filter(t => t.category === 'imigrasi').length },
+      { id: 'custom', label: 'Template Pribadi', icon: 'folder-plus', count: allTemplates.filter(t => t.isCustom).length },
+    ];
+  }, [allTemplates]);
+
   // Filtered templates
   const filteredTemplates = useMemo(() => {
     return allTemplates.filter(t => {
-      const matchCat =
-        activeCategoryFilter === 'all'
-          ? true
-          : activeCategoryFilter === 'custom'
-          ? t.isCustom
-          : t.category === activeCategoryFilter;
-
-      const matchSearch =
-        searchQuery.trim() === ''
-          ? true
-          : t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.agency.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchCat && matchSearch;
+      if (activeCategoryFilter === 'all') return true;
+      if (activeCategoryFilter === 'custom') return t.isCustom;
+      return t.category === activeCategoryFilter;
     });
-  }, [allTemplates, activeCategoryFilter, searchQuery]);
+  }, [allTemplates, activeCategoryFilter]);
 
   // Helper to check value from profile
   const getProfileValue = (key: string): string => {
@@ -384,10 +385,10 @@ export function TemplatesPage() {
   return (
     <div className="w-full space-y-6">
       {/* Top Banner / Header */}
-      <div className="bg-transparent border-0 shadow-none p-0 flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Grup layanan & template formulir</h1>
-          <p className="text-[14px] leading-[22px] font-normal text-[#49769F] mt-1 max-w-2xl">
+          <h1 className="text-2xl font-bold text-white tracking-tight">Grup Layanan &amp; Template Formulir</h1>
+          <p className="text-sm text-[#6EA2B3] mt-1 max-w-2xl">
             Atur kumpulan data profil sesuai instansi tujuan (Dukcapil, Kepolisian, Seleksi ASN, Perpajakan, BPJS, dll). GovConnect akan otomatis memetakan bidang saat Anda membuka formulir terkait.
           </p>
         </div>
@@ -396,49 +397,45 @@ export function TemplatesPage() {
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] rounded-[10px] transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-2 h-10 px-4 text-[13px] font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
-            <FontAwesome name="plus" variant="solid" className="text-xs text-white" />
-            <span>Buat template baru</span>
+            <FontAwesome name="plus" variant="solid" className="text-xs" />
+            <span>Buat Template Baru</span>
           </button>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 rounded-[12px] border border-[#BDD8E9]/70 shadow-[0_1px_2px_rgba(0,29,57,0.04)]">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-          {[
-            { id: 'all', label: 'Semua Template' },
-            { id: 'dukcapil', label: 'Dukcapil' },
-            { id: 'polisi', label: 'Kepolisian' },
-            { id: 'bkn', label: 'SSCASN / BKN' },
-            { id: 'pajak', label: 'Perpajakan' },
-            { id: 'bpjs', label: 'BPJS' },
-            { id: 'custom', label: 'Template Pribadi' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveCategoryFilter(tab.id)}
-              className={`h-9 px-3.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                activeCategoryFilter === tab.id
-                  ? 'bg-[#0A4174] text-white'
-                  : 'text-[#49769F] hover:text-[#001D39] hover:bg-[#BDD8E9]/20'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Kategori Filter Pills & Counter (Mirrors PublicServices design) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          {templateCategories.map(cat => {
+            const isAct = activeCategoryFilter === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategoryFilter(cat.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  isAct
+                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
+                    : 'bg-[#171F2F] text-[#6EA2B3] border border-[#243048] hover:border-[#7BBDE8] hover:text-white'
+                }`}
+              >
+                <FontAwesome name={cat.icon} className="text-xs" />
+                <span>{cat.label}</span>
+                <span
+                  className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
+                    isAct ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
+                  }`}
+                >
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Flaticon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#49769F] text-xs" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Cari nama instansi/layanan..."
-            className="w-full h-10 pl-8 pr-3 text-[14px] bg-[#F6F8FB] border border-[#BDD8E9]/70 rounded-[10px] focus:bg-white focus:border-[#0A4174] focus:ring-3 focus:ring-[#7BBDE8]/25 text-[#001D39] placeholder:text-[#6EA2B3] outline-none transition-all"
-          />
+        <div className="text-[13px] font-medium text-[#6EA2B3] shrink-0 hidden sm:block">
+          Menampilkan <span className="font-bold text-white">{filteredTemplates.length}</span> grup template
         </div>
       </div>
 
@@ -452,33 +449,36 @@ export function TemplatesPage() {
             <div
               key={template.id}
               onClick={() => setSelectedTemplate(template)}
-              className="bg-white rounded-[16px] border border-[#BDD8E9]/60 hover:border-[#7BBDE8] shadow-[0_1px_2px_rgba(0,29,57,0.04)] transition-all p-6 flex flex-col justify-between cursor-pointer group relative"
+              className="bg-[#171F2F] rounded-[16px] border border-[#243048] hover:border-[#7BBDE8] shadow-sm transition-all p-6 flex flex-col justify-between cursor-pointer group relative"
             >
               <div className="space-y-4">
                 {/* Header Card */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     {template.logoUrl ? (
-                      <div className="w-10 h-10 min-w-[40px] max-h-[40px] flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] flex items-center justify-center shrink-0">
                         <img
                           src={template.logoUrl}
                           alt={template.agency}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
                           onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
+                            const img = e.target as HTMLImageElement;
+                            if (!img.src.includes('bkn.png')) {
+                              img.src = '/logos/bkn.png';
+                            }
                           }}
                         />
                       </div>
                     ) : (
-                      <div className="text-[20px] text-[#0A4174] shrink-0">
-                        <FontAwesome name={template.iconName || 'folder'} variant="solid" className="text-[20px]" />
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center text-[28px] text-[#7BBDE8] shrink-0">
+                        <FontAwesome name={template.iconName || 'folder'} variant="solid" className="text-[28px]" />
                       </div>
                     )}
-                    <div>
-                      <h3 className="text-[16px] leading-[24px] font-semibold text-[#001D39] group-hover:text-[#0A4174] transition-colors line-clamp-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-[16px] leading-[24px] font-semibold text-white group-hover:text-[#7BBDE8] transition-colors line-clamp-1">
                         {template.name}
                       </h3>
-                      <p className="text-[13px] leading-[20px] font-normal text-[#49769F] line-clamp-1">{template.agency}</p>
+                      <p className="text-[13px] leading-[20px] font-normal text-[#6EA2B3] line-clamp-1">{template.agency}</p>
                     </div>
                   </div>
 
@@ -486,7 +486,7 @@ export function TemplatesPage() {
                     <button
                       type="button"
                       onClick={(e) => handleDeleteCustomTemplate(template.id, e)}
-                      className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                      className="text-[#6EA2B3] hover:text-rose-400 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
                       title="Hapus template kustom ini"
                     >
                       <Flaticon name="trash" className="text-xs" />
@@ -495,7 +495,7 @@ export function TemplatesPage() {
                 </div>
 
                 {/* Description */}
-                <p className="text-[14px] leading-[22px] font-normal text-[#49769F] line-clamp-2">
+                <p className="text-[14px] leading-[22px] font-normal text-[#BDD8E9]/80 line-clamp-2">
                   {template.description}
                 </p>
 
@@ -504,13 +504,13 @@ export function TemplatesPage() {
                   {template.fields.slice(0, 4).map(f => (
                     <span
                       key={f.key}
-                      className="px-2.5 py-0.5 text-[12px] leading-[16px] font-normal bg-[#F6F8FB] text-[#49769F] rounded-full"
+                      className="px-2.5 py-0.5 text-[12px] leading-[16px] font-normal bg-[#101828] text-[#BDD8E9] border border-[#243048] rounded-full"
                     >
                       {f.label.split('(')[0].trim()}
                     </span>
                   ))}
                   {template.fields.length > 4 && (
-                    <span className="px-2.5 py-0.5 text-[12px] leading-[16px] font-medium bg-[#BDD8E9]/35 text-[#0A4174] rounded-full">
+                    <span className="px-2.5 py-0.5 text-[12px] leading-[16px] font-semibold bg-[#7BBDE8]/15 text-[#7BBDE8] border border-[#7BBDE8]/30 rounded-full">
                       +{template.fields.length - 4} kolom lain
                     </span>
                   )}
@@ -518,33 +518,34 @@ export function TemplatesPage() {
               </div>
 
               {/* Card Footer: Readiness & Quick Action */}
-              <div className="pt-5 mt-4 border-t border-[#BDD8E9]/40 flex items-center justify-between gap-3">
+              <div className="pt-4 mt-4 border-t border-[#243048] flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-24 h-1 bg-[#BDD8E9]/40 rounded-full overflow-hidden">
+                  <div className="w-20 h-1.5 bg-[#101828] rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-500 bg-[#0A4174]"
+                      className="h-full rounded-full transition-all duration-300 bg-[#7BBDE8]"
                       style={{ width: `${readiness.percent}%` }}
                     />
                   </div>
-                  <span className="text-[13px] leading-[20px] font-medium text-[#49769F] tabular-nums">
+                  <span className="text-[12px] font-semibold text-[#6EA2B3] tabular-nums">
                     {readiness.filled}/{readiness.total} siap
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCopySummary(template);
                     }}
-                    className="p-1.5 text-xs text-[#49769F] hover:text-[#0A4174] hover:bg-[#BDD8E9]/25 rounded-lg transition-all"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[#7BBDE8] hover:bg-[#101828] rounded-lg transition-colors cursor-pointer"
                     title="Salin ringkasan data template ini"
                   >
-                    <Flaticon name={isCopied ? 'check' : 'copy'} className={`text-xs ${isCopied ? 'text-emerald-600' : ''}`} />
+                    <Flaticon name={isCopied ? 'check' : 'copy'} className={`text-xs ${isCopied ? 'text-emerald-400' : ''}`} />
+                    <span>{isCopied ? 'Tersalin' : 'Salin'}</span>
                   </button>
-                  <span className="text-[14px] leading-[20px] font-medium text-[#0A4174]">
-                    Detail &gt;
+                  <span className="text-[13px] font-semibold text-[#7BBDE8] group-hover:underline inline-flex items-center gap-1">
+                    Detail
                   </span>
                 </div>
               </div>
@@ -555,36 +556,39 @@ export function TemplatesPage() {
 
       {/* DETAIL MODAL / DRAWER */}
       {selectedTemplate && (
-        <div className="fixed inset-0 z-50 bg-[rgba(0,29,57,0.55)] backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_12px_32px_rgba(0,29,57,0.18)] max-w-[640px] w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#171F2F] rounded-[16px] border border-[#243048] shadow-2xl max-w-[640px] w-full max-h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="p-6 border-b border-[#BDD8E9]/40 flex items-center justify-between gap-4 bg-white">
-              <div className="flex items-center gap-3">
+            <div className="p-6 border-b border-[#243048] flex items-center justify-between gap-4 bg-[#171F2F]">
+              <div className="flex items-center gap-4 min-w-0 flex-1">
                 {selectedTemplate.logoUrl ? (
-                  <div className="w-10 h-10 min-w-[40px] max-h-[40px] flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-16 h-16 min-w-[64px] min-h-[64px] flex items-center justify-center shrink-0">
                     <img
                       src={selectedTemplate.logoUrl}
                       alt={selectedTemplate.agency}
                       className="w-full h-full object-contain"
                       onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
+                        const img = e.target as HTMLImageElement;
+                        if (!img.src.includes('bkn.png')) {
+                          img.src = '/logos/bkn.png';
+                        }
                       }}
                     />
                   </div>
                 ) : (
-                  <div className="text-[20px] text-[#0A4174] shrink-0">
-                    <FontAwesome name={selectedTemplate.iconName || 'folder'} variant="solid" className="text-[20px]" />
+                  <div className="w-16 h-16 flex items-center justify-center text-[28px] text-[#7BBDE8] shrink-0">
+                    <FontAwesome name={selectedTemplate.iconName || 'folder'} variant="solid" className="text-[28px]" />
                   </div>
                 )}
-                <div>
-                  <h2 className="text-[18px] leading-[26px] font-semibold text-[#001D39]">{selectedTemplate.name}</h2>
-                  <p className="text-[13px] leading-[20px] font-normal text-[#49769F]">{selectedTemplate.agency}</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[18px] leading-[26px] font-semibold text-white">{selectedTemplate.name}</h2>
+                  <p className="text-[13px] leading-[20px] font-normal text-[#6EA2B3]">{selectedTemplate.agency}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedTemplate(null)}
-                className="p-1 text-[#49769F] hover:text-[#001D39] text-[20px] transition-colors cursor-pointer"
+                className="p-1 text-[#6EA2B3] hover:text-white text-[20px] transition-colors cursor-pointer"
               >
                 <Flaticon name="cross-small" className="text-sm" />
               </button>
@@ -592,16 +596,16 @@ export function TemplatesPage() {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
-              <div className="bg-[#BDD8E9]/25 border border-[#BDD8E9]/70 rounded-[10px] p-3.5 flex items-start gap-3">
-                <Flaticon name="info" className="text-[#0A4174] text-[16px] shrink-0 mt-0.5" />
-                <p className="text-[13px] leading-[20px] text-[#001D39]">
+              <div className="bg-[#101828] border border-[#243048] rounded-[10px] p-3.5 flex items-start gap-3">
+                <Flaticon name="info" className="text-[#7BBDE8] text-[16px] shrink-0 mt-0.5" />
+                <p className="text-[13px] leading-[20px] text-white">
                   {selectedTemplate.description}
                 </p>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[13px] leading-[20px] font-medium text-[#49769F]">
+                  <h3 className="text-[13px] leading-[20px] font-semibold text-white">
                     Kolom yang Dibutuhkan ({selectedTemplate.fields.length} Kolom)
                   </h3>
                   <span className="text-[13px] leading-[20px] font-medium text-[#6EA2B3]">
@@ -609,32 +613,32 @@ export function TemplatesPage() {
                   </span>
                 </div>
 
-                <div className="border border-[#BDD8E9]/60 rounded-[12px] divide-y divide-[#BDD8E9]/30 overflow-hidden">
+                <div className="border border-[#243048] rounded-[12px] divide-y divide-[#243048] overflow-hidden">
                   {selectedTemplate.fields.map(field => {
                     const value = getProfileValue(field.key);
                     const isFilled = value !== '';
 
                     return (
-                      <div key={field.key} className="p-3 bg-white hover:bg-[#BDD8E9]/10 flex items-center justify-between gap-3 text-xs transition-colors">
+                      <div key={field.key} className="p-3 bg-[#171F2F] hover:bg-[#101828]/50 flex items-center justify-between gap-3 text-xs transition-colors">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[14px] leading-[20px] font-medium text-[#001D39] truncate">{field.label}</span>
-                            <span className="px-2 py-0.5 text-[12px] leading-[16px] font-medium bg-[#BDD8E9]/20 text-[#49769F] rounded-full shrink-0">
+                            <span className="text-[14px] leading-[20px] font-medium text-white truncate">{field.label}</span>
+                            <span className="px-2 py-0.5 text-[12px] leading-[16px] font-medium bg-[#101828] text-[#6EA2B3] border border-[#243048] rounded-full shrink-0">
                               {field.categoryGroup}
                             </span>
                           </div>
-                          <p className="text-[13px] leading-[20px] text-[#49769F] truncate mt-0.5">
+                          <p className="text-[13px] leading-[20px] text-[#BDD8E9] truncate mt-0.5">
                             {isFilled ? value : <span className="text-[#6EA2B3]">Belum terisi di profil</span>}
                           </p>
                         </div>
 
                         <div>
                           {isFilled ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-medium bg-[#ECFDF5] text-[#047857] rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
                               <Flaticon name="check" className="text-[9px]" /> Terisi
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-medium bg-[#F6F8FB] text-[#6EA2B3] rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-medium bg-[#101828] text-[#6EA2B3] border border-[#243048] rounded-full">
                               Kosong
                             </span>
                           )}
@@ -647,11 +651,11 @@ export function TemplatesPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 px-6 border-t border-[#BDD8E9]/40 bg-white flex items-center justify-between gap-3">
+            <div className="p-4 px-6 border-t border-[#243048] bg-[#171F2F] flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => handleCopySummary(selectedTemplate)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-[#49769F] bg-white hover:border-[#0A4174] hover:text-[#0A4174] border border-[#BDD8E9]/70 rounded-[10px] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-white bg-[#101828] hover:border-[#7BBDE8] border border-[#243048] rounded-[10px] transition-colors cursor-pointer"
               >
                 <Flaticon name="copy" className="text-xs" />
                 <span>Salin ringkasan data</span>
@@ -660,7 +664,7 @@ export function TemplatesPage() {
               <div className="flex items-center gap-2">
                 <Link
                   to="/profile"
-                  className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] rounded-[10px] transition-colors cursor-pointer shadow-xs"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-[10px] transition-colors cursor-pointer shadow-xs"
                 >
                   <Flaticon name="edit" className="text-xs" />
                   <span>Lengkapi data di profil</span>
@@ -673,17 +677,17 @@ export function TemplatesPage() {
 
       {/* CREATE TEMPLATE MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[rgba(0,29,57,0.55)] backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-[#BDD8E9]/60 shadow-xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-[#BDD8E9]/40 flex items-center justify-between gap-4 bg-white">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-[#243048] flex items-center justify-between gap-4 bg-[#171F2F]">
               <div>
-                <h2 className="text-[18px] leading-[26px] font-semibold text-[#001D39]">Buat Template / Grup Layanan Baru</h2>
-                <p className="text-[13px] leading-[20px] font-normal text-[#49769F]">Susun kumpulan kolom profil untuk kebutuhan instansi atau portal tertentu.</p>
+                <h2 className="text-[18px] leading-[26px] font-semibold text-white">Buat Template / Grup Layanan Baru</h2>
+                <p className="text-[13px] leading-[20px] font-normal text-[#6EA2B3]">Susun kumpulan kolom profil untuk kebutuhan instansi atau portal tertentu.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 text-[#49769F] hover:text-[#001D39] text-[20px] transition-colors cursor-pointer"
+                className="p-1 text-[#6EA2B3] hover:text-white text-[20px] transition-colors cursor-pointer"
               >
                 <Flaticon name="cross-small" className="text-sm" />
               </button>
@@ -692,8 +696,8 @@ export function TemplatesPage() {
             <form onSubmit={handleCreateTemplate} className="flex-1 flex flex-col overflow-hidden">
               <div className="p-6 overflow-y-auto space-y-4 flex-1">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[#001D39]">
-                    Nama Template / Grup <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold text-white">
+                    Nama Template / Grup <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -701,28 +705,28 @@ export function TemplatesPage() {
                     value={newTemplateName}
                     onChange={e => setNewTemplateName(e.target.value)}
                     placeholder="Contoh: Pendaftaran Beasiswa LPDP / Formulir Bank Mandiri"
-                    className="w-full px-3.5 py-2.5 text-xs bg-white border border-[#BDD8E9]/70 rounded-xl focus:bg-white focus:border-[#0A4174] focus:ring-2 focus:ring-[#7BBDE8]/25 outline-none transition-all text-[#001D39] placeholder:text-[#6EA2B3]"
+                    className="w-full px-3.5 py-2.5 text-xs bg-[#101828] border border-[#243048] rounded-xl focus:border-[#7BBDE8] outline-none transition-all text-white placeholder:text-[#6EA2B3]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-[#001D39]">Nama Instansi / Sasaran</label>
+                    <label className="block text-xs font-semibold text-white">Nama Instansi / Sasaran</label>
                     <input
                       type="text"
                       value={newTemplateAgency}
                       onChange={e => setNewTemplateAgency(e.target.value)}
                       placeholder="Contoh: LPDP Kemenkeu"
-                      className="w-full px-3.5 py-2.5 text-xs bg-white border border-[#BDD8E9]/70 rounded-xl focus:bg-white focus:border-[#0A4174] focus:ring-2 focus:ring-[#7BBDE8]/25 outline-none transition-all text-[#001D39] placeholder:text-[#6EA2B3]"
+                      className="w-full px-3.5 py-2.5 text-xs bg-[#101828] border border-[#243048] rounded-xl focus:border-[#7BBDE8] outline-none transition-all text-white placeholder:text-[#6EA2B3]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-[#001D39]">Ikon Grup</label>
+                    <label className="block text-xs font-semibold text-white">Ikon Grup</label>
                     <select
                       value={newTemplateIcon}
                       onChange={e => setNewTemplateIcon(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-xs bg-white border border-[#BDD8E9]/70 rounded-xl focus:bg-white focus:border-[#0A4174] focus:ring-2 focus:ring-[#7BBDE8]/25 outline-none transition-all text-[#001D39]"
+                      className="w-full px-3.5 py-2.5 text-xs bg-[#101828] border border-[#243048] rounded-xl focus:border-[#7BBDE8] outline-none transition-all text-white"
                     >
                       <option value="folder">Folder Umum</option>
                       <option value="document">Dokumen / Form</option>
@@ -737,58 +741,58 @@ export function TemplatesPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[#001D39]">Deskripsi Singkat</label>
+                  <label className="block text-xs font-semibold text-white">Deskripsi Singkat</label>
                   <textarea
                     rows={2}
                     value={newTemplateDescription}
                     onChange={e => setNewTemplateDescription(e.target.value)}
                     placeholder="Jelaskan kebutuhan pengisian formulir ini..."
-                    className="w-full px-3.5 py-2.5 text-xs bg-white border border-[#BDD8E9]/70 rounded-xl focus:bg-white focus:border-[#0A4174] focus:ring-2 focus:ring-[#7BBDE8]/25 outline-none transition-all text-[#001D39] placeholder:text-[#6EA2B3]"
+                    className="w-full px-3.5 py-2.5 text-xs bg-[#101828] border border-[#243048] rounded-xl focus:border-[#7BBDE8] outline-none transition-all text-white placeholder:text-[#6EA2B3]"
                   />
                 </div>
 
                 <div className="space-y-2 pt-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[13px] leading-[20px] font-medium text-[#49769F]">
+                    <label className="block text-[13px] leading-[20px] font-medium text-white">
                       Pilih kolom data ({selectedFieldKeys.length} terpilih)
                     </label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setSelectedFieldKeys(AVAILABLE_PROFILE_FIELDS.map(f => f.key))}
-                        className="text-[11px] text-[#0A4174] hover:underline font-semibold"
+                        className="text-[11px] text-[#7BBDE8] hover:underline font-semibold"
                       >
                         Pilih Semua
                       </button>
-                      <span className="text-[#BDD8E9]">|</span>
+                      <span className="text-[#243048]">|</span>
                       <button
                         type="button"
                         onClick={() => setSelectedFieldKeys([])}
-                        className="text-[11px] text-[#49769F] hover:underline"
+                        className="text-[11px] text-[#6EA2B3] hover:underline"
                       >
                         Reset
                       </button>
                     </div>
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto border border-[#BDD8E9]/60 rounded-xl divide-y divide-[#BDD8E9]/30 p-1">
+                  <div className="max-h-52 overflow-y-auto border border-[#243048] rounded-xl divide-y divide-[#243048] p-1 bg-[#101828]">
                     {AVAILABLE_PROFILE_FIELDS.map(field => {
                       const isChecked = selectedFieldKeys.includes(field.key);
                       return (
                         <label
                           key={field.key}
-                          className="flex items-center justify-between p-2 hover:bg-[#BDD8E9]/15 rounded-lg cursor-pointer transition-colors"
+                          className="flex items-center justify-between p-2 hover:bg-[#171F2F] rounded-lg cursor-pointer transition-colors"
                         >
                           <div className="flex items-center gap-2.5">
                             <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => toggleFieldSelection(field.key)}
-                              className="rounded border-[#BDD8E9] text-[#0A4174] focus:ring-[#7BBDE8] cursor-pointer"
+                              className="rounded border-[#243048] bg-[#101828] text-[#7BBDE8] focus:ring-[#7BBDE8] cursor-pointer"
                             />
-                            <span className="text-xs font-medium text-[#001D39]">{field.label}</span>
+                            <span className="text-xs font-medium text-white">{field.label}</span>
                           </div>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#BDD8E9]/25 text-[#49769F]">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#171F2F] text-[#6EA2B3] border border-[#243048]">
                             {field.categoryGroup}
                           </span>
                         </label>
@@ -798,18 +802,18 @@ export function TemplatesPage() {
                 </div>
               </div>
 
-              <div className="p-4 border-t border-[#BDD8E9]/40 bg-white flex items-center justify-end gap-3">
+              <div className="p-4 border-t border-[#243048] bg-[#171F2F] flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#49769F] hover:bg-[#BDD8E9]/20 rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[#6EA2B3] hover:text-white rounded-xl transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={!newTemplateName.trim() || selectedFieldKeys.length === 0}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#0A4174] hover:bg-[#001D39] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer"
+                  className="px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer"
                 >
                   Simpan Template
                 </button>

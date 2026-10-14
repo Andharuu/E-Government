@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Flaticon } from './ui';
+import { FontAwesome } from './ui';
 import { profileApi, activityApi, type Profile } from '../services/api';
 import { useNotifications } from '../hooks/useNotifications';
 
@@ -73,6 +73,28 @@ export function Layout() {
   const token = localStorage.getItem('govconnect_token');
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('govconnect_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    if (window.innerWidth < 768) {
+      setMobileOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem('govconnect_sidebar_collapsed', String(next));
+        } catch {}
+        return next;
+      });
+    }
+  };
+
   const location = useLocation();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
@@ -92,6 +114,11 @@ export function Layout() {
   // Notification feature state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifContainerRef = useRef<HTMLDivElement>(null);
+
+  // User profile menu state
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuContainerRef = useRef<HTMLDivElement>(null);
+
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
 
   // Recent activities & notifications for search indexing
@@ -110,6 +137,19 @@ export function Layout() {
     profileApi.get().then(res => {
       setUserProfile(res.data);
     }).catch(() => {});
+  }, []);
+
+  // Keyboard shortcut Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Load recent activities for search indexing
@@ -137,6 +177,9 @@ export function Layout() {
       }
       if (notifContainerRef.current && !notifContainerRef.current.contains(e.target as Node)) {
         setIsNotifOpen(false);
+      }
+      if (userMenuContainerRef.current && !userMenuContainerRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -268,113 +311,121 @@ export function Layout() {
 
   // Regular user navigation (hidden entirely for admins)
   const menuNavItems = [
-    { path: '/dashboard', label: 'Dasbor', iconName: 'apps' },
-    { path: '/profile', label: 'Profil saya', iconName: 'user' },
-    { path: '/templates', label: 'Grup layanan', iconName: 'folder' },
-    { path: '/activity', label: 'Riwayat aktivitas', iconName: 'time-past' },
-    { path: '/public-services', label: 'Layanan Publik', iconName: 'book' },
-    { path: '/complaints', label: 'Pengaduan', iconName: 'sheet' },
+    { path: '/dashboard', label: 'Dasbor', iconName: 'grid' },
+    { path: '/profile', label: 'Profil', iconName: 'user' },
+    { path: '/templates', label: 'Grup Layanan', iconName: 'folder' },
+    { path: '/activity', label: 'Riwayat Aktivitas', iconName: 'clock' },
+    { path: '/public-services', label: 'Layanan Publik', iconName: 'building-columns' },
+    { path: '/complaints', label: 'Pengaduan', iconName: 'comments' },
     { path: '/notifications', label: 'Notifikasi', iconName: 'bell' },
   ];
 
   const generalNavItems = [
-    { path: '/settings', label: 'Pengaturan & keamanan', iconName: 'settings' },
+    { path: '/settings', label: 'Pengaturan', iconName: 'gear' },
   ];
 
   // Admin-only navigation (replaces the entire menu when admin)
   const adminNavItems = isAdmin
     ? [
         { path: '/admin', label: 'Ringkasan', iconName: 'grid', end: true },
-        { path: '/admin/complaints', label: 'Pengaduan', iconName: 'inbox' },
-        { path: '/admin/users', label: 'Pengguna', iconName: 'id-card' },
+        { path: '/admin/complaints', label: 'Pengaduan', iconName: 'comments' },
+        { path: '/admin/users', label: 'Pengguna', iconName: 'users' },
         { path: '/admin/audit', label: 'Audit Log', iconName: 'shield-check' },
-        { path: '/admin/announcements', label: 'Pengumuman', iconName: 'paper-plane' },
+        { path: '/admin/announcements', label: 'Pengumuman', iconName: 'bullhorn' },
       ]
     : [];
 
   const userInitial = (user?.email?.charAt(0) || 'U').toUpperCase();
 
   return (
-    <div className="h-screen bg-gradient-to-b from-[#001D39] via-[#0A4174] to-[#001D39] text-[#001D39] font-sans flex flex-col md:flex-row overflow-hidden selection:bg-[#BDD8E9]">
+    <div className="flex h-screen overflow-hidden bg-[#001D39] text-[#BDD8E9] font-sans selection:bg-[#7BBDE8] selection:text-[#001D39]">
       {/* Mobile Backdrop Overlay */}
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-xs transition-opacity duration-150"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs transition-opacity duration-150"
         />
       )}
 
       {/* ========================================================================= */}
-      {/* SIDEBAR: Modern Blue Gradient with Pill Active Indicator (Reference Style)*/}
+      {/* SIDEBAR: TailAdmin Dark Architecture with GovConnect Color Hierarchy     */}
       {/* ========================================================================= */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-40 h-screen w-[230px] flex flex-col justify-between shrink-0 bg-gradient-to-b from-[#001D39] via-[#0A4174] to-[#001D39] border-r border-[#49769F]/20 transition-transform duration-200 md:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 bottom-0 z-40 h-screen flex flex-col justify-between shrink-0 bg-[#101828] border-r border-[#1E293B] transition-all duration-300 md:translate-x-0 ${
+          sidebarCollapsed ? 'w-[88px]' : 'w-[270px]'
+        } ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
       >
         <div className="flex flex-col h-full justify-between">
           <div>
-            {/* Brand Header */}
-            <div className="flex items-center h-[76px] px-6">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center shrink-0 p-1.5 shadow-sm">
-                  <img
-                    src="/logo-white.png"
-                    alt="GovConnect"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-bold text-white text-[19px] tracking-tight block">
+            {/* Sidebar Header: Brand Logo & Title (Unwrapped Logo & Enlarged Text) */}
+            <div className={`flex items-center h-20 transition-all duration-300 ${sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src="/logo-govconnect.png"
+                  alt="GovConnect"
+                  className="w-11 h-11 object-contain shrink-0 drop-shadow-sm"
+                  title="GovConnect"
+                />
+                {!sidebarCollapsed && (
+                  <span className="font-extrabold text-white text-[25px] tracking-tight leading-tight truncate">
                     GovConnect
                   </span>
-                </div>
+                )}
               </div>
+              {!sidebarCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="md:hidden text-[#6EA2B3] hover:text-white p-1 cursor-pointer transition-colors"
+                  aria-label="Tutup menu"
+                >
+                  <FontAwesome name="xmark" className="text-base" />
+                </button>
+              )}
             </div>
 
-            {/* Navigation Sections */}
-            <div className="px-3 py-2 space-y-6 overflow-y-auto no-scrollbar max-h-[calc(100vh-170px)]">
+            {/* Navigation Groups (TailAdmin MENU / OTHERS Hierarchy) */}
+            <div className={`py-5 space-y-6 overflow-y-auto no-scrollbar max-h-[calc(100vh-100px)] ${sidebarCollapsed ? 'px-2' : 'px-4'}`}>
               {isAdmin ? (
-                /* ===== ADMIN: only the admin panel navigation ===== */
+                /* ===== ADMIN SECTION ===== */
                 <div>
-                  <div className="mx-1 mb-3 p-3 rounded-xl bg-white/[0.06] border border-white/10">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-[#7BBDE8]/20 text-[#7BBDE8] flex items-center justify-center shrink-0">
-                        <Flaticon name="shield-check" className="text-[13px]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-white leading-tight">Admin Panel</p>
-                        <p className="text-[10px] text-slate-300 leading-tight mt-0.5">GovConnect Administration</p>
-                      </div>
-                    </div>
-                  </div>
+                  {!sidebarCollapsed ? (
+                    <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                      ADMINISTRATION
+                    </p>
+                  ) : (
+                    <div className="h-0.5 w-6 bg-[#0A4174]/60 mx-auto my-3 rounded-full" title="ADMINISTRATION" />
+                  )}
                   <nav className="space-y-1">
                     {adminNavItems.map((item) => (
                       <NavLink
                         key={item.path}
                         to={item.path}
                         end={item.end}
+                        title={sidebarCollapsed ? item.label : undefined}
                         className={({ isActive }) =>
-                          `relative flex items-center gap-3 px-3.5 h-[44px] text-[14px] font-medium rounded-xl transition-all duration-150 cursor-pointer ${
+                          `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                            sidebarCollapsed
+                              ? 'justify-center h-11 w-11 mx-auto rounded-xl'
+                              : 'gap-3 px-3.5 h-11 rounded-lg'
+                          } ${
                             isActive
-                              ? 'bg-white/[0.12] text-white shadow-sm'
-                              : 'text-slate-300/70 hover:bg-white/[0.06] hover:text-white'
+                              ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
+                              : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
                           }`
                         }
                       >
                         {({ isActive }) => (
                           <>
-                            {isActive && (
-                              <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-[#7BBDE8]" />
-                            )}
-                            <Flaticon
+                            <FontAwesome
                               name={item.iconName}
-                              variant={isActive ? 'br' : 'rr'}
-                              className={`text-[17px] shrink-0 ${
-                                isActive ? 'text-[#bef264]' : 'text-slate-400'
+                              className={`text-[17px] text-center shrink-0 transition-colors ${
+                                sidebarCollapsed ? 'w-full' : 'w-5'
+                              } ${
+                                isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
                               }`}
                             />
-                            <span className="truncate">{item.label}</span>
+                            {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                           </>
                         )}
                       </NavLink>
@@ -382,42 +433,53 @@ export function Layout() {
                   </nav>
                 </div>
               ) : (
-                /* ===== REGULAR USER: menu + general ===== */
+                /* ===== REGULAR USER SECTIONS ===== */
                 <>
                   <div>
-                    <p className="px-3.5 pb-2 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-                      Menu
-                    </p>
+                    {!sidebarCollapsed ? (
+                      <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                        MENU
+                      </p>
+                    ) : (
+                      <div className="h-0.5 w-6 bg-[#243048] mx-auto my-3 rounded-full" title="MENU" />
+                    )}
                     <nav className="space-y-1">
                       {menuNavItems.map((item) => (
                         <NavLink
                           key={item.path}
                           to={item.path}
+                          title={sidebarCollapsed ? item.label : undefined}
                           className={({ isActive }) =>
-                            `relative flex items-center gap-3 px-3.5 h-[44px] text-[14px] font-medium rounded-xl transition-all duration-150 cursor-pointer ${
+                            `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                              sidebarCollapsed
+                                ? 'justify-center h-11 w-11 mx-auto rounded-xl'
+                                : 'gap-3 px-3.5 h-11 rounded-lg'
+                            } ${
                               isActive
-                                ? 'bg-white/[0.12] text-white shadow-sm'
-                                : 'text-slate-300/70 hover:bg-white/[0.06] hover:text-white'
+                                ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
+                                : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
                             }`
                           }
                         >
                           {({ isActive }) => (
                             <>
-                              {isActive && (
-                                <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-[#7BBDE8]" />
-                              )}
-                              <Flaticon
+                              <FontAwesome
                                 name={item.iconName}
-                                variant={isActive ? 'br' : 'rr'}
-                                className={`text-[17px] shrink-0 ${
-                                  isActive ? 'text-[#7BBDE8]' : 'text-slate-400 group-hover:text-white'
+                                className={`text-[17px] text-center shrink-0 transition-colors ${
+                                  sidebarCollapsed ? 'w-full' : 'w-5'
+                                } ${
+                                  isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
                                 }`}
                               />
-                              <span className="truncate">{item.label}</span>
+                              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                               {item.path === '/notifications' && unreadCount > 0 && (
-                                <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full bg-rose-500 text-white px-1.5 shadow-sm">
-                                  {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
+                                !sidebarCollapsed ? (
+                                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 text-[10px] font-bold rounded-full bg-[#7BBDE8]/25 text-[#7BBDE8] border border-[#7BBDE8]/40 px-1.5">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                  </span>
+                                ) : (
+                                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-[#7BBDE8]" />
+                                )
                               )}
                             </>
                           )}
@@ -427,35 +489,42 @@ export function Layout() {
                   </div>
 
                   <div>
-                    <p className="px-3.5 pb-2 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-                      General
-                    </p>
+                    {!sidebarCollapsed ? (
+                      <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                        OTHERS
+                      </p>
+                    ) : (
+                      <div className="h-0.5 w-6 bg-[#243048] mx-auto my-3 rounded-full" title="OTHERS" />
+                    )}
                     <nav className="space-y-1">
                       {generalNavItems.map((item) => (
                         <NavLink
                           key={item.path}
                           to={item.path}
+                          title={sidebarCollapsed ? item.label : undefined}
                           className={({ isActive }) =>
-                            `relative flex items-center gap-3 px-3.5 h-[44px] text-[14px] font-medium rounded-xl transition-all duration-150 cursor-pointer ${
+                            `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                              sidebarCollapsed
+                                ? 'justify-center h-11 w-11 mx-auto rounded-xl'
+                                : 'gap-3 px-3.5 h-11 rounded-lg'
+                            } ${
                               isActive
-                                ? 'bg-white/[0.12] text-white shadow-sm'
-                                : 'text-slate-300/70 hover:bg-white/[0.06] hover:text-white'
+                                ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
+                                : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
                             }`
                           }
                         >
                           {({ isActive }) => (
                             <>
-                              {isActive && (
-                                <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-[#7BBDE8]" />
-                              )}
-                              <Flaticon
+                              <FontAwesome
                                 name={item.iconName}
-                                variant={isActive ? 'br' : 'rr'}
-                                className={`text-[17px] shrink-0 ${
-                                  isActive ? 'text-[#7BBDE8]' : 'text-slate-400'
+                                className={`text-[17px] text-center shrink-0 transition-colors ${
+                                  sidebarCollapsed ? 'w-full' : 'w-5'
+                                } ${
+                                  isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
                                 }`}
                               />
-                              <span className="truncate">{item.label}</span>
+                              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                             </>
                           )}
                         </NavLink>
@@ -466,59 +535,35 @@ export function Layout() {
               )}
             </div>
           </div>
-
-          {/* User Profile Card at Bottom (Matching Reference Bottom Style) */}
-          <div className="p-3 border-t border-white/10">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.06] border border-white/10">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#7BBDE8] text-[#001D39] font-bold text-[13px] flex items-center justify-center shrink-0 shadow-sm">
-                  {userInitial}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-white truncate leading-tight">
-                    {user?.email?.split('@')[0]}
-                  </p>
-                  <p className="text-[11px] text-slate-300 truncate leading-tight mt-0.5">
-                    {isAdmin ? 'Administrator' : user?.email}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={logout}
-                className="p-1.5 text-rose-300 hover:text-rose-100 hover:bg-rose-500/20 rounded-lg transition-colors cursor-pointer shrink-0 ml-1"
-                title="Keluar"
-              >
-                <Flaticon name="sign-out-alt" className="text-[14px]" />
-              </button>
-            </div>
-          </div>
         </div>
       </aside>
 
       {/* ========================================================================= */}
-      {/* MAIN CONTENT AREA: Rounded canvas panel                                   */}
+      {/* MAIN CONTENT AREA: TailAdmin Dark Navbar + Crisp Surface Canvas           */}
       {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0 md:ml-[230px] md:my-3 md:mr-3 rounded-none md:rounded-[28px] bg-[#F6F8FB] h-screen md:h-[calc(100vh-24px)] overflow-hidden shadow-2xl w-full max-w-full">
-        {/* Topbar: Search Bar Panjang, Notifikasi, dan Profil Memenuhi Navbar */}
-        <header className="shrink-0 z-30 h-[72px] bg-white border-b border-[#BDD8E9]/60 px-6 sm:px-8 flex items-center justify-between gap-4">
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 -ml-2 rounded-xl text-[#475569] hover:bg-[#F6F8FB] md:hidden cursor-pointer shrink-0"
-            aria-label="Buka menu"
-          >
-            <Flaticon name="menu-burger" className="text-base" />
-          </button>
+      <div className={`flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#101828] transition-all duration-300 ${
+        sidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'
+      }`}>
+        {/* Top Navbar: TailAdmin Dark Style with Crisp Bottom Divider */}
+        <header className="shrink-0 z-30 h-20 bg-[#101828] border-b border-[#1E293B] px-4 sm:px-8 flex items-center justify-between gap-4">
+          {/* Left: Sidebar Toggle Button (Minimize / Maximize) + TailAdmin Search bar */}
+          <div className="flex items-center gap-3 sm:gap-4 flex-1">
+            {/* Sidebar Toggle Button (Minimize / Maximize di kiri search bar) */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#243048] bg-[#171F2F] text-[#BDD8E9] hover:bg-[#243048] hover:text-white transition-all cursor-pointer shrink-0 shadow-xs"
+              title={sidebarCollapsed ? "Perbesar sidebar (Maximize)" : "Perkecil sidebar (Minimize)"}
+              aria-label="Toggle navigasi sidebar"
+            >
+              <FontAwesome name="bars" className="text-sm" />
+            </button>
 
-          {/* Search Bar / Admin Title */}
-          {isAdmin ? (
-            <div className="flex-1 min-w-0">
-              <h2 className="text-[15px] font-bold text-[#001D39] truncate">Panel Administrator</h2>
-              <p className="text-[11px] text-[#49769F] truncate">Manajemen pengaduan, pengguna & kepatuhan privasi</p>
-            </div>
-          ) : (
-          <div className="flex-1 max-w-3xl relative" ref={searchContainerRef}>
-            <div className="relative w-full">
+            {/* Search Input with TailAdmin ⌘ K badge - Extended width to the right */}
+            <div className="relative flex-1 max-w-2xl lg:max-w-3xl" ref={searchContainerRef}>
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6EA2B3]">
+                <FontAwesome name="magnifying-glass" className="text-sm" />
+              </span>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -528,102 +573,95 @@ export function Layout() {
                   setIsSearchOpen(true);
                 }}
                 onFocus={() => setIsSearchOpen(true)}
-                placeholder="Search anything in GovConnect..."
-                className="w-full h-11 pl-4 pr-10 bg-[#F8FAFC] hover:bg-white focus:bg-white border border-[#BDD8E9] focus:border-[#0A4174] focus:ring-4 focus:ring-[#7BBDE8]/30 rounded-full text-[14px] text-[#001D39] placeholder-[#6EA2B3] transition-all duration-150 outline-none"
+                placeholder="Cari fitur, layanan, data profil..."
+                className="h-11 w-full rounded-xl border border-[#243048] bg-[#171F2F] pl-10 pr-16 text-[14px] text-white placeholder-[#6EA2B3] focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 focus:bg-[#171F2F] outline-none transition-colors"
               />
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[#49769F]">
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="hover:text-[#001D39] p-0.5"
-                  >
-                    <Flaticon name="cross" className="text-[10px]" />
-                  </button>
-                )}
-                <Flaticon name="search" className="text-[16px] pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Quick Search Dropdown Panel */}
-            {isSearchOpen && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#BDD8E9] shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="p-2.5 border-b border-[#E2EBF2] bg-[#F8FAFC] flex items-center justify-between text-[11px] text-[#49769F] font-medium">
-                  <span>Hasil Pencarian Cepat</span>
-                  <span className="text-[10px] text-[#6EA2B3]">{filteredSearchResults.length} item</span>
-                </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-[#E2EBF2]">
-                  {filteredSearchResults.length > 0 ? (
-                    filteredSearchResults.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleSelectSearchResult(item.path)}
-                        className="w-full p-3 text-left hover:bg-[#BDD8E9]/25 transition-colors flex items-start justify-between gap-3 group"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[12px] font-medium text-[#001D39] group-hover:text-[#0A4174] transition-colors">
-                              {item.title}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#BDD8E9]/30 text-[#0A4174] font-normal border border-[#BDD8E9]">
-                              {item.category}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-[#49769F] truncate mt-0.5">{item.desc}</p>
-                        </div>
-                        <Flaticon name="arrow-right" className="text-xs text-[#49769F] group-hover:text-[#0A4174] group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-xs text-[#49769F]">
-                      Tidak ditemukan hasil untuk &quot;{searchQuery}&quot;
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* Right: Notifikasi & Profil Memenuhi Navbar */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            {/* Notification Bell */}
-            <div className="relative" ref={notifContainerRef}>
               <button
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="relative w-10 h-10 rounded-full border border-[#BDD8E9] hover:bg-[#BDD8E9]/20 flex items-center justify-center text-[#49769F] hover:text-[#001D39] transition-colors cursor-pointer"
-                aria-label="Notifikasi"
+                type="button"
+                onClick={() => {
+                  searchInputRef.current?.focus();
+                  setIsSearchOpen(true);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded-md border border-[#243048] bg-[#101828] px-2 py-0.5 text-[11px] font-medium text-[#BDD8E9] hover:bg-[#243048] cursor-pointer transition-colors"
+                title="Pintasan keyboard (⌘K / Ctrl+K)"
               >
-                <Flaticon name="bell" className="text-[18px]" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-[#0A4174] text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                    {unreadCount}
-                  </span>
-                )}
+                <span>⌘</span>
+                <span>K</span>
               </button>
 
-              {/* Notification Dropdown Panel */}
+              {/* Quick Search Dropdown Panel (TailAdmin Dark Style) */}
+              {isSearchOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-[#171F2F] rounded-2xl border border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3 border-b border-[#243048] bg-[#101828]/50 flex items-center justify-between text-[11px] text-[#BDD8E9] font-medium">
+                    <span>Hasil Pencarian Cepat</span>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-[#243048]">
+                    {filteredSearchResults.length > 0 ? (
+                      filteredSearchResults.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectSearchResult(item.path)}
+                          className="w-full p-3 text-left hover:bg-[#0A4174]/40 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <span className="text-[13px] font-semibold text-white group-hover:text-[#7BBDE8] transition-colors">
+                              {item.title}
+                            </span>
+                            <p className="text-[11px] text-[#6EA2B3] truncate mt-0.5">{item.desc}</p>
+                          </div>
+                          <FontAwesome name="arrow-right" className="text-xs text-[#6EA2B3] group-hover:text-[#7BBDE8] group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center text-xs text-[#6EA2B3]">
+                        Tidak ditemukan hasil untuk &quot;{searchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Circular Notification Bell + User Profile Dropdown (TailAdmin Dark Style) */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            {/* Circular Notification Bell */}
+            <div className="relative" ref={notifContainerRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotifOpen(!isNotifOpen);
+                  setIsUserMenuOpen(false);
+                }}
+                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#243048] bg-[#171F2F] text-[#BDD8E9] hover:bg-[#243048] hover:text-white transition-colors cursor-pointer"
+                aria-label="Buka Notifikasi"
+              >
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7BBDE8] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#7BBDE8]" />
+                  </span>
+                )}
+                <FontAwesome name="bell" className="text-base" />
+              </button>
+
+              {/* Notification Dropdown Panel (TailAdmin Dark Style - Simple & Proper) */}
               {isNotifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl border border-[#BDD8E9] shadow-2xl overflow-hidden z-50">
-                  <div className="p-3.5 border-b border-[#E2EBF2] bg-[#F8FAFC] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#001D39]">Notifikasi</span>
-                      {unreadCount > 0 && (
-                        <span className="text-[11px] bg-[#BDD8E9]/50 text-[#0A4174] font-semibold px-2 py-0.5 rounded-full">
-                          {unreadCount} baru
-                        </span>
-                      )}
-                    </div>
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#171F2F] rounded-2xl border border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3.5 border-b border-[#243048] bg-[#101828]/50 flex items-center justify-between">
+                    <span className="text-[13px] font-bold text-white">Notifikasi</span>
                     {unreadCount > 0 && (
                       <button
+                        type="button"
                         onClick={() => markAllRead()}
-                        className="text-[12px] font-medium text-[#0A4174] hover:text-[#001D39] cursor-pointer"
+                        className="text-[12px] font-semibold text-[#7BBDE8] hover:text-white cursor-pointer transition-colors"
                       >
-                        Tandai sudah dibaca
+                        Tandai semua dibaca
                       </button>
                     )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-[#E2EBF2]">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[#243048]/60">
                     {notifications.length > 0 ? (
                       notifications.map((n) => (
                         <div
@@ -631,83 +669,146 @@ export function Layout() {
                           onClick={() => {
                             if (!n.read) markRead(n.id);
                           }}
-                          className={`p-3.5 hover:bg-[#BDD8E9]/15 transition-colors flex items-start gap-3 cursor-pointer ${
-                            !n.read ? 'bg-[#BDD8E9]/25' : ''
+                          className={`px-4 py-3 hover:bg-[#101828]/60 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
+                            !n.read ? 'bg-[#0A4174]/15' : ''
                           }`}
                         >
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                              n.type === 'success'
-                                ? 'bg-[#4E8EA2]/15 text-[#0A4174]'
-                                : n.type === 'warning'
-                                ? 'bg-amber-50 text-amber-600'
-                                : n.type === 'info'
-                                ? 'bg-[#BDD8E9]/40 text-[#0A4174]'
-                                : 'bg-[#6EA2B3]/20 text-[#0A4174]'
-                            }`}
-                          >
-                            {n.type === 'success' ? (
-                              <Flaticon name="check" className="text-xs" />
-                            ) : n.type === 'warning' ? (
-                              <Flaticon name="exclamation" className="text-xs" />
-                            ) : (
-                              <Flaticon name="sparkles" className="text-xs" />
-                            )}
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                !n.read ? 'bg-[#7BBDE8]' : 'bg-transparent'
+                              }`}
+                            />
+                            <span className={`text-[13px] truncate ${!n.read ? 'font-semibold text-white' : 'font-medium text-[#BDD8E9]/80'}`}>
+                              {n.title}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[13px] font-semibold text-[#001D39] truncate">
-                                {n.title}
-                              </span>
-                              <span className="text-[11px] text-[#49769F] shrink-0">
-                                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className="text-[12px] text-[#49769F] mt-0.5 leading-relaxed">
-                              {n.desc}
-                            </p>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-[11px] text-[#6EA2B3] font-medium tabular-nums">
+                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                remove(n.id);
+                              }}
+                              className="text-[#6EA2B3] hover:text-rose-400 p-1 cursor-pointer transition-colors"
+                              title="Hapus"
+                            >
+                              <FontAwesome name="trash" className="text-xs" />
+                            </button>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              remove(n.id);
-                            }}
-                            className="text-[#49769F] hover:text-[#001D39] p-0.5 cursor-pointer"
-                            title="Hapus"
-                          >
-                            <Flaticon name="cross" className="text-[9px]" />
-                          </button>
                         </div>
                       ))
                     ) : (
-                      <div className="p-8 text-center text-[13px] text-[#49769F]">
+                      <div className="p-8 text-center text-[13px] text-[#6EA2B3]">
                         {notifsLoading ? 'Memuat notifikasi...' : 'Tidak ada notifikasi saat ini'}
                       </div>
                     )}
                   </div>
 
-                  <div className="p-2.5 border-t border-[#E2EBF2] bg-[#F8FAFC] text-center">
-                    <span className="text-[11px] text-[#49769F] font-normal">
-                      Notifikasi sistem otomatis GovConnect
-                    </span>
+                  <div className="p-3 border-t border-[#0A4174]/60 bg-[#0A4174]/20 text-center">
+                    <NavLink
+                      to="/notifications"
+                      onClick={() => setIsNotifOpen(false)}
+                      className="text-xs font-bold text-[#7BBDE8] hover:text-white transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <span>Lihat Semua Notifikasi</span>
+                      <FontAwesome name="arrow-right" className="text-[10px]" />
+                    </NavLink>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* User Profile Pill in Navbar */}
-            <div className="flex items-center gap-3 pl-3 border-l border-[#BDD8E9]">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0A4174] to-[#7BBDE8] text-white font-bold text-[14px] flex items-center justify-center shadow-sm shrink-0">
-                {userInitial}
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-[14px] font-semibold text-[#001D39] leading-tight truncate max-w-[130px]">
-                  {user?.email?.split('@')[0]}
-                </p>
-                <p className="text-[12px] text-[#49769F] leading-tight mt-0.5">
-                  {isAdmin ? 'Administrator' : 'Warga Terverifikasi'}
-                </p>
-              </div>
+            {/* User Profile Area (TailAdmin signature style) */}
+            <div className="relative" ref={userMenuContainerRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUserMenuOpen(!isUserMenuOpen);
+                  setIsNotifOpen(false);
+                }}
+                className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-[#0A4174]/30 transition-colors cursor-pointer text-left"
+                aria-label="Menu Akun Pengguna"
+              >
+                <div className="h-10 w-10 rounded-full border border-[#7BBDE8]/40 bg-[#0A4174] text-[#7BBDE8] font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                  {userInitial}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-[14px] font-medium text-white leading-tight truncate max-w-[130px]">
+                    {userProfile?.full_name || user?.email?.split('@')[0] || 'andharu'}
+                  </p>
+                  {isAdmin && (
+                    <p className="text-[12px] text-[#6EA2B3] leading-tight mt-0.5 font-normal">
+                      Administrator
+                    </p>
+                  )}
+                </div>
+                <FontAwesome
+                  name="chevron-down"
+                  className={`text-xs text-[#6EA2B3] hidden sm:block transition-transform duration-200 ${
+                    isUserMenuOpen ? 'rotate-180 text-white' : ''
+                  }`}
+                />
+              </button>
+
+              {/* User Dropdown Menu (TailAdmin Dark) */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-[#243048] bg-[#171F2F] shadow-2xl p-2 z-50 text-white animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3 border-b border-[#243048] bg-[#101828]/50 rounded-xl mb-1">
+                    <p className="text-sm font-semibold text-white truncate">{userProfile?.full_name || user?.email?.split('@')[0] || 'andharu'}</p>
+                    <p className="text-xs text-[#6EA2B3] truncate mt-0.5">{user?.email}</p>
+                    {isAdmin && (
+                      <span className="inline-block mt-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#7BBDE8]/20 text-[#7BBDE8] border border-[#7BBDE8]/30">
+                        Administrator
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="py-1">
+                    <NavLink
+                      to="/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                    >
+                      <FontAwesome name="user" className="text-xs text-[#7BBDE8]" />
+                      <span>Profil Saya</span>
+                    </NavLink>
+                    <NavLink
+                      to="/settings"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                    >
+                      <FontAwesome name="shield-halved" className="text-xs text-[#7BBDE8]" />
+                      <span>Pengaturan &amp; Keamanan</span>
+                    </NavLink>
+                    <NavLink
+                      to="/activity"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                    >
+                      <FontAwesome name="clock" className="text-xs text-[#7BBDE8]" />
+                      <span>Riwayat Aktivitas</span>
+                    </NavLink>
+                  </div>
+
+                  <div className="pt-1 border-t border-[#243048]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 hover:text-rose-200 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <FontAwesome name="right-from-bracket" className="text-xs" />
+                      <span>Keluar Akun</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -715,7 +816,7 @@ export function Layout() {
         {/* Content Body */}
         <main
           ref={mainRef}
-          className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 lg:p-7 overflow-y-auto overflow-x-hidden page-enter w-full"
+          className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden page-enter w-full bg-[#101828]"
         >
           <Outlet />
         </main>

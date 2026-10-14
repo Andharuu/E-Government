@@ -5,27 +5,27 @@ import { useNotifications } from '../hooks/useNotifications';
 
 type FilterType = 'all' | 'unread' | 'success' | 'warning' | 'info' | 'system';
 
-const FILTER_TABS: { key: FilterType; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'unread', label: 'Belum dibaca' },
-  { key: 'success', label: 'Sukses' },
-  { key: 'warning', label: 'Peringatan' },
-  { key: 'info', label: 'Info' },
-  { key: 'system', label: 'Sistem' },
+const FILTER_TABS: { key: FilterType; label: string; icon: string }[] = [
+  { key: 'all', label: 'Semua', icon: 'layer-group' },
+  { key: 'unread', label: 'Belum dibaca', icon: 'envelope' },
+  { key: 'success', label: 'Sukses', icon: 'circle-check' },
+  { key: 'warning', label: 'Peringatan', icon: 'triangle-exclamation' },
+  { key: 'info', label: 'Info', icon: 'circle-info' },
+  { key: 'system', label: 'Sistem', icon: 'bell' },
 ];
 
-const PALETTE: Record<string, { icon: string; badge: string; border: string; accent: string }> = {
-  success: { icon: 'bg-emerald-100 text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-100', accent: '#10B981' },
-  warning: { icon: 'bg-amber-100 text-amber-600', badge: 'bg-amber-100 text-amber-700', border: 'border-amber-100', accent: '#F59E0B' },
-  info: { icon: 'bg-[#BDD8E9]/40 text-[#0A4174]', badge: 'bg-[#BDD8E9]/40 text-[#0A4174]', border: 'border-[#BDD8E9]/60', accent: '#0A4174' },
-  system: { icon: 'bg-[#BDD8E9]/25 text-[#49769F]', badge: 'bg-[#BDD8E9]/25 text-[#49769F]', border: 'border-[#BDD8E9]/40', accent: '#49769F' },
+const PALETTE: Record<string, { iconColor: string }> = {
+  success: { iconColor: 'text-emerald-400' },
+  warning: { iconColor: 'text-amber-400' },
+  info: { iconColor: 'text-[#7BBDE8]' },
+  system: { iconColor: 'text-[#6EA2B3]' },
 };
 
 const ICON_MAP: Record<string, string> = {
-  success: 'check-circle',
+  success: 'circle-check',
   warning: 'triangle-exclamation',
   info: 'circle-info',
-  system: 'sparkles',
+  system: 'bell',
 };
 
 function timeAgo(iso: string): string {
@@ -53,56 +53,61 @@ function NotifCard({
   deleting: boolean;
 }) {
   const pal = PALETTE[notif.type] ?? PALETTE.system;
-  const icon = ICON_MAP[notif.type] ?? 'sparkles';
+  const icon = ICON_MAP[notif.type] ?? 'bell';
 
   return (
     <div
       onClick={() => !notif.read && onRead(notif.id)}
-      className={`group relative flex items-start gap-4 p-5 rounded-2xl border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg ${
-        notif.read ? 'bg-white border-slate-100 hover:border-[#BDD8E9]/50' : `bg-white/80 ${pal.border} hover:shadow-xl`
+      className={`group relative flex items-start gap-4 p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${
+        notif.read
+          ? 'bg-[#171F2F] border-[#243048] hover:border-[#7BBDE8]/60'
+          : 'bg-[#171F2F] border-[#243048] hover:border-[#7BBDE8] border-l-4 border-l-[#7BBDE8] shadow-sm'
       }`}
     >
-      {!notif.read && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-10 rounded-r-full" style={{ backgroundColor: pal.accent }} />
-      )}
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${pal.icon}`}>
-        <FontAwesome name={icon} variant="solid" className="text-sm" />
+      {/* Icon tanpa pembungkus langsung dari FontAwesome */}
+      <div className="shrink-0 pt-0.5">
+        <FontAwesome name={icon} variant="solid" className={`text-xl ${pal.iconColor}`} />
       </div>
+
       <div className="flex-1 min-w-0">
+        {/* Header: Judul dan Waktu terpisah jelas */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className={`text-[14px] font-bold leading-snug ${notif.read ? 'text-[#49769F]' : 'text-[#001D39]'}`}>
-              {notif.title}
-            </h3>
-            <p className="text-[13px] text-[#49769F] mt-1 leading-relaxed line-clamp-3">{notif.desc || '-'}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-[11px] text-[#6EA2B3] font-medium whitespace-nowrap tabular-nums">{timeAgo(notif.created_at)}</span>
-            {!notif.read && (
-              <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${pal.badge}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                Baru
-              </span>
-            )}
-          </div>
+          <h3 className={`text-[15px] font-bold leading-snug tracking-tight ${notif.read ? 'text-[#BDD8E9]/75' : 'text-white'}`}>
+            {notif.title}
+          </h3>
+          <span className="text-[12px] text-[#6EA2B3] font-medium whitespace-nowrap tabular-nums shrink-0 mt-0.5">
+            {timeAgo(notif.created_at)}
+          </span>
         </div>
-        <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          {!notif.read && (
+
+        {/* Isi Pesan dengan pemisahan tipografi yang jelas */}
+        {notif.desc && (
+          <p className="text-[13.5px] leading-relaxed text-[#BDD8E9]/85 mt-2">
+            {notif.desc}
+          </p>
+        )}
+
+        {/* Action Row tanpa garis pembatas */}
+        <div className="flex items-center justify-between gap-3 mt-3.5">
+          {!notif.read ? (
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onRead(notif.id); }}
-              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#49769F] hover:text-[#0A4174] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#7BBDE8] hover:text-white transition-colors cursor-pointer"
             >
               <FontAwesome name="check" className="text-xs" />
-              Tandai sudah dibaca
+              <span>Tandai sudah dibaca</span>
             </button>
-          )}
+          ) : <div />}
+
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onDelete(notif.id); }}
             disabled={deleting}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-400 hover:text-rose-600 transition-colors cursor-pointer ml-auto"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#6EA2B3] hover:text-rose-400 transition-colors cursor-pointer ml-auto"
           >
             {deleting ? <FontAwesome name="spinner" spin className="text-xs" /> : <FontAwesome name="trash" className="text-xs" />}
-            Hapus
+            <span>Hapus</span>
           </button>
         </div>
       </div>
@@ -190,50 +195,56 @@ export function NotificationsPage() {
   };
 
   return (
-    <div className="w-full space-y-6 pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+    <div className="w-full max-w-5xl mx-auto space-y-6 pb-12">
+      {/* Header Halaman tanpa garis pembatas */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-[28px] leading-[36px] font-semibold text-[#001D39] tracking-[-0.02em]">Notifikasi</h1>
-          <p className="text-[14px] leading-[22px] font-normal text-[#49769F] mt-0.5">Notifikasi realtime aktivitas autofill &amp; sistem</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Notifikasi</h1>
+          <p className="text-sm text-[#6EA2B3] mt-1">Aktivitas autofill dan pembaruan sistem</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <span
-            className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
-              isRealtimeConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm' : 'bg-slate-50 text-slate-500 border-slate-200'
-            }`}
-            title={isRealtimeConnected ? 'SSE realtime aktif' : 'Polling fallback aktif setiap 20 detik'}
-          >
-            <span className={`w-2 h-2 rounded-full ${isRealtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-            {isRealtimeConnected ? 'Realtime aktif' : 'Polling · 20s'}
-          </span>
           <button
             type="button"
             onClick={() => refresh()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-medium text-[#49769F] bg-white border border-[#BDD8E9]/70 hover:border-[#0A4174] hover:text-[#0A4174] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer shadow-xs"
+            className="group relative inline-flex items-center gap-2.5 h-10 px-4.5 text-[13px] font-semibold text-white bg-gradient-to-r from-[#172338] via-[#1a2942] to-[#1c2e4a] hover:from-[#1b2b45] hover:via-[#203454] hover:to-[#243c61] border border-[#2e476b]/70 hover:border-[#7BBDE8] rounded-xl shadow-xs hover:shadow-[0_0_18px_rgba(123,189,232,0.22)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
           >
-            <FontAwesome name="rotate-right" className={`text-xs ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
+            <FontAwesome
+              name="rotate-right"
+              className={`text-xs text-[#7BBDE8] transition-transform duration-500 ${
+                isLoading ? 'animate-spin' : 'group-hover:rotate-180'
+              }`}
+            />
+            <span className="tracking-wide">{isLoading ? 'Memperbarui...' : 'Perbarui'}</span>
           </button>
+
           {unreadCount > 0 && (
             <button
               type="button"
               onClick={handleMarkAllRead}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-medium text-white bg-[#0A4174] hover:bg-[#001D39] rounded-xl transition-colors cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-2 h-10 px-4 text-[13px] font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs active:scale-95"
             >
               <FontAwesome name="check-double" className="text-xs" />
               <span>Tandai semua dibaca</span>
             </button>
           )}
+
           {notifications.length > 0 && (
             <button
               type="button"
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="group relative inline-flex items-center gap-2.5 h-10 px-4.5 text-[13px] font-semibold text-rose-300 bg-gradient-to-r from-rose-950/40 via-rose-900/30 to-rose-950/40 hover:from-rose-900/60 hover:via-rose-800/40 hover:to-rose-900/60 border border-rose-800/50 hover:border-rose-500/80 rounded-xl shadow-xs hover:shadow-[0_0_18px_rgba(244,63,94,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
             >
-              <FontAwesome name="trash" className="text-xs" />
-              <span>{clearingAll ? 'Menghapus...' : 'Hapus semua'}</span>
+              {clearingAll ? (
+                <FontAwesome name="spinner" className="text-xs animate-spin text-rose-400" />
+              ) : (
+                <FontAwesome
+                  name="trash"
+                  className="text-xs text-rose-400 group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-200"
+                />
+              )}
+              <span className="tracking-wide">{clearingAll ? 'Menghapus...' : 'Hapus semua'}</span>
             </button>
           )}
         </div>
@@ -241,70 +252,82 @@ export function NotificationsPage() {
 
       {actionFeedback && (
         <div
-          className={`p-4 rounded-2xl border shadow-sm flex items-center gap-2.5 text-[13px] font-semibold ${
-            actionFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+          className={`p-4 rounded-xl border flex items-center gap-3 text-[13px] font-semibold ${
+            actionFeedback.type === 'success' ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
           }`}
         >
           <FontAwesome
             name={actionFeedback.type === 'success' ? 'check-circle' : 'circle-x'}
-            className={`text-sm shrink-0 ${actionFeedback.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}
+            className={`text-sm shrink-0 ${actionFeedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}
           />
           <span>{actionFeedback.text}</span>
         </div>
       )}
 
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-        {FILTER_TABS.map((tab) => {
-          const count = counts[tab.key];
-          const isActive = filter === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setFilter(tab.key)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                isActive ? 'bg-[#0A4174] text-white shadow-sm' : 'bg-white text-[#49769F] border border-[#BDD8E9]/60 hover:border-[#7BBDE8] hover:text-[#001D39]'
-              }`}
-            >
-              {tab.label}
-              {count > 0 && (
-                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1 ${isActive ? 'bg-white/20 text-white' : 'bg-[#BDD8E9]/25 text-[#0A4174]'}`}>
+      {/* Kategori Filter Pills & Counter (Mirrors PublicServices design) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          {FILTER_TABS.map((tab) => {
+            const count = counts[tab.key];
+            const isActive = filter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFilter(tab.key)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
+                    : 'bg-[#171F2F] text-[#6EA2B3] border border-[#243048] hover:border-[#7BBDE8] hover:text-white'
+                }`}
+              >
+                <FontAwesome name={tab.icon} className="text-xs" />
+                <span>{tab.label}</span>
+                <span
+                  className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
+                    isActive ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
+                  }`}
+                >
                   {count}
                 </span>
-              )}
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="text-[13px] font-medium text-[#6EA2B3] shrink-0 hidden sm:block">
+          Menampilkan <span className="font-bold text-white">{filtered.length}</span> notifikasi
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-slate-100 bg-white animate-pulse">
-              <div className="w-11 h-11 rounded-xl bg-slate-200 shrink-0" />
+            <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[#243048] bg-[#171F2F] animate-pulse">
+              <div className="w-6 h-6 rounded-full bg-[#243048] shrink-0 mt-0.5" />
               <div className="flex-1 space-y-2 pt-1">
-                <div className="h-3.5 bg-slate-200 rounded w-2/3" />
-                <div className="h-2.5 bg-slate-200 rounded w-full" />
+                <div className="h-3.5 bg-[#243048] rounded w-1/3" />
+                <div className="h-2.5 bg-[#243048] rounded w-full" />
               </div>
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-4 shadow-inner">
-            <FontAwesome name="bell-slash" variant="solid" className="text-2xl" />
+        <div className="flex flex-col items-center justify-center py-16 px-6 bg-[#171F2F] rounded-2xl border border-[#243048] text-center shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-[#101828] text-[#7BBDE8] border border-[#243048] flex items-center justify-center mb-4">
+            <FontAwesome name="bell-slash" variant="solid" className="text-xl" />
           </div>
-          <p className="text-[15px] font-bold text-slate-700">{filter === 'unread' ? 'Semua sudah dibaca' : 'Belum ada notifikasi'}</p>
-          <p className="text-[13px] text-slate-400 mt-1 text-center max-w-sm">
+          <p className="text-[15px] font-bold text-white">{filter === 'unread' ? 'Semua sudah dibaca' : 'Belum ada notifikasi'}</p>
+          <p className="text-[13px] text-[#6EA2B3] mt-1 text-center max-w-sm">
             {filter === 'unread'
               ? 'Tidak ada notifikasi yang belum dibaca.'
               : filter === 'all'
               ? 'Notifikasi aktivitas autofill akan muncul di sini secara realtime.'
-              : `Tidak ada notifikasi dengan tipe "${FILTER_TABS.find((t) => t.key === filter)?.label}" saat ini.`}
+              : `Tidak ada notifikasi dengan kategori "${FILTER_TABS.find((t) => t.key === filter)?.label}" saat ini.`}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filtered.map((n) => (
             <NotifCard key={n.id} notif={n} onRead={handleRead} onDelete={handleDelete} deleting={deletingId === n.id} />
           ))}
@@ -312,9 +335,9 @@ export function NotificationsPage() {
       )}
 
       {notifications.length > 0 && (
-        <p className="text-center text-[12px] text-slate-400 font-medium">
+        <p className="text-center text-[12px] text-[#6EA2B3] font-medium pt-2">
           Menampilkan {filtered.length} dari {notifications.length} notifikasi
-          {unreadCount > 0 && <span className="text-blue-500"> · {unreadCount} belum dibaca</span>}
+          {unreadCount > 0 && <span className="text-[#7BBDE8] font-semibold"> · {unreadCount} belum dibaca</span>}
         </p>
       )}
     </div>

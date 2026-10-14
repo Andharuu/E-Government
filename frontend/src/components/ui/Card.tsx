@@ -9,8 +9,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`bg-white rounded-[16px] border border-[#BDD8E9]/60 shadow-[0_1px_2px_rgba(0,29,57,0.04)] transition-all duration-150 ${
-          hover ? 'hover:shadow-[0_4px_12px_rgba(0,29,57,0.08)] hover:border-[#6EA2B3]' : ''
+        className={`bg-[#171F2F] text-white rounded-2xl border border-[#243048] shadow-sm transition-colors duration-150 ${
+          hover ? 'hover:border-[#7BBDE8]' : ''
         } ${className}`}
         {...props}
       >
@@ -25,7 +25,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 pb-4 border-b border-[#BDD8E9]/40 flex items-center justify-between gap-4 ${className}`}
+      className={`p-6 border-b border-[#243048] flex items-center justify-between gap-4 ${className}`}
       {...props}
     >
       {children}
@@ -38,7 +38,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttribut
   ({ className = '', children, ...props }, ref) => (
     <h3
       ref={ref}
-      className={`text-[16px] leading-[24px] font-semibold tracking-[-0.01em] text-[#001D39] ${className}`}
+      className={`text-base font-bold text-white tracking-tight ${className}`}
       {...props}
     >
       {children}
@@ -51,7 +51,7 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
   ({ className = '', children, ...props }, ref) => (
     <p
       ref={ref}
-      className={`text-[13px] leading-[20px] font-normal text-[#49769F] mt-0.5 ${className}`}
+      className={`text-xs text-[#6EA2B3] mt-1 ${className}`}
       {...props}
     >
       {children}
@@ -73,7 +73,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 pt-4 border-t border-[#BDD8E9]/40 flex items-center justify-between gap-3 ${className}`}
+      className={`p-6 pt-4 border-t border-[#BDD8E9]/50 flex items-center justify-between gap-4 ${className}`}
       {...props}
     >
       {children}

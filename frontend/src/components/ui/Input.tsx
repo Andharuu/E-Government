@@ -18,17 +18,17 @@ export const FormField: React.FC<FormFieldProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`space-y-1.5 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold text-slate-700">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-[#49769F]">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
       {children}
       {error ? (
-        <p className="text-[11px] font-medium text-rose-600 mt-1">{error}</p>
+        <p className="text-xs font-medium text-rose-600 mt-1">{error}</p>
       ) : hint ? (
-        <p className="text-[11px] text-slate-400 mt-0.5">{hint}</p>
+        <p className="text-xs text-[#94A3B8] mt-1">{hint}</p>
       ) : null}
     </div>
   );
@@ -43,10 +43,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         ref={ref}
-        className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
+        className={`w-full px-4 py-2 h-11 text-sm bg-white border rounded-xl placeholder:text-[#94A3B8] text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
+            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       />
@@ -64,10 +64,10 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         ref={ref}
-        className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
+        className={`w-full p-4 text-sm bg-white border rounded-xl placeholder:text-[#94A3B8] text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
+            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       />
@@ -85,10 +85,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <select
         ref={ref}
-        className={`w-full px-3.5 py-2.5 text-[13px] bg-slate-50/70 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition-all duration-150 ${
+        className={`w-full px-4 py-2 h-11 text-sm bg-white border rounded-xl text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-[#BDD8E9] focus:ring-[#7BBDE8]/30 focus:border-[#0A4174]'
+            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
         } ${className}`}
         {...props}
       >

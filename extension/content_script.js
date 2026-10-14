@@ -867,18 +867,18 @@ function ensureMarkerStyles() {
   style.id = "govconnect-marker-styles";
   style.textContent = `
     .govconnect-field-ready {
-      outline: 2px solid #2563EB !important;
+      outline: 2px solid #0A4174 !important;
       outline-offset: 1px !important;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
-      border-color: #2563EB !important;
+      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
+      border-color: #0A4174 !important;
       transition: outline 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
     }
     p-dropdown.govconnect-field-ready .p-dropdown,
     .p-dropdown.govconnect-field-ready {
-      outline: 2px solid #2563EB !important;
+      outline: 2px solid #0A4174 !important;
       outline-offset: 1px !important;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
-      border-color: #2563EB !important;
+      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
+      border-color: #0A4174 !important;
     }
     .govconnect-field-filled {
       outline: 2px solid #16A34A !important;
@@ -905,14 +905,14 @@ function ensureMarkerStyles() {
       transition: outline 0.7s ease, box-shadow 0.7s ease, background-color 0.7s ease !important;
     }
     .govconnect-field-focus {
-      outline: 3px solid #1D4ED8 !important;
+      outline: 3px solid #001D39 !important;
       outline-offset: 2px !important;
-      box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.35) !important;
+      box-shadow: 0 0 0 5px rgba(123, 189, 232, 0.35) !important;
       animation: govconnectPulse 1s ease-in-out infinite alternate !important;
     }
     @keyframes govconnectPulse {
-      0% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25); }
-      100% { box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.45); }
+      0% { box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.2); }
+      100% { box-shadow: 0 0 0 6px rgba(123, 189, 232, 0.4); }
     }
     @keyframes govconnectPopIn {
       0% { transform: scale(0.99); }
@@ -938,14 +938,14 @@ function ensureMarkerStyles() {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      background: linear-gradient(135deg, #001D39, #0A4174);
       color: #FFFFFF !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
       font-size: 10px !important;
-      font-weight: 600 !important;
+      font-weight: 700 !important;
       line-height: 1.2 !important;
       border-radius: 999px;
-      box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3), 0 1px 2px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0, 29, 57, 0.3), 0 1px 2px rgba(0,0,0,0.08);
       pointer-events: auto;
       cursor: pointer;
       user-select: none;
@@ -955,7 +955,7 @@ function ensureMarkerStyles() {
     }
     .govconnect-badge:hover {
       transform: translateX(-100%) scale(1.05);
-      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.45);
+      box-shadow: 0 4px 12px rgba(10, 65, 116, 0.4);
     }
     .govconnect-badge-filled {
       background: linear-gradient(135deg, #16A34A, #15803D) !important;
@@ -1204,9 +1204,9 @@ function getOrCreateFloatingSidebar() {
       max-width: 95vw !important;
       height: 100vh !important;
       z-index: 2147483647 !important;
-      box-shadow: -8px 0 32px rgba(15, 23, 42, 0.22) !important;
-      border-left: 1px solid rgba(226, 232, 240, 0.8) !important;
-      background: #F1F5F9 !important;
+      box-shadow: -10px 0 36px rgba(0, 29, 57, 0.22) !important;
+      border-left: 1px solid rgba(189, 216, 233, 0.85) !important;
+      background: #F6F8FB !important;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
       transform: translateX(105%) !important;
       opacity: 0 !important;
@@ -1223,7 +1223,7 @@ function getOrCreateFloatingSidebar() {
       width: 100% !important;
       height: 100% !important;
       border: none !important;
-      background: #F1F5F9 !important;
+      background: #F6F8FB !important;
       display: block !important;
     `;
 

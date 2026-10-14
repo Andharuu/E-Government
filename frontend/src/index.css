@@ -31,6 +31,8 @@
   --color-blue-800: #001D39;
   --color-blue-900: #001326;
   --color-blue-950: #000B17;
+
+  --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
@@ -83,7 +85,7 @@
   }
 
   html {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
     background-color: var(--sidebar-bg);
     -webkit-font-smoothing: antialiased;
@@ -91,6 +93,7 @@
   }
 
   body {
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--sidebar-bg);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
