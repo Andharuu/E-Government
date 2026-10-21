@@ -121,7 +121,6 @@ export function NotificationsPage() {
     notifications,
     unreadCount,
     isLoading,
-    isRealtimeConnected,
     markRead,
     markAllRead,
     remove,

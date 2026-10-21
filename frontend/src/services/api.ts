@@ -169,6 +169,10 @@ export interface Profile {
   full_name: string | null;
   birth_place: string | null;
   birth_date: string | null;
+  birth_day?: string | null;
+  birth_month?: string | null;
+  birth_year?: string | null;
+  age?: string | null;
   gender: string | null;
   address: string | null;
   province: string | null;
@@ -177,6 +181,9 @@ export interface Profile {
   village: string | null;
   postal_code: string | null;
   phone: string | null;
+  home_phone?: string | null;
+  work_telephone?: string | null;
+  fax?: string | null;
   email: string | null;
   nisn: string | null;
   institution: string | null;

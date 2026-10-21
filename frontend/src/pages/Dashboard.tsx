@@ -34,7 +34,7 @@ function CustomAreaTooltip({ active, payload, label }: any) {
   );
 }
 
-function useCountUp(target: number, duration = 1200) {
+export function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
   const startTime = useRef<number | null>(null);
 
@@ -292,7 +292,7 @@ export function Dashboard() {
 
     if (timeRange === 'harian') {
       // 7 Hari Terakhir Realtime
-      const days = [];
+      const days: { name: string; dateIso: string; autofill: number; fields: number }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);

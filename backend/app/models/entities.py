@@ -33,53 +33,56 @@ class Profile(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     
-    # Core identity - HIGHLY SENSITIVE
-    nik = Column(String(16), nullable=True)
-    full_name = Column(String(255), nullable=True)
-    first_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=True)
-    birth_place = Column(String(100), nullable=True)
-    # Disimpan sebagai string (YYYY-MM-DD) agar dapat dienkripsi bersama PII lain.
-    birth_date = Column(String(20), nullable=True)
-    gender = Column(String(1), nullable=True)  # M/F/O
-    religion = Column(String(50), nullable=True)
-    marital_status = Column(String(50), nullable=True)
-    blood_type = Column(String(3), nullable=True)
+    # Core identity - HIGHLY SENSITIVE (Dienkripsi field-level PII sehingga membutuhkan Text)
+    nik = Column(Text, nullable=True)
+    full_name = Column(Text, nullable=True)
+    first_name = Column(Text, nullable=True)
+    last_name = Column(Text, nullable=True)
+    birth_place = Column(Text, nullable=True)
+    birth_date = Column(Text, nullable=True)
+    age = Column(Text, nullable=True)
+    gender = Column(Text, nullable=True)
+    religion = Column(Text, nullable=True)
+    marital_status = Column(Text, nullable=True)
+    blood_type = Column(Text, nullable=True)
     
     # Family & emergency contact - SENSITIVE
-    mother_name = Column(String(255), nullable=True)
-    father_name = Column(String(255), nullable=True)
-    emergency_contact_name = Column(String(255), nullable=True)
-    emergency_contact_phone = Column(String(20), nullable=True)
+    mother_name = Column(Text, nullable=True)
+    father_name = Column(Text, nullable=True)
+    emergency_contact_name = Column(Text, nullable=True)
+    emergency_contact_phone = Column(Text, nullable=True)
     
     # Address - SENSITIVE
     address = Column(Text, nullable=True)
-    province = Column(String(100), nullable=True)
-    city = Column(String(100), nullable=True)
-    district = Column(String(100), nullable=True)
-    village = Column(String(100), nullable=True)
-    postal_code = Column(String(10), nullable=True)
-    country = Column(String(100), nullable=True, default="Indonesia")
+    province = Column(Text, nullable=True)
+    city = Column(Text, nullable=True)
+    district = Column(Text, nullable=True)
+    village = Column(Text, nullable=True)
+    postal_code = Column(Text, nullable=True)
+    country = Column(Text, nullable=True, default="Indonesia")
     
     # Contact - SENSITIVE
-    phone = Column(String(20), nullable=True)
-    email = Column(String(255), nullable=True)
-    website = Column(String(255), nullable=True)
+    phone = Column(Text, nullable=True)
+    home_phone = Column(Text, nullable=True)
+    work_telephone = Column(Text, nullable=True)
+    fax = Column(Text, nullable=True)
+    email = Column(Text, nullable=True)
+    website = Column(Text, nullable=True)
     
     # Education - SENSITIVE
-    nisn = Column(String(20), nullable=True)
-    institution = Column(String(255), nullable=True)
-    education_level = Column(String(50), nullable=True)
-    student_id = Column(String(50), nullable=True)
+    nisn = Column(Text, nullable=True)
+    institution = Column(Text, nullable=True)
+    education_level = Column(Text, nullable=True)
+    student_id = Column(Text, nullable=True)
     
     # Employment & official documents - SENSITIVE
-    occupation = Column(String(100), nullable=True)
-    organization = Column(String(255), nullable=True)
+    occupation = Column(Text, nullable=True)
+    organization = Column(Text, nullable=True)
     work_address = Column(Text, nullable=True)
-    income = Column(String(50), nullable=True)
-    npwp = Column(String(25), nullable=True)
-    bpjs_number = Column(String(25), nullable=True)
-    driver_license = Column(String(25), nullable=True)
+    income = Column(Text, nullable=True)
+    npwp = Column(Text, nullable=True)
+    bpjs_number = Column(Text, nullable=True)
+    driver_license = Column(Text, nullable=True)
     
     # Extensible fields
     custom_fields = Column(Text, nullable=True)  # JSON string

@@ -129,3 +129,55 @@ def test_patch_profile_standard_form_fields(client, auth_headers):
     assert data["website"] == "https://budisantoso.id"
     assert data["income"] == "15000000"
 
+
+def test_profile_age_field(client, auth_headers):
+    """Memverifikasi bahwa field umur (age) tersimpan, terenkripsi di DB, dan didekripsi transparan."""
+    patch_res = client.patch(
+        "/api/v1/profile/me",
+        json={"birth_date": "1998-08-17", "age": "28"},
+        headers=auth_headers
+    )
+    assert patch_res.status_code == 200
+    data = patch_res.json()
+    assert data["birth_date"] == "1998-08-17"
+    assert data["age"] == "28"
+
+    # Verifikasi via GET
+    get_res = client.get("/api/v1/profile/me", headers=auth_headers)
+    assert get_res.status_code == 200
+    get_data = get_res.json()
+    assert get_data["age"] == "28"
+    assert get_data["birth_day"] == "17"
+    assert get_data["birth_month"] == "08"
+    assert get_data["birth_year"] == "1998"
+
+
+def test_profile_telephone_fields(client, auth_headers):
+    """Memverifikasi bahwa field nomor telepon spesifik (home_phone, work_telephone, fax) tersimpan dan terenkripsi."""
+    patch_res = client.patch(
+        "/api/v1/profile/me",
+        json={
+            "phone": "081234567890",
+            "home_phone": "021-5551234",
+            "work_telephone": "021-5559876",
+            "fax": "021-5554321"
+        },
+        headers=auth_headers
+    )
+    assert patch_res.status_code == 200
+    data = patch_res.json()
+    assert data["phone"] == "081234567890"
+    assert data["home_phone"] == "021-5551234"
+    assert data["work_telephone"] == "021-5559876"
+    assert data["fax"] == "021-5554321"
+
+    # Verifikasi via GET
+    get_res = client.get("/api/v1/profile/me", headers=auth_headers)
+    assert get_res.status_code == 200
+    get_data = get_res.json()
+    assert get_data["phone"] == "081234567890"
+    assert get_data["home_phone"] == "021-5551234"
+    assert get_data["work_telephone"] == "021-5559876"
+    assert get_data["fax"] == "021-5554321"
+
+

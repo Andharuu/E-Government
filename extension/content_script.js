@@ -20,9 +20,9 @@ function isGovConnectDashboardPage() {
     const path = (window.location.pathname || "").toLowerCase();
     const title = (document.title || "").toLowerCase();
 
-    // 1. Host local dev port atau environment GovConnect (5173, 3000, 4173)
+    // 1. Host local dev port atau environment GovConnect (5173, 5174, 3000, 4173)
     if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && 
-        (port === "5173" || port === "3000" || port === "4173")) {
+        (port === "5173" || port === "5174" || port === "3000" || port === "4173")) {
       return true;
     }
 
@@ -116,10 +116,14 @@ const ABBREVIATION_MAP = {
   "lstname": "last_name",
   "lname": "last_name",
   "fullname": "full_name",
-  "homephon": "phone",
-  "workphon": "phone",
+  "homephon": "home_phone",
+  "homephone": "home_phone",
+  "workphon": "work_telephone",
+  "workphone": "work_telephone",
   "cellphon": "phone",
-  "faxphone": "phone",
+  "cellphone": "phone",
+  "faxphone": "fax",
+  "fax": "fax",
   "emailadr": "email",
   "emailaddr": "email",
   "adrstate": "province",
@@ -234,18 +238,18 @@ const KEYWORD_MAP = {
   ],
   phone: [
     "nomor_hp", "no_hp", "nohp", "no_telepon", "notelepon", "nomor_telepon",
-    "nomor_handphone", "handphone", "telepon", "phone", "hp", "telp", "whatsapp", "wa",
-    "cell_phone", "mobile", "usernumber", "user_number", "phone_number", "contact_number",
-    "cellphon"
+    "nomor_handphone", "handphone", "hp", "telp", "whatsapp", "wa",
+    "cell_phone", "cellphone", "mobile", "usernumber", "user_number", "phone_number", "contact_number",
+    "cellphon", "telepon", "phone"
   ],
   home_phone: [
-    "home_phone", "homephone", "homephon", "telepon_rumah", "telp_rumah", "tel_rumah"
+    "home_phone", "homephone", "homephon", "telepon_rumah", "telp_rumah", "tel_rumah", "teleponrumah", "telprumah", "hometel", "home_tel"
   ],
   work_telephone: [
-    "work_telephone", "work_phone", "workphone", "workphon", "telepon_kantor", "telp_kantor", "work_tel", "worktel"
+    "work_telephone", "work_phone", "workphone", "workphon", "telepon_kantor", "telp_kantor", "work_tel", "worktel", "teleponkantor", "telpkantor", "office_phone", "officephone"
   ],
   fax: [
-    "fax", "fax_number", "faxphone", "nomor_fax", "telefax"
+    "fax", "fax_number", "faxphone", "nomor_fax", "telefax", "facsimile", "nomorfax"
   ],
   email: [
     "email", "surel", "e_mail", "alamat_email", "useremail", "user_email",
@@ -816,6 +820,12 @@ function registerCustomProfileFields(profile) {
     profile.country = "Indonesia";
   }
 
+  // Auto-derive telephone aliases
+  if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+  if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+  if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+  if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
+
   if (!profile.custom_fields) return;
   try {
     const cf = typeof profile.custom_fields === "string"
@@ -856,6 +866,12 @@ function registerCustomProfileFields(profile) {
         }
       }
     });
+
+    // Re-check aliases after custom_fields items are unpacked
+    if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+    if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+    if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+    if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
   } catch (e) {
     console.warn("GovConnect: Gagal memproses custom_fields:", e);
   }
@@ -2037,6 +2053,33 @@ function bestMatchOption(options, profileValue, profileKey = "") {
     }
   }
 
+  // Step 2.5: Numeric & 2-Digit Year Match (untuk birth_day, birth_month, birth_year)
+  const numProfile = parseInt(rawVal, 10);
+  if (!isNaN(numProfile)) {
+    for (const opt of options) {
+      if (!opt.value && !opt.text) continue;
+      const optVal = (opt.value || "").trim();
+      const optText = (opt.text || "").trim();
+      const numVal = parseInt(optVal, 10);
+      const numText = parseInt(optText, 10);
+      if (numVal === numProfile || numText === numProfile) {
+        return opt;
+      }
+    }
+  }
+
+  if (profileKey === "birth_year" && rawVal.length === 4) {
+    const shortYear = rawVal.slice(-2);
+    for (const opt of options) {
+      if (!opt.value && !opt.text) continue;
+      const optVal = (opt.value || "").trim();
+      const optText = (opt.text || "").trim();
+      if (optVal === shortYear || optText === shortYear) {
+        return opt;
+      }
+    }
+  }
+
   // Step 3: NLP Hybrid Matching (Cosine + Levenshtein) untuk opsi dinamis / bebas
   let bestOpt = null;
   let highestScore = 0;
@@ -2384,11 +2427,15 @@ async function matchProfileKey(el) {
   const hasKampus = inputTokens.includes("kampus") || inputTokens.includes("universitas") || inputTokens.includes("sekolah") || inputTokens.includes("institusi") || inputTokens.includes("perguruantinggi") || inputTokens.includes("fakultas") || inputTokens.includes("prodi");
   const hasTanggal = inputTokens.includes("tgl") || inputTokens.includes("tanggal") || inputTokens.includes("date") || inputTokens.includes("birthdate");
   const hasLahir = inputTokens.includes("lahir") || inputTokens.includes("birth") || inputTokens.includes("dob");
-  const hasTelp = inputTokens.includes("telepon") || inputTokens.includes("phone") || inputTokens.includes("handphone") || inputTokens.includes("hp") || inputTokens.includes("telp") || inputTokens.includes("whatsapp") || inputTokens.includes("wa") || inputTokens.includes("phon");
+  const hasTelp = inputTokens.includes("telepon") || inputTokens.includes("telephone") || inputTokens.includes("phone") || inputTokens.includes("handphone") || inputTokens.includes("hp") || inputTokens.includes("telp") || inputTokens.includes("tel") || inputTokens.includes("whatsapp") || inputTokens.includes("wa") || inputTokens.includes("phon");
   const hasPosisi = inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("profesi") || inputTokens.includes("pekerjaan") || inputTokens.includes("occupation") || inputTokens.includes("position");
   const hasDomisili = inputTokens.includes("domisili") || inputTokens.includes("ktp") || inputTokens.includes("tinggal") || inputTokens.includes("rumah") || inputTokens.includes("saatini");
   const hasKependudukan = inputTokens.includes("kependudukan") || inputTokens.includes("citizen") || inputTokens.includes("ktp") || inputTokens.includes("nik");
   const hasMahasiswaSiswa = inputTokens.includes("mahasiswa") || inputTokens.includes("siswa") || inputTokens.includes("student") || inputTokens.includes("nim") || inputTokens.includes("nisn") || inputTokens.includes("nrp");
+  const hasFax = inputTokens.includes("fax") || inputTokens.includes("telefax") || inputTokens.includes("facsimile") || inputTokens.includes("faxphone");
+  const hasHome = inputTokens.includes("home") || inputTokens.includes("rumah");
+  const hasWork = inputTokens.includes("work") || inputTokens.includes("kantor") || inputTokens.includes("office");
+  const hasCell = inputTokens.includes("cell") || inputTokens.includes("mobile") || inputTokens.includes("hp") || inputTokens.includes("handphone") || inputTokens.includes("wa") || inputTokens.includes("whatsapp");
 
   // Shortcut Pasti Berdasarkan Semantik Universal
   // 1. Email
@@ -2410,11 +2457,21 @@ async function matchProfileKey(el) {
     return "last_name";
   }
 
-  // 3. Telepon (Home, Work, Cell, Mobile, Telephone)
-  if (hasTelp && !hasDarurat) {
-    if (inputTokens.includes("home") || inputTokens.includes("work") || inputTokens.includes("cell") || inputTokens.includes("mobile") || inputTokens.includes("telephone") || inputTokens.includes("handphone") || inputTokens.includes("phone")) {
-      return "phone";
-    }
+  // 3. Telepon Spesifik vs Umum (Fax, Home Phone, Work Telephone, Cell/WA)
+  if (hasFax) {
+    return "fax";
+  }
+  if (hasHome && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "home_phone";
+  }
+  if (hasWork && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "work_telephone";
+  }
+  if (hasCell && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "phone";
+  }
+  if (hasTelp && !hasDarurat && !hasHome && !hasWork && !hasFax) {
+    return "phone";
   }
 
   // 4. Social Security Number / NIK
@@ -2536,6 +2593,9 @@ async function matchProfileKey(el) {
     if (hasMahasiswaSiswa && profileKey === "nik") continue;
     if (inputTokens.includes("first") && profileKey === "full_name") continue;
     if (inputTokens.includes("last") && profileKey === "full_name") continue;
+    if (hasFax && profileKey !== "fax") continue;
+    if (hasHome && (profileKey === "phone" || profileKey === "work_telephone")) continue;
+    if (hasWork && (profileKey === "phone" || profileKey === "home_phone")) continue;
 
     let candidateMaxScore = 0;
 
@@ -2582,6 +2642,10 @@ async function matchProfileKey(el) {
       if (inputTokens.includes("state") && profileKey === "province") score += 0.35;
       if (inputTokens.includes("city") && profileKey === "city") score += 0.35;
       if (inputTokens.includes("age") && profileKey === "age") score += 0.40;
+      if (hasFax && profileKey === "fax") score += 0.40;
+      if (hasHome && profileKey === "home_phone") score += 0.35;
+      if (hasWork && profileKey === "work_telephone") score += 0.35;
+      if (hasCell && profileKey === "phone") score += 0.30;
 
       if (score > candidateMaxScore) {
         candidateMaxScore = score;

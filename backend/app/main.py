@@ -88,6 +88,7 @@ async def request_logger_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=getattr(settings, "CORS_ORIGIN_REGEX", None),
     allow_credentials=True,
     # Metode dibatasi (bukan "*") — hanya yang benar-benar dipakai aplikasi.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

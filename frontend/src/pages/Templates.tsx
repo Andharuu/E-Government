@@ -181,6 +181,7 @@ const AVAILABLE_PROFILE_FIELDS = [
   { key: 'family_card_number', label: 'Nomor Kartu Keluarga (KK)', categoryGroup: 'Identitas' },
   { key: 'birth_place', label: 'Tempat Lahir', categoryGroup: 'Identitas' },
   { key: 'birth_date', label: 'Tanggal Lahir', categoryGroup: 'Identitas' },
+  { key: 'age', label: 'Umur / Usia', categoryGroup: 'Identitas' },
   { key: 'gender', label: 'Jenis Kelamin', categoryGroup: 'Identitas' },
   { key: 'religion', label: 'Agama', categoryGroup: 'Identitas' },
   { key: 'marital_status', label: 'Status Perkawinan', categoryGroup: 'Identitas' },

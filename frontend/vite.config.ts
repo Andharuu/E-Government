@@ -6,6 +6,10 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    port: 5173,
+    strictPort: false,
+  },
   resolve: {
     alias: {
       'chart.js': path.resolve(import.meta.dirname, 'node_modules/chart.js/dist/chart.js'),

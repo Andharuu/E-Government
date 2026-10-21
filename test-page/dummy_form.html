@@ -671,6 +671,14 @@
           <input type="date" id="birth_date" name="tanggal_lahir">
         </div>
 
+        <div class="form-group">
+          <label for="age">
+            <span>Umur / Usia</span>
+            <span class="field-key">age</span>
+          </label>
+          <input type="number" id="age" name="umur" placeholder="Umur (tahun)">
+        </div>
+
         <!-- Dropdown: Gender -->
         <div class="form-group">
           <label for="gender">
@@ -1229,6 +1237,7 @@
     document.getElementById('full_name').value = "Ahmad Nur Hidayat";
     document.getElementById('birth_place').value = "Yogyakarta";
     document.getElementById('birth_date').value = "1995-04-23";
+    if (document.getElementById('age')) document.getElementById('age').value = "31";
     document.getElementById('gender').value = "1";
     document.getElementById('religion').value = "islam";
     document.getElementById('marital_status').value = "single";

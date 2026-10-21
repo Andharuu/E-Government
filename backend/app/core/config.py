@@ -91,6 +91,8 @@ class Settings:
 
     # Keamanan CORS
     ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "chrome-extension://<EXTENSION_ID>")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
+    CORS_ORIGIN_REGEX: str = os.getenv("CORS_ORIGIN_REGEX", r"^chrome-extension://[a-zA-Z0-9]+$")
 
     # Provisioning admin (auditable) — daftar email dipisah koma yang di-promote
     # menjadi admin saat startup. Kosong = tidak ada promosi otomatis.
@@ -115,9 +117,20 @@ class Settings:
             origins.extend([
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174",
+                "http://localhost:5175",
+                "http://127.0.0.1:5175",
+                "http://localhost:4173",
+                "http://127.0.0.1:4173",
                 "http://localhost:3000",
                 "http://127.0.0.1:3000"
             ])
+        if self.CORS_ORIGINS:
+            for o in self.CORS_ORIGINS.split(","):
+                o = o.strip()
+                if o and o not in origins:
+                    origins.append(o)
         return origins
 
     @property

@@ -4,7 +4,7 @@ import { FontAwesome } from '../components/ui';
 
 const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
   identity: [
-    'full_name', 'nik', 'birth_place', 'birth_date', 'gender', 'religion',
+    'full_name', 'nik', 'birth_place', 'birth_date', 'age', 'gender', 'religion',
     'marital_status', 'blood_type', 'title', 'first_name', 'middle_initial', 'last_name'
   ],
   address: [
@@ -28,11 +28,10 @@ const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
   ],
 };
 import {
-  Save, AlertCircle, User, MapPin, Phone,
-  GraduationCap, Briefcase, HeartHandshake, FileText, Sparkles,
+  Save, AlertCircle,
   Plus, Trash2, Edit3, Copy, Check,
   Upload, Camera, FolderPlus, X, Eye,
-  EyeOff, Search, Layers, RefreshCw
+  RefreshCw
 } from 'lucide-react';
 
 import type {
@@ -184,6 +183,23 @@ export function ProfilePage() {
         const parts = value.trim().split(/\s+/);
         if (!updated.first_name) updated.first_name = parts[0] || '';
         if (!updated.last_name) updated.last_name = parts.slice(1).join(' ') || parts[0] || '';
+      }
+      if (key === 'birth_date' && value) {
+        const parts = value.split('-');
+        if (parts.length === 3) {
+          const birthYear = parseInt(parts[0], 10);
+          const birthMonth = parseInt(parts[1], 10) - 1;
+          const birthDay = parseInt(parts[2], 10);
+          const today = new Date();
+          let calculatedAge = today.getFullYear() - birthYear;
+          const m = today.getMonth() - birthMonth;
+          if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+            calculatedAge--;
+          }
+          if (calculatedAge >= 0 && !isNaN(calculatedAge)) {
+            updated.age = String(calculatedAge);
+          }
+        }
       }
       return updated;
     });
@@ -723,6 +739,7 @@ export function ProfilePage() {
             {renderField('NIK (Nomor Induk Kependudukan)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
             {renderField('Tempat Lahir', 'birth_place', profile?.birth_place || '', v => handleChange('birth_place', v))}
             {renderField('Tanggal Lahir', 'birth_date', profile?.birth_date || '', v => handleChange('birth_date', v), { type: 'date' })}
+            {renderField('Umur / Usia', 'age', profile?.age || '', v => handleChange('age', v), { placeholder: 'Contoh: 28' })}
             {renderField('Jenis Kelamin', 'gender', profile?.gender || '', v => handleChange('gender', v), {
               type: 'select',
               selectOptions: ['Laki-laki', 'Perempuan']
@@ -766,10 +783,10 @@ export function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {renderField('Nomor HP / WhatsApp Utama', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
             {renderField('Alamat Surel / Email', 'email', profile?.email || '', v => handleChange('email', v))}
-            {renderField('Telepon Rumah', 'home_phone', getExtendedField('home_phone'), v => handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'), { isPii: true })}
-            {renderField('Telepon Kantor', 'work_telephone', getExtendedField('work_telephone'), v => handleExtendedChange('work_telephone', v, 'contact', 'Telepon Kantor'))}
-            {renderField('Nomor Fax', 'fax', getExtendedField('fax'), v => handleExtendedChange('fax', v, 'contact', 'Nomor Fax'))}
-            {renderField('Situs Web / Portofolio', 'website', getExtendedField('website'), v => handleExtendedChange('website', v, 'contact', 'Website'))}
+            {renderField('Telepon Rumah', 'home_phone', profile?.home_phone ?? getExtendedField('home_phone'), v => { handleChange('home_phone', v); handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'); }, { isPii: true })}
+            {renderField('Telepon Kantor', 'work_telephone', profile?.work_telephone ?? getExtendedField('work_telephone'), v => { handleChange('work_telephone', v); handleExtendedChange('work_telephone', v, 'contact', 'Telepon Kantor'); })}
+            {renderField('Nomor Fax', 'fax', profile?.fax ?? getExtendedField('fax'), v => { handleChange('fax', v); handleExtendedChange('fax', v, 'contact', 'Nomor Fax'); })}
+            {renderField('Situs Web / Portofolio', 'website', profile?.website ?? getExtendedField('website'), v => { handleChange('website', v); handleExtendedChange('website', v, 'contact', 'Website'); })}
           </div>
         )}
 
@@ -1162,6 +1179,7 @@ export function ProfilePage() {
 
               {filteredCategories.map(cat => {
                 const isActive = activeCategoryId === cat.id;
+                const catStats = getCategoryStats(cat.id);
 
                 return (
                   <button
@@ -1191,6 +1209,12 @@ export function ProfilePage() {
                           {cat.desc}
                         </p>
                       </div>
+
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        isActive ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
+                      }`}>
+                        {catStats.filled}/{catStats.total}
+                      </span>
                     </div>
                   </button>
                 );

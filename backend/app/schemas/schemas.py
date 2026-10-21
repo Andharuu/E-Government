@@ -42,6 +42,10 @@ class ProfileBase(BaseModel):
     last_name: Optional[str] = None
     birth_place: Optional[str] = None
     birth_date: Optional[str] = None
+    birth_day: Optional[str] = None
+    birth_month: Optional[str] = None
+    birth_year: Optional[str] = None
+    age: Optional[str] = None
     gender: Optional[str] = None
     religion: Optional[str] = None
     marital_status: Optional[str] = None
@@ -64,6 +68,9 @@ class ProfileBase(BaseModel):
 
     # Kontak Pribadi
     phone: Optional[str] = None
+    home_phone: Optional[str] = None
+    work_telephone: Optional[str] = None
+    fax: Optional[str] = None
     email: Optional[str] = None
     website: Optional[str] = None
 

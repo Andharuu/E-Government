@@ -101,6 +101,61 @@ def _ensure_activity_columns():
                 logger.warning(f"Gagal menambah kolom activities.{name}: {exc}")
 
 
+def _ensure_profile_columns():
+    """Auto-migration: add missing columns to `profiles` if they don't exist yet
+    (works for both SQLite and MySQL without Alembic)."""
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+    if "profiles" not in inspector.get_table_names():
+        return
+    existing = {col["name"] for col in inspector.get_columns("profiles")}
+    DDL = {
+        "age": "ALTER TABLE profiles ADD COLUMN age TEXT",
+        "home_phone": "ALTER TABLE profiles ADD COLUMN home_phone TEXT",
+        "work_telephone": "ALTER TABLE profiles ADD COLUMN work_telephone TEXT",
+        "fax": "ALTER TABLE profiles ADD COLUMN fax TEXT",
+    }
+    with engine.begin() as conn:
+        for name, statement in DDL.items():
+            if name in existing:
+                continue
+            try:
+                conn.execute(text(statement))
+                logger.info(f"Migrasi: kolom profiles.{name} ditambahkan.")
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(f"Gagal menambah kolom profiles.{name}: {exc}")
+
+
+def _ensure_profile_encryption_columns():
+    """Auto-migration untuk MySQL: memastikan kolom profil yang dienkripsi PII bertipe TEXT."""
+    if settings.is_sqlite:
+        return
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+    if "profiles" not in inspector.get_table_names():
+        return
+    cols = {col["name"]: str(col["type"]).upper() for col in inspector.get_columns("profiles")}
+    pii_columns = [
+        'nik', 'full_name', 'first_name', 'last_name', 'birth_place', 'birth_date', 'age',
+        'gender', 'religion', 'marital_status', 'blood_type', 'mother_name', 'father_name',
+        'emergency_contact_name', 'emergency_contact_phone', 'province', 'city', 'district',
+        'village', 'postal_code', 'country', 'phone', 'home_phone', 'work_telephone', 'fax',
+        'email', 'website', 'nisn', 'institution', 'education_level', 'student_id', 'occupation',
+        'organization', 'income', 'npwp', 'bpjs_number', 'driver_license'
+    ]
+    with engine.begin() as conn:
+        for col in pii_columns:
+            curr_type = cols.get(col, "")
+            if curr_type and "VARCHAR" in curr_type:
+                try:
+                    conn.execute(text(f"ALTER TABLE profiles MODIFY COLUMN {col} TEXT NULL;"))
+                    logger.info(f"Migrasi: kolom profiles.{col} diubah menjadi TEXT untuk enkripsi PII.")
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning(f"Gagal memodifikasi kolom profiles.{col}: {exc}")
+
+
 def _bootstrap_admins():
     """Promote users listed in ADMIN_EMAILS to admin (auditable provisioning).
 
@@ -137,6 +192,8 @@ def init_db():
         Base.metadata.create_all(bind=engine)
         _ensure_complaint_report_columns()
         _ensure_activity_columns()
+        _ensure_profile_columns()
+        _ensure_profile_encryption_columns()
         _bootstrap_admins()
         logger.info("Basis data berhasil diinisialisasi.")
     except Exception as exc:

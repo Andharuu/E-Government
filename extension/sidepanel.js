@@ -8,6 +8,8 @@ const DASHBOARD_URL = "http://localhost:5173/dashboard";
 const GOVCONNECT_WEB_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ];
@@ -29,11 +31,116 @@ let currentActiveScreen = "screenDetect";
 let isAutofillingInProgress = false;
 let userSelectedMap = {};
 
+function parseBirthDate(dateStr) {
+  if (!dateStr) return { day: "", month: "", year: "" };
+  const str = String(dateStr).trim();
+  let day = "", month = "", year = "";
+
+  // 1. YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if (isoMatch) {
+    year = isoMatch[1];
+    month = isoMatch[2].padStart(2, "0");
+    day = isoMatch[3].padStart(2, "0");
+    return { day, month, year };
+  }
+
+  // 2. DD-MM-YYYY or DD/MM/YYYY
+  const idMatch = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if (idMatch) {
+    day = idMatch[1].padStart(2, "0");
+    month = idMatch[2].padStart(2, "0");
+    year = idMatch[3];
+    return { day, month, year };
+  }
+
+  // 3. DD Mon YYYY (e.g. 22 Sep 2026 or 15 May 1995)
+  const monthNames = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", mei: "05", jun: "06",
+    jul: "07", aug: "08", agu: "08", sep: "09", oct: "10", okt: "10", nov: "11", dec: "12", des: "12"
+  };
+  const textMatch = str.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if (textMatch) {
+    day = textMatch[1].padStart(2, "0");
+    const mStr = textMatch[2].toLowerCase().slice(0, 3);
+    month = monthNames[mStr] || "01";
+    year = textMatch[3];
+    return { day, month, year };
+  }
+
+  return { day, month, year };
+}
+
+function calculateAge(birthDateStr) {
+  const parts = parseBirthDate(birthDateStr);
+  if (!parts.year) return "";
+  const birthYear = parseInt(parts.year, 10);
+  const birthMonth = parseInt(parts.month || "1", 10) - 1;
+  const birthDay = parseInt(parts.day || "1", 10);
+  const today = new Date();
+  let age = today.getFullYear() - birthYear;
+  const m = today.getMonth() - birthMonth;
+  if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+    age--;
+  }
+  return age >= 0 ? String(age) : "";
+}
+
+function autoDeriveProfileFields(profile) {
+  if (!profile) return;
+
+  // Auto-derive first_name dan last_name
+  if (profile.full_name && (!profile.first_name || !profile.last_name)) {
+    const parts = profile.full_name.trim().split(/\s+/);
+    if (!profile.first_name) profile.first_name = parts[0] || "";
+    if (!profile.last_name) profile.last_name = parts.slice(1).join(" ") || parts[0] || "";
+  }
+
+  // Auto-derive middle_initial
+  if (!profile.middle_initial && profile.full_name) {
+    const parts = profile.full_name.trim().split(/\s+/);
+    if (parts.length > 2) {
+      profile.middle_initial = parts[1].charAt(0).toUpperCase();
+    }
+  }
+
+  // Auto-derive title
+  if (!profile.title) {
+    const g = (profile.gender || "").toLowerCase();
+    if (g.includes("laki") || g.includes("pria") || g.includes("male") || g === "l") {
+      profile.title = "Mr";
+    } else if (g.includes("perempuan") || g.includes("wanita") || g.includes("female") || g === "p") {
+      profile.title = "Ms";
+    }
+  }
+
+  // Auto-derive address_line_1 fallback
+  if (!profile.address_line_1 && profile.address) {
+    profile.address_line_1 = profile.address;
+  }
+
+  // Auto-derive hari, bulan, tahun, dan umur dari birth_date
+  if (profile.birth_date) {
+    const bParts = parseBirthDate(profile.birth_date);
+    if (!profile.birth_day && bParts.day) profile.birth_day = bParts.day;
+    if (!profile.birth_month && bParts.month) profile.birth_month = bParts.month;
+    if (!profile.birth_year && bParts.year) profile.birth_year = bParts.year;
+    if (!profile.age) profile.age = calculateAge(profile.birth_date);
+  }
+
+  // Auto-derive telephone aliases
+  if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+  if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+  if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+  if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
+}
+
 // ============================================================
 // Memproses Custom Fields & Foto Dokumen
 // ============================================================
 function processCustomFields(profile) {
   if (!profile) return;
+  autoDeriveProfileFields(profile);
 
   if (profile.document_photos) {
     try {
@@ -78,6 +185,12 @@ function processCustomFields(profile) {
         customFieldLabels[item.key] = item.label || item.key;
       }
     });
+
+    // Re-check aliases after custom fields are unpacked
+    if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+    if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+    if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+    if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
   } catch (e) {
     console.warn("GovConnect: Gagal memproses custom_fields di sidepanel:", e);
   }
@@ -582,6 +695,14 @@ async function executeAutofill() {
     }
   });
 
+  // Pastikan komponen tanggal lahir tersedia lengkap di payload
+  if (cachedProfile) {
+    if (cachedProfile.birth_date && selectedProfile.birth_date === undefined) selectedProfile.birth_date = cachedProfile.birth_date;
+    if (cachedProfile.birth_day && selectedProfile.birth_day === undefined) selectedProfile.birth_day = cachedProfile.birth_day;
+    if (cachedProfile.birth_month && selectedProfile.birth_month === undefined) selectedProfile.birth_month = cachedProfile.birth_month;
+    if (cachedProfile.birth_year && selectedProfile.birth_year === undefined) selectedProfile.birth_year = cachedProfile.birth_year;
+  }
+
   try {
     if (currentTab?.id) {
       await chrome.scripting.executeScript({
@@ -849,6 +970,10 @@ function formatFieldLabel(key) {
     full_name: "Nama Lengkap",
     first_name: "Nama Depan",
     birth_date: "Tgl Lahir",
+    birth_day: "Hari Lahir",
+    birth_month: "Bulan Lahir",
+    birth_year: "Tahun Lahir",
+    age: "Umur / Usia",
     birth_place: "Tempat Lahir",
     gender: "Jenis Kelamin",
     religion: "Agama",
@@ -861,6 +986,9 @@ function formatFieldLabel(key) {
     village: "Kelurahan",
     postal_code: "Kode Pos",
     phone: "No. HP / WA",
+    home_phone: "Telp Rumah",
+    work_telephone: "Telp Kantor",
+    fax: "Nomor Fax",
     email: "Email",
     nisn: "NISN",
     institution: "Institusi / Sekolah",
