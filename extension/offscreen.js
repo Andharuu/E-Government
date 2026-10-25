@@ -15,12 +15,12 @@ import { pipeline, env } from './lib/transformers.js';
 // Pin versi ONNX Runtime Web ke rilis stabil yang kompatibel dengan Transformers.js.
 const ONNX_RUNTIME_VERSION = '1.14.0';
 
-// Base CDN utama (jsDelivr di depan, unpkg sebagai cadangan lewat fallback di bawah).
-const ONNX_WASM_CDN =
-  `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`;
+// Base path lokal ekstensi untuk zero-network execution
+const LOCAL_WASM_PATH = chrome.runtime.getURL('lib/');
+const LOCAL_MODEL_PATH = chrome.runtime.getURL('models/');
 
-// 1. ATUR PATH WASM SECARA EKSPLISIT (WAJIB, jangan dikosongkan)
-env.backends.onnx.wasm.wasmPaths = ONNX_WASM_CDN;
+// 1. ATUR PATH WASM SECARA EKSPLISIT (Prioritas Lokal)
+env.backends.onnx.wasm.wasmPaths = LOCAL_WASM_PATH;
 
 // 2. NONAKTIFKAN MULTITHREADING (WAJIB)
 //    numThreads = 1 mematikan shared worker; proxy = false memastikan ORT
@@ -31,13 +31,19 @@ env.backends.onnx.wasm.proxy = false;
 // Logging ORT dibuat lebih tenang agar tidak membanjiri console offscreen.
 env.backends.onnx.logLevel = 'error';
 
-// Izinkan Transformers.js mengambil file model (.onnx, tokenizer, dsb.) dari Hugging Face.
-env.allowRemoteModels = true;
-env.allowLocalModels = false;
+// Konfigurasi Zero-Remote Egress: Aktifkan model lokal dari extension/models/
+env.allowLocalModels = true;
+env.allowRemoteModels = true; // Fallback jika local model corrupt
+env.localModelPath = LOCAL_MODEL_PATH;
+
+// 3. NONAKTIFKAN BROWSER CACHE API (WAJIB untuk Chrome Extension / MV3 Offscreen)
+// Protokol chrome-extension:// tidak didukung oleh Cache API browser ("Request scheme unsupported")
+env.useBrowserCache = false;
+env.useCustomCache = false;
 
 console.log(
-  `GovConnect Offscreen: Konfigurasi ORT WASM → wasmPaths="${env.backends.onnx.wasm.wasmPaths}", ` +
-  `numThreads=${env.backends.onnx.wasm.numThreads}, proxy=${env.backends.onnx.wasm.proxy}`
+  `GovConnect Offscreen: Konfigurasi ORT WASM Lokal → wasmPaths="${env.backends.onnx.wasm.wasmPaths}", ` +
+  `localModelPath="${env.localModelPath}", useBrowserCache=${env.useBrowserCache}, numThreads=${env.backends.onnx.wasm.numThreads}`
 );
 
 // ============================================================
@@ -45,11 +51,15 @@ console.log(
 // ============================================================
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
 
-// Daftar strategi pemuatan berlapis. Lapis pertama adalah konfigurasi utama
-// (CDN jsDelivr). Lapis berikutnya sebagai fallback bila lapis sebelumnya gagal.
+// Daftar strategi pemuatan berlapis. Prioritas 1: Bundel Lokal (Offline 100%).
+// Lapis berikutnya sebagai fallback bila file lokal mengalami kendala.
 const LOAD_STRATEGIES = [
   {
-    name: 'jsDelivr CDN (default)',
+    name: 'Local Bundled WASM & Models (100% Offline / Zero-Network)',
+    wasmPaths: LOCAL_WASM_PATH
+  },
+  {
+    name: 'jsDelivr CDN (fallback)',
     wasmPaths: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
   },
   {

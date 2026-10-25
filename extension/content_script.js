@@ -66,7 +66,7 @@ const SHORT_KEYWORDS = new Set([
 // ============================================================
 const AUTOCOMPLETE_MAP = {
   "given-name": "first_name",
-  "additional-name": "full_name",
+  "additional-name": "middle_initial",
   "family-name": "last_name",
   "name": "full_name",
   "email": "email",
@@ -664,7 +664,7 @@ function detectDateSelectType(el) {
   if (cleanName === "dd" || cleanName === "dob_d" || cleanName === "day" || cleanName === "dob_dd") {
     return "birth_day";
   }
-  if (cleanName === "yy" || cleanName === "yyyy" || cleanName === "dob_y" || cleanName === "year" || cleanName === "dob_yy" || cleanName === "ccexp_yy") {
+  if (cleanName === "yy" || cleanName === "yyyy" || cleanName === "dob_y" || cleanName === "year" || cleanName === "dob_yy" || cleanName === "ccexp_yy" || cleanName.includes("tahun") || cleanName.includes("year") || cleanName.includes("thn")) {
     // Abaikan expiration credit card
     if (cleanName.includes("ccexp") || rawName.includes("ccexp")) return null;
     return "birth_year";
@@ -2646,6 +2646,9 @@ async function matchProfileKey(el) {
       if (hasHome && profileKey === "home_phone") score += 0.35;
       if (hasWork && profileKey === "work_telephone") score += 0.35;
       if (hasCell && profileKey === "phone") score += 0.30;
+
+      // Clamp ke batas maksimum 1.0 agar konsisten dengan ruang metrik probabilitas
+      score = Math.min(score, 1.0);
 
       if (score > candidateMaxScore) {
         candidateMaxScore = score;

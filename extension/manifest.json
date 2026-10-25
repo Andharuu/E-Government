@@ -55,7 +55,9 @@
         "logo-white.png",
         "logo-white-blue.png",
         "fontawesome/*",
-        "uicons/*"
+        "uicons/*",
+        "lib/*",
+        "models/*"
       ],
       "matches": [
         "<all_urls>"
