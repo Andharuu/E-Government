@@ -11,6 +11,13 @@ export function ActivityPage() {
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'single' | 'all';
+    targetId?: number;
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Load activities - langsung tampil semua & sinkron dengan aktivitas dashboard
   const fetchActivities = useCallback(async (isInitial = false) => {
@@ -33,8 +40,8 @@ export function ActivityPage() {
       }
 
       setActivities(data);
-    } catch (err) {
-      console.error('Failed to fetch activities:', err);
+    } catch {
+      // Diamkan kegagalan fetch agar UI menampilkan state kosong yang bersih tanpa leak log ke console
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,50 +57,65 @@ export function ActivityPage() {
     fetchActivities(false);
   };
 
-  const handleDeleteItem = async (id: number) => {
-    if (!window.confirm('Hapus catatan riwayat autofill ini?')) return;
-    setDeletingId(id);
-    try {
-      await activityApi.delete(id);
-      setActivities((prev) => prev.filter((a) => a.id !== id));
-      setActionFeedback({ type: 'success', text: 'Catatan aktivitas berhasil dihapus.' });
-      setTimeout(() => setActionFeedback(null), 3000);
-    } catch (err: any) {
-      setActionFeedback({
-        type: 'error',
-        text: err.response?.data?.detail || 'Gagal menghapus catatan aktivitas.',
-      });
-      setTimeout(() => setActionFeedback(null), 3500);
-    } finally {
-      setDeletingId(null);
-    }
+  const handleDeleteItem = (id: number) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'single',
+      targetId: id,
+      title: 'Hapus Catatan Aktivitas',
+      message: 'Apakah Anda yakin ingin menghapus catatan riwayat autofill ini dari riwayat?',
+    });
   };
 
-  const handleClearAll = async () => {
-    if (
-      !window.confirm(
-        'Apakah Anda yakin ingin menghapus SELURUH riwayat aktivitas autofill? Tindakan ini tidak dapat dibatalkan.'
-      )
-    ) {
-      return;
-    }
-    setClearingAll(true);
-    try {
-      const res = await activityApi.clearAll();
-      setActivities([]);
-      setActionFeedback({
-        type: 'success',
-        text: res.data.detail || 'Seluruh riwayat berhasil dibersihkan.',
-      });
-      setTimeout(() => setActionFeedback(null), 3500);
-    } catch (err: any) {
-      setActionFeedback({
-        type: 'error',
-        text: err.response?.data?.detail || 'Gagal membersihkan riwayat aktivitas.',
-      });
-      setTimeout(() => setActionFeedback(null), 3500);
-    } finally {
-      setClearingAll(false);
+  const handleClearAll = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'all',
+      title: 'Bersihkan Seluruh Riwayat',
+      message: 'Apakah Anda yakin ingin menghapus SELURUH catatan riwayat aktivitas autofill? Tindakan ini tidak dapat dibatalkan.',
+    });
+  };
+
+  const executeConfirmedAction = async () => {
+    if (!confirmModal) return;
+    const { type, targetId } = confirmModal;
+    setConfirmModal(null);
+
+    if (type === 'single' && targetId !== undefined) {
+      setDeletingId(targetId);
+      try {
+        await activityApi.delete(targetId);
+        setActivities((prev) => prev.filter((a) => a.id !== targetId));
+        setActionFeedback({ type: 'success', text: 'Catatan aktivitas berhasil dihapus.' });
+        setTimeout(() => setActionFeedback(null), 3000);
+      } catch (err: any) {
+        setActionFeedback({
+          type: 'error',
+          text: err.response?.data?.detail || 'Gagal menghapus catatan aktivitas.',
+        });
+        setTimeout(() => setActionFeedback(null), 3500);
+      } finally {
+        setDeletingId(null);
+      }
+    } else if (type === 'all') {
+      setClearingAll(true);
+      try {
+        const res = await activityApi.clearAll();
+        setActivities([]);
+        setActionFeedback({
+          type: 'success',
+          text: res.data.detail || 'Seluruh riwayat berhasil dibersihkan.',
+        });
+        setTimeout(() => setActionFeedback(null), 3500);
+      } catch (err: any) {
+        setActionFeedback({
+          type: 'error',
+          text: err.response?.data?.detail || 'Gagal membersihkan riwayat aktivitas.',
+        });
+        setTimeout(() => setActionFeedback(null), 3500);
+      } finally {
+        setClearingAll(false);
+      }
     }
   };
 
@@ -295,6 +317,37 @@ export function ActivityPage() {
           </div>
         )}
       </Card>
+
+      {/* Confirmation Modal */}
+      {confirmModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#171F2F] border border-slate-200 dark:border-[#243048] rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-900 dark:text-white animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+              <FontAwesome name="triangle-exclamation" className="text-xl" />
+            </div>
+            <h3 className="text-lg font-bold mb-1.5">{confirmModal.title}</h3>
+            <p className="text-sm text-slate-600 dark:text-[#6EA2B3] mb-6 leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#243048] text-sm font-semibold text-slate-700 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={executeConfirmedAction}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold shadow-sm transition-colors cursor-pointer"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

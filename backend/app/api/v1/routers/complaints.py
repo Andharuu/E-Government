@@ -1,7 +1,8 @@
 """User-facing complaints router."""
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,14 +11,14 @@ from sqlalchemy import desc
 from app.api.v1.routers.auth import get_current_user
 from app.database import get_db
 from app.models.entities import User, Complaint
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 router = APIRouter(prefix="/complaints", tags=["Pengaduan"])
 
 
 class ComplaintCreate(BaseModel):
-    title: str
-    description: str
+    title: str = Field(..., min_length=3, max_length=200)
+    description: str = Field(..., min_length=10, max_length=2000)
     category: str  # pelayanan, teknis, administrasi, lainnya
     priority: Optional[str] = "sedang"
     # Report type: "layanan" (default) | "keamanan" (security/privacy/bug report)
@@ -125,6 +126,13 @@ class ComplaintCreate(BaseModel):
         return v
 
 
+class PublicHelpCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=150)
+    email: str = Field(..., min_length=5, max_length=255)
+    category: str = Field(default="teknis")
+    subject: str = Field(..., min_length=3, max_length=255)
+    message: str = Field(..., min_length=5, max_length=5000)
+
 class ComplaintResponse(BaseModel):
     id: int
     reference_number: Optional[str]
@@ -150,8 +158,9 @@ def generate_reference_number(prefix: str = "PGD") -> str:
 
     Service complaints use PGD-..., security/bug reports use SEC-...
     """
-    now = datetime.utcnow()
-    return f"{prefix}-{now.year}{now.month:02d}{now.day:02d}-{now.strftime('%H%M%S')}-{now.microsecond:06d}"
+    now = datetime.now(timezone.utc)
+    rand_hex = secrets.token_hex(3).upper()
+    return f"{prefix}-{now.year}{now.month:02d}{now.day:02d}-{now.strftime('%H%M%S')}-{rand_hex}"
 
 
 @router.post("", response_model=ComplaintResponse, status_code=status.HTTP_201_CREATED)
@@ -218,3 +227,52 @@ def get_my_complaint(
     if not complaint:
         raise HTTPException(status_code=404, detail="Pengaduan tidak ditemukan")
     return complaint
+
+
+@router.post("/public-help", response_model=ComplaintResponse, status_code=status.HTTP_201_CREATED)
+def submit_public_help(
+    payload: PublicHelpCreate,
+    db: Session = Depends(get_db),
+):
+    """Submit a public help/support ticket from unauthenticated visitors (Login/Register).
+    Stores directly into the complaints database so admins can review and resolve it.
+    """
+    # Check if a user with this email already exists
+    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+    if user:
+        target_user_id = user.id
+    else:
+        # Fallback to the first existing user (e.g. admin or system user)
+        first_user = db.query(User).order_by(User.id.asc()).first()
+        target_user_id = first_user.id if first_user else 1
+
+    clean_name = payload.name.strip()
+    clean_email = payload.email.strip().lower()
+    clean_subject = payload.subject.strip()
+    clean_message = payload.message.strip()
+
+    category_map = {
+        "login": "teknis",
+        "teknis": "teknis",
+        "ekstensi": "teknis",
+        "pelayanan": "pelayanan",
+        "administrasi": "administrasi",
+        "keamanan": "keamanan",
+    }
+    assigned_category = category_map.get(payload.category.lower(), "teknis")
+
+    complaint = Complaint(
+        user_id=target_user_id,
+        title=f"[Bantuan Publik] {clean_subject} ({clean_name})",
+        description=f"Pengirim: {clean_name}\nEmail: {clean_email}\n\nDetail Kendala:\n{clean_message}",
+        category=assigned_category,
+        priority="sedang",
+        status="diterima",
+        report_type="layanan",
+        reference_number=generate_reference_number("HLP"),
+    )
+    db.add(complaint)
+    db.commit()
+    db.refresh(complaint)
+    return complaint
+

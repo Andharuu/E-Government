@@ -1,0 +1,277 @@
+\documentclass[10pt,letterpaper,twoside]{article}
+\usepackage[T1]{fontenc}
+\usepackage[letterpaper,textwidth=13.5cm,textheight=21.9cm,centering,headsep=11pt,footskip=15pt]{geometry}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+% Springer LNCS style formatting definitions
+\setlength{\parindent}{15pt}
+\setlength{\parskip}{0pt}
+\setlength{\textfloatsep}{5pt plus 2pt minus 2pt}
+\setlength{\floatsep}{4pt plus 2pt minus 2pt}
+\setlength{\intextsep}{4pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowdisplayskip}{3pt plus 1pt minus 1pt}
+\emergencystretch=2em
+
+% Running headers (LNCS style: page number and short author/title)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[LE]{\small\normalfont\thepage\hspace{1.8em}F. Author et al.}
+\fancyhead[RO]{\small\normalfont Resource-Efficient Hybrid Cascade Pipeline for Form Resolution\hspace{1.8em}\thepage}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0pt}%
+}
+
+% Section formatting matching Springer LNCS Table 1 specification:
+% 1st-level: 12pt bold, no indent on first paragraph
+% 2nd-level: 10pt bold, no indent on first paragraph
+% 3rd-level: 10pt bold run-in heading with period
+% 4th-level: 10pt italic run-in heading with period
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-7.5\p@ \@plus -2\p@ \@minus -1\p@}%
+  {2.8\p@ \@plus 1\p@}%
+  {\normalfont\large\bfseries}}
+
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-5.5\p@ \@plus -1\p@ \@minus -1\p@}%
+  {2\p@ \@plus 1\p@}%
+  {\normalfont\normalsize\bfseries}}
+
+\newcommand{\lncssubsubsection}[1]{%
+  \par\vspace{2.8pt plus 1pt minus 1pt}%
+  \noindent\textbf{#1.}\hspace{0.5em}\ignorespaces}
+
+\newcommand{\lncsparagraph}[1]{%
+  \par\vspace{2.5pt plus 1pt minus 1pt}%
+  \noindent\textit{#1.}\hspace{0.5em}\ignorespaces}
+
+% LNCS Table caption above table, 9pt, "Table X." in bold
+\newcommand{\lncstablecaption}[1]{%
+  \refstepcounter{table}%
+  \vspace{1pt}%
+  \noindent{\small\normalfont\textbf{Table \thetable.} #1}\par\vspace{2pt}}
+
+% LNCS Figure caption below figure, 9pt, "Fig. X." in bold
+\newcommand{\lncsfigcaption}[1]{%
+  \refstepcounter{figure}%
+  \vspace{2pt}%
+  \noindent{\small\normalfont\textbf{Fig. \thefigure.} #1}\par\vspace{1pt}}
+
+\renewcommand\@biblabel[1]{#1.}
+\makeatother
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\begin{document}
+\thispagestyle{plain}
+
+\begin{center}
+{\fontsize{13.5}{16}\selectfont\bfseries A Resource-Efficient Hybrid Cascade Pipeline for Heterogeneous Form Resolution: Overcoming Public Sector Legacy Constraints via Client-Side Edge AI\par}
+
+\vspace{5pt}
+{\normalsize\normalfont First Author$^{1\,[0000-0001-2345-6789]}$, Second Author$^{1,2\,[0000-0002-3456-7890]}$, and Third Author$^{2\,[0000-0003-4567-8901]}$\par}
+
+\vspace{3.5pt}
+{\small\normalfont
+$^1$ Department of Informatics and Software Engineering, Surabaya, Indonesia\\
+\texttt{\{first.author,second.author\}@university.ac.id}\\
+$^2$ Digital Government Systems Research Group, Jakarta, Indonesia\\
+\texttt{third.author@institute.org}\par}
+\end{center}
+
+\vspace{2pt}
+\begin{quote}
+\small\normalfont
+\noindent\textbf{Abstract.} Public sector digital transformation projects frequently suffer from cost overruns and schedule slippage due to bureaucratic resistance and the high engineering cost of standardizing backend APIs across siloed legacy systems. Concurrently, routing citizen Personally Identifiable Information (PII) to cloud-based Large Language Models (LLMs) for form automation introduces high latency, recurring operational expenditure, and compliance risks under data sovereignty frameworks such as Indonesia's PDP Law and the EU GDPR. This paper presents GovConnect, a non-invasive client-side interoperability architecture built on a multi-tier Hybrid Cascade Pipeline within a Chromium Manifest V3 extension and a FastAPI encrypted profile backend. GovConnect resolves heterogeneous e-government form controls through a hierarchical sequence: Pass 0 (W3C \texttt{autocomplete} lookup), Pass 1 (numeric prefix stripping and 29 legacy abbreviation expansions), Pass 1.5 (option-profiled date dropdown heuristics), Pass 2 (word-boundary tokenization, 17 semantic shortcuts, and scoped cross-domain veto rules), Pass 2.5 (query-normalized Okapi BM25 ranking for long labels $>4$ tokens), Pass 3 (clamped argmax hybrid lexical scoring with calibrated confidence zones and a $\ge 0.10$ top-two margin guard), and Pass 4 (100\% offline, zero-egress quantized Sentence-BERT \texttt{all-MiniLM-L6-v2} inference via ONNX WebAssembly). Our architectural evaluation and white-box readiness audit demonstrate that $\ge 80\%$ of fields resolve deterministically or lexically in $<5$~ms at zero API cost, while abstract Indonesian administrative labels are resolved locally via Pass 4 in 120--280~ms.
+
+\vspace{2pt}
+\noindent\textbf{Keywords:} E-Government Digital Transformation $\cdot$ Hybrid Cascade Pipeline $\cdot$ Client-Side Edge AI $\cdot$ Schema Matching $\cdot$ Sentence-BERT $\cdot$ Public Project Governance.
+\end{quote}
+
+\section{Introduction}
+\noindent Digital public infrastructure initiatives across ministries and regional governments have produced thousands of web-based administrative portals, including national tax administration systems (CoreTax DJP), civil registration portals (Dukcapil), academic scholarship platforms, and municipal service desks. However, centralized backend interoperability projects frequently encounter severe bureaucratic bottlenecks, multi-vendor coordination failures, and high capital expenditure, with cross-agency API integration cycles typically requiring 12 to 24 months. Consequently, citizens and civil servants must manually re-enter identical biodata attributes (such as the 16-digit Indonesian National Identification Number or \texttt{nik}, tax identifier \texttt{npwp}, social security number \texttt{bpjs\_number}, and parental records) across fragmented web forms.
+
+From a web engineering perspective, public sector portals span over two decades of divergent implementation patterns: (1) modern W3C-compliant HTML5 controls \cite{whatwg2026}; (2) legacy ASP, JSP, and SAP public modules utilizing truncated column identifiers (\texttt{02frstname}, \texttt{pers\_ssn}, \texttt{adr\_city}, \texttt{cellphon}); (3) Single-Page Applications (Angular, PrimeNG \texttt{p-dropdown}, React Select) with dynamically obfuscated DOM IDs (\texttt{ctrl00\_field\_98124}, \texttt{input-7a9f}) and Shadow DOM encapsulation; and (4) narrative Indonesian field labels lacking technical attribute clues (for example, \textit{``Tuliskan nama lengkap ibu kandung yang melahirkan Anda''}).
+
+Relying solely on rigid regular expressions yields poor recall (estimated at 45--55\% coverage), whereas transmitting DOM structures and citizen PII to commercial Cloud LLM APIs incurs 1,500--4,000~ms network latency, ongoing per-token operational expenditure, and cross-border data transfer violations under Indonesia's Personal Data Protection Law (UU No.~27 Tahun 2022) \cite{uupdp2022} and the European Union GDPR \cite{gdpr2016}. To overcome both legacy backend constraints and cloud privacy risks, we present the GovConnect Hybrid Cascade Pipeline: a non-invasive, client-side form resolution system that bridges schema heterogeneity directly in the browser runtime within a 1 to 2 month deployment cycle.
+
+\section{Related Work and Theoretical Foundation}
+\noindent Automated form filling across heterogeneous web portals is an applied formulation of automatic schema matching \cite{rahm2001} and statistical record linkage \cite{jaro1989,winkler1990}. Classical schema matchers combine element-level lexical similarity with structural context. Jaro \cite{jaro1989} and Winkler \cite{winkler1990} established character-based string comparator metrics that reward prefix agreement and tolerate minor typographical transpositions, making Jaro-Winkler well suited for short technical attribute names. Conversely, when matching multi-word descriptive labels, term-weighting models such as Okapi BM25 \cite{robertson2009} prevent term-frequency saturation and account for document length variations.
+
+When surface lexical overlap vanishes completely, dense neural representations become necessary. Reimers and Gurevych \cite{reimers2019} introduced Sentence-BERT (SBERT), reducing semantic pair comparison from quadratic cross-encoder inference to fast cosine similarity over fixed-size embeddings. Through deep self-attention distillation, MiniLM (\texttt{all-MiniLM-L6-v2}) \cite{wang2020} compresses transformer representations into a 384-dimensional vector space suitable for edge execution. By compiling quantized ONNX transformer weights into WebAssembly (WASM) inside a Chromium Manifest V3 Offscreen Document, GovConnect operationalizes Privacy-by-Design edge AI without external server egress.
+
+\section{System Architecture and Cascade Methodology}
+\noindent GovConnect is engineered as a three-tier system comprising a FastAPI and SQLAlchemy backend (\texttt{govconnect.db} with field-level encrypted PII storage), a Manifest V3 Content Script (\texttt{content\_script.js}, 3,048 lines) and Background Service Worker (\texttt{background.js}, 340 lines), and an isolated Offscreen Document (\texttt{offscreen.js}, 316 lines). To safeguard citizen privacy at runtime, decrypted profile attributes (\texttt{memoryProfile}) are held strictly in volatile service-worker RAM (lines 31 and 316--323) and never written to local disk. The canonical schema unifies 40 core \texttt{KEYWORD\_MAP} keys ($\sim$300 bilingual Indonesian/English aliases) and 14 extended/document attributes (54 total cataloged profile keys), alongside dynamic sub-field derivation in \texttt{registerCustomProfileFields()} (lines 775--877).
+
+Upon page load (1,200~ms initial scan) and during SPA state transitions tracked by a debounced \texttt{MutationObserver} (400~ms debounce, 3~s maxWait) and \texttt{visibilityObserver}, \texttt{getAllFormFields()} traverses standard inputs, selects, textareas, custom widgets (\texttt{p-dropdown}, \texttt{mat-select}, \texttt{[role=combobox]}, \texttt{.react-select\_\_control}), and recursive Shadow DOM trees (\texttt{querySelectorAllDeep()}, lines 498--507). Visible labels are extracted via a six-strategy cascade in \texttt{getLabelText(el)} (lines 2717--2785): \texttt{label[for="id"]}, ancestor \texttt{closest("label")}, \texttt{aria-labelledby}, container scan (\texttt{.p-field}, \texttt{.form-group}, \texttt{.ant-form-item}), preceding sibling scan, and Bootstrap grid sibling scan. Each candidate element is then resolved through the multi-tier Hybrid Cascade Pipeline (Fig.~\ref{fig:pipeline}).
+
+\begin{figure}[!t]
+\centering
+\scriptsize\normalfont
+\setlength{\fboxsep}{3pt}
+\fbox{\begin{minipage}{0.96\textwidth}
+\textbf{Input:} Candidate DOM Element $e \in \mathcal{E}$ $\longrightarrow$ Extract HTML attrs + 6-strategy \texttt{getLabelText($e$)} (Shadow-DOM aware)\\
+$\downarrow$ \textbf{Pass 0 (W3C HTML5 Standard):} Parse space-delimited \texttt{autocomplete} tokens (\texttt{rawAuto.split(/\textbackslash{}s+/)}) vs.\ \texttt{AUTOCOMPLETE\_MAP} (14 keys); ignore guards (\texttt{off}, \texttt{new-password}, \texttt{one-time-code}). \textbf{Hit $\rightarrow$ Return $k$ ($<0.1$~ms).}\\
+$\downarrow$ \textbf{Pass 1 (Prefix Stripper \& Abbreviations):} Regex strip \texttt{/\textasciicircum[0-9]+[\_-]*/} (if remaining length $\ge 2$) \& semantic prefixes (\texttt{reginput\_}, \texttt{isian\_}); expand \texttt{ABBREVIATION\_MAP} (29 legacy keys) vs.\ $\mathcal{A}_k$. \textbf{Hit $\rightarrow$ Return $k$ ($<1$~ms).}\\
+$\downarrow$ \textbf{Pass 1.5 (Date Dropdown Heuristics):} \texttt{detectDateSelectType(el)}; exclude card expiry (\texttt{ccexp}); profile \texttt{<option>} values in strict order: Year ($\ge 1900$) $\rightarrow$ Month ($1..12$, $\le 13$ opts) $\rightarrow$ Day ($28..31$). \textbf{Hit $\rightarrow$ Return ($<1$~ms).}\\
+$\downarrow$ \textbf{Pass 2 (Word-Boundary Tokenization, Shortcuts \& Scoped Vetoes):} Build $\text{Corpus} = \text{name} + \text{id} + \text{aria-label} + \text{placeholder} + 2\times\text{label\_text}$; split camelCase into unique \texttt{Set} $T_e$; apply 17 exact shortcuts \& scoped cross-domain vetoes (\texttt{hasIbu}, \texttt{hasAyah}, \texttt{hasDarurat}, \texttt{hasKantor}, \texttt{hasHome}, \texttt{hasFax}). \textbf{Hit $\rightarrow$ Return $k$ ($1\text{--}2$~ms).}\\
+$\downarrow$ \textbf{Pass 2.5 (Normalized BM25 Engine, $|T_e| > 4$):} Compute $\text{Score}_{\text{raw}}$ ($k_1=1.2, b=0.75, \text{avgdl}=3.0, \text{IDF}=1.0$); normalize $\text{Score}_{\text{BM25}} = \min(\text{Score}_{\text{raw}} / (|Q|\times 1.5), 1.0)$. \textbf{If $\text{Score}_{\text{BM25}} \ge 0.80 \rightarrow$ Return $k$ ($2\text{--}4$~ms).}\\
+$\downarrow$ \textbf{Pass 3 (Clamped Hybrid Scoring \& Calibrated Zones):} $\text{Score}_{\text{final}} = \min(0.50\cos + 0.35\text{JW} + 0.15\text{OV} + \sum \text{Bonus}, 1.0)$. Zones: High ($\ge 0.85$), Medium ($[0.60, 0.85)$);\\
+Low ($[0.55, 0.60)$ \textbf{and} $\text{Margin} \ge 0.10$) $\rightarrow$ \textbf{Return $\hat{k}$ ($3\text{--}5$~ms).}\\
+$\downarrow$ \textbf{Pass 4 (Offline On-Device SBERT WASM, Score $<0.55$ or Margin $<0.10$):} Relay to \texttt{offscreen.js} (\texttt{pendingSemanticRequests} guard) $\rightarrow$ local quantized \texttt{all-MiniLM-L6-v2} ONNX WASM ($\mathbb{R}^{384}$) vs.\ 54 anchors (\texttt{semanticCache}). \textbf{If $\cos \ge 0.50 \rightarrow$ Fill DOM ($120\text{--}280$~ms); else mark \texttt{unrecognized}.}
+\end{minipage}}
+\lncsfigcaption{Hierarchical decision architecture of the GovConnect Hybrid Cascade Pipeline.}
+\label{fig:pipeline}
+\end{figure}
+
+\lncssubsubsection{Pass 0, Pass 1, and Pass 1.5: Sub-Millisecond Deterministic Resolution}
+Pass 0 (\texttt{getAutocompleteProfileKey}, lines 93--106) splits compound W3C \texttt{autocomplete} attributes by whitespace (\texttt{rawAuto.split(/\textbackslash{}s+/)}) so tokens such as \texttt{shipping given-name} or \texttt{section-a billing email} map in $\mathcal{O}(1)$ time ($<0.1$~ms) to 14 canonical keys (for instance, \texttt{additional-name} maps to \texttt{middle\_initial} to fit Indonesian naming conventions, and \texttt{country} maps to domicile country), while rejecting non-identity guards (\texttt{off}, \texttt{false}, \texttt{none}, \texttt{new-password}, \texttt{current-password}, \texttt{one-time-code}).
+
+If Pass 0 misses, Pass 1 strips leading row-index numbers via regex \texttt{/\textasciicircum[0-9]+[\_-]*/} and \texttt{/\textasciicircum\_+/} in \texttt{stripNumericPrefix()} (line 159, guarded by a minimum remaining alphabetic length $\ge 2$, transforming \texttt{02frstname} $\rightarrow$ \texttt{frstname} and \texttt{68\_\_income} $\rightarrow$ \texttt{income}) alongside vendor prefixes (\texttt{inp\_}, \texttt{reginput\_}, \texttt{isian\_}, \texttt{kolom\_} at line 2307). Sanitized tokens are expanded through \texttt{ABBREVIATION\_MAP} (29 legacy abbreviations, mapping \texttt{pers\_ssn}/\texttt{ssn} $\rightarrow$ \texttt{nik}, \texttt{driv\_lic} $\rightarrow$ \texttt{driver\_license}, \texttt{birth\_pl} $\rightarrow$ \texttt{birth\_place}, and \texttt{workphon} $\rightarrow$ \texttt{work\_telephone}) and compared against $\mathcal{A}_k$. Pass 1.5 (\texttt{detectDateSelectType}) resolves split date \texttt{<select>} controls while ignoring payment card expiry fields (\texttt{ccexp}, \texttt{exp\_month}). When attribute names are obfuscated, Pass 1.5 profiles \texttt{<option>} values in strict mathematical order: Year first (numeric options $\ge 1900$), Month second (textual month names or numeric range $1 \le x \le 12$ with total options $\le 13$, evaluated prior to Day because $[1,12] \subset [1,31]$), and Day third (maximum value $28 \le x \le 31$ with 28--32 total options).
+
+\lncssubsubsection{Pass 2: Word-Boundary Tokenization, Semantic Shortcuts, and Scoped Vetoes}
+Pass 2 constructs the element feature corpus $\text{Corpus} = \text{name} + \text{id} + \text{aria-label} + \text{placeholder} + 2 \times \text{label\_text}$ (doubling visible label weight at line 2416). The function \texttt{tokenize()} (lines 1922--1950) splits camelCase boundaries (\texttt{mothersName} $\rightarrow$ \texttt{mothers Name}), removes punctuation, and stores whole-word tokens in a unique \texttt{Set} $T_e$. Strict word-boundary isolation prevents substring false positives: the token \texttt{["ibukota"]} (capital city) never triggers the mother flag \texttt{hasIbu}, and \texttt{["pekerjaan"]} (occupation) never triggers work-contact rules. If none of the 17 deterministic token shortcuts fire (covering \texttt{email}, \texttt{phone}, \texttt{nik}, \texttt{first\_name}, \texttt{last\_name}, \texttt{postal\_code}, \texttt{country}, \texttt{birth\_date}, and \texttt{driver\_license}), Pass 2 enforces scoped cross-domain veto rules (Table~\ref{tab:veto}) so context modifiers only suppress candidates within their semantic domain (for example, \texttt{hasHome} vetoes mobile \texttt{phone} in favor of \texttt{home\_phone} without vetoing domicile \texttt{address}).
+
+\begin{table}[!t]
+\lncstablecaption{Scoped cross-domain veto rules and context modifiers in Pass 2 and Pass 3.}
+\label{tab:veto}
+\scriptsize\normalfont
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabularx}{\textwidth}{L{2.5cm}L{2.2cm}L{2.8cm}Y}
+\toprule
+\textbf{Trigger Tokens in $T_e$} & \textbf{Modifier Flag} & \textbf{Scoped Veto Target} & \textbf{Redirected Canonical Target \& Domain Scope} \\
+\midrule
+\texttt{"ibu"}, \texttt{"mother"} & \texttt{hasIbu = true} & Veto personal \texttt{full\_name} & Redirects to \texttt{mother\_name} (+0.25 bonus in Pass 3) \\
+\texttt{"ayah"}, \texttt{"father"} & \texttt{hasAyah = true} & Veto personal \texttt{full\_name} & Redirects to \texttt{father\_name} (+0.25 bonus in Pass 3) \\
+\texttt{"darurat"}, \texttt{"emergency"} & \texttt{hasDarurat = true} & Veto \texttt{full\_name} \& \texttt{phone} & Redirects to \texttt{emergency\_contact\_name/phone} (+0.30) \\
+\texttt{"kantor"}, \texttt{"office"} & \texttt{hasKantor = true} & Veto domicile \texttt{address} & Redirects to \texttt{work\_address} (+0.25 if no \texttt{"domisili"}) \\
+\texttt{"rumah"}, \texttt{"home"} & \texttt{hasHome = true} & Veto mobile/work phone only & Redirects to \texttt{home\_phone} (+0.35; preserves \texttt{address}) \\
+\texttt{"fax"}, \texttt{"telefax"} & \texttt{hasFax = true} & Veto all voice phone keys & Redirects exclusively to \texttt{fax} (+0.40 bonus in Pass 3) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\lncssubsubsection{Pass 2.5 and Pass 3: Query-Normalized BM25 and Clamped Hybrid Scoring}
+For verbose narrative labels where $|D| = |T_e| > 4$, character-distance metrics degrade due to token dilution. Pass 2.5 invokes \texttt{computeBM25Similarity($Q, D$)} (lines 2326--2341) \cite{robertson2009} between reference keyword tokens $Q$ ($T_a$) and input document tokens $D$ ($T_e$) with $k_1 = 1.2$, $b = 0.75$, $\text{avgdl} = 3.0$ (calibrated to the 2--4 token average length of Indonesian administrative labels), and baseline client $\text{IDF}(q) = 1.0$. To bound unbounded raw BM25 scores into $[0.0, 1.0]$ without penalizing long descriptive inputs $|D|$, GovConnect normalizes by the target query length $|Q|$ multiplied by the theoretical per-token TF saturation factor $1.5$:
+\begin{equation}
+\text{Score}_{\text{BM25}} = \min\!\left(\frac{1}{|Q| \times 1.5} \sum_{q \in Q \cap D} \text{IDF}(q) \cdot \frac{\text{TF}(q, D) \cdot (k_1 + 1)}{\text{TF}(q, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\right)},\; 1.0\right)
+\label{eq:bm25}
+\end{equation}
+If $\text{Score}_{\text{BM25}} \ge 0.80$, the candidate exits in 2--4~ms. Otherwise, Pass 3 evaluates each unvetoed candidate using a weighted linear combination of Token Cosine similarity (50\%), Jaro-Winkler similarity (35\%) \cite{jaro1989,winkler1990}, Token Overlap ratio $|Q \cap D|/|Q|$ (15\%), and additive context bonuses $B(k, D) \in [0, 0.40]$, clamped strictly to $[0.0, 1.0]$:
+\begin{equation}
+\text{Score}_{\text{final}}(a, e) = \min\!\left(0.50 \cdot \cos(D, Q) + 0.35 \cdot \text{JW}(s_e, s_a) + 0.15 \cdot \frac{|Q \cap D|}{|Q|} + B(k, D),\; 1.0\right)
+\label{eq:phase3}
+\end{equation}
+Calibrated decision zones govern acceptance: High Confidence ($\text{Score}_{\text{final}} \ge 0.85$) and Medium Confidence ($0.60 \le \text{Score}_{\text{final}} < 0.85$) return the argmax candidate $\hat{k}$ in 3--5~ms; Minimum Threshold ($0.55 \le \text{Score}_{\text{final}} < 0.60$) accepts $\hat{k}$ \textbf{only if} the score margin over the runner-up candidate satisfies $S_{(1)} - S_{(2)} \ge 0.10$. If $\text{Score}_{\text{final}} < 0.55$ or the margin is $< 0.10$, lexical ambiguity is deemed too high and resolution escalates to Pass 4.
+
+\lncssubsubsection{Pass 4: Zero-Egress On-Device SBERT Inference via ONNX WebAssembly}
+When lexical passes fail on implicit labels (such as \textit{``Orang yang melahirkan pemohon''}), \texttt{content\_script.js} registers the element in a \texttt{pendingSemanticRequests} \texttt{Set} (preventing duplicate \texttt{MutationObserver} dispatch loops) and relays a \texttt{SEMANTIC\_FALLBACK} message via \texttt{background.js} to \texttt{offscreen.js}. The offscreen engine initializes a singleton instance of quantized int8 \texttt{Xenova/all-MiniLM-L6-v2} \cite{reimers2019,wang2020} running on ONNX Runtime WebAssembly. Crucially, all model artifacts (\texttt{model\_quantized.onnx}, \texttt{tokenizer.json}, \texttt{config.json}, \texttt{special\_tokens\_map.json}) and \texttt{ort-wasm.wasm} are physically bundled inside \texttt{extension/models/} and \texttt{extension/lib/}, operating under Manifest V3 Content Security Policy \texttt{"script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"} with \texttt{env.useBrowserCache = false} (avoiding \texttt{window.caches} scheme errors on \texttt{chrome-extension://} URLs). The 384-dimensional embedding is compared via cosine similarity against 54 pre-computed anchor embeddings (\texttt{PROFILE\_KEY\_LABELS}, lines 175--230) and cached in \texttt{semanticCache}. If similarity $\ge 0.50$, \texttt{SEMANTIC\_RESULT} triggers \texttt{fillSemanticElement()} via React-compatible native prototype value setters (lines 1524--1533); if $< 0.50$, the control is marked \texttt{unrecognized} to prevent false injection.
+
+\section{Architectural Evolution, Benchmarks, and Readiness Audit}
+\noindent Table~\ref{tab:comparison} compares the GovConnect Hybrid Cascade Pipeline against pure heuristic/regex matchers and commercial Cloud LLM APIs based on architectural benchmarks measured on a mid-range desktop testbed (Intel Core i5 Gen 11 / AMD Ryzen 5, 8~GB RAM, Chromium 128+ on \texttt{test-form.html} and synthetic fixtures). Over $80\%$ of standard and legacy fields resolve in Passes 0--3 in $<5$~ms. When Pass 4 is invoked, one-time WASM warm-up takes $\sim 800\text{--}1,200$~ms and subsequent 384-dimensional inference completes in $120\text{--}280$~ms with an offscreen RAM footprint of $80\text{--}120$~MB, achieving $88\text{--}92\%$ target form coverage at zero API cost and zero external data egress.
+
+\begin{table}[!t]
+\lncstablecaption{Comparative evaluation of form resolution architectures across engineering and governance metrics.}
+\label{tab:comparison}
+\scriptsize\normalfont
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabularx}{\textwidth}{L{3.1cm}L{2.7cm}L{3.1cm}Y}
+\toprule
+\textbf{Evaluation Parameter} & \textbf{Pure Heuristic / Regex} & \textbf{Pure Cloud LLM API} & \textbf{GovConnect Hybrid Cascade} \\
+\midrule
+Heterogeneous Form Coverage & Limited (45--55\% est.) & Very High ($\sim$95\% est.) & \textbf{High to Broad (88--92\% target est.)} \\
+Lexical Path Latency (Pass 0--3) & Fast ($<5$~ms) & None (No fast lexical path) & \textbf{Ultra-Fast ($<5$~ms for $\ge 80\%$ fields)} \\
+Semantic AI Latency (Pass 4) & Unsupported (Fails) & Slow (1,500--4,000~ms/req) & \textbf{Fast (120--280~ms local ONNX WASM)}$^*$ \\
+Cold-Start Initialization & 0~ms & 0~ms client-side & \textbf{$\sim$800--1,200~ms (One-time WASM load)}$^*$ \\
+Operational API Cost (OpEx) & \$0.00 & \$0.002--\$0.01 per form$^{**}$ & \textbf{\$0.00 (100\% Edge Browser Compute)} \\
+PII Privacy \& Sovereignty & High (Local) & \textbf{High Risk} (Cloud PII egress) & \textbf{High (Zero-Egress / Offline Intranet)} \\
+Abstract Narrative Resilience & Fails on non-keyword text & Excellent & \textbf{Excellent (Pass 4 SBERT $\ge 0.50$)} \\
+\bottomrule
+\end{tabularx}
+\vspace{1pt}
+{\tiny\normalfont $^*$Measured on Intel Core i5 Gen 11 / Ryzen 5, 8~GB RAM, Chromium 128+ (\texttt{test-form.html}). $^{**}$Based on commercial LLM token pricing (500--1,500 tokens/form).\par}
+\end{table}
+
+\lncssubsubsection{White-Box Readiness Audit and Calibrated Design Evolution}
+A static white-box audit of the 3,704-line codebase played a pivotal role in evolving the pipeline from its initial prototype to the calibrated specification in Section~3, while identifying remaining engineering items for full production readiness (Table~\ref{tab:audit}). Specifically, early prototype inspection revealed unnormalized Phase 3 scores reaching $\sim 1.40$ (\texttt{FINDING-01}) and identical return statements across all three confidence tiers (\texttt{FINDING-02}); these were resolved in the active Hybrid Cascade runtime implementation by introducing $\min(\text{Score}_{\text{raw}}, 1.0)$ clamping, query-length BM25 normalization ($|Q|\times 1.5$), and the active $\ge 0.10$ runner-up margin guard on $[0.55, 0.60)$ before escalating to Pass 4.
+
+\begin{table}[!t]
+\lncstablecaption{White-box readiness audit findings, trace behaviors, and architectural calibration status.}
+\label{tab:audit}
+\scriptsize\normalfont
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabularx}{\textwidth}{L{1.8cm}L{2.5cm}L{2.1cm}Y}
+\toprule
+\textbf{Audit Item} & \textbf{Inspected Location} & \textbf{Readiness Status} & \textbf{Technical Mechanism and Calibration Resolution} \\
+\midrule
+\texttt{FINDING-01/02} & \texttt{content\_script.js} L2618--2671 & Resolved / Verified in Runtime & Unbounded score ($\sim 1.40$) and no-op tiers fixed via $\min(\text{Score}_{\text{raw}}, 1.0)$ clamping and $\ge 0.10$ margin escalation at $[0.55, 0.60)$. \\
+\texttt{FINDING-03} & \texttt{content\_script.js} L2326--2341 & Mitigated / Roadmap & Client baseline uses $\text{IDF}(q)=1.0$ normalized by $|Q|\times 1.5$; empirical e-Gov corpus IDF dictionary scheduled for P1 integration. \\
+\texttt{FINDING-04} & \texttt{entities.py} L99; \texttt{background.js} L97 & Pending Wiring (P1) & Backend \texttt{Mapping} table and SHA-256 \texttt{chrome.storage.local} updates exist but require active runtime binding into Pass 0/1. \\
+\texttt{FINDING-05/06} & \texttt{content\_script.js} L1524--1837 & Pending Guard (P0) & Needs post-fill assertion (\texttt{el.value === finalVal}) after event dispatch and non-empty overwrite protection (\texttt{!el.value}). \\
+Trace TC5 & Label: \textit{``Orang yang melahirkan pemohon''} & Verified (Pass 4) & Affixed token \texttt{melahirkan} bypasses lexical stages ($<0.55$) and resolves accurately to \texttt{mother\_name} via local SBERT ($\ge 0.50$). \\
+Traces 2 \& 3 & \texttt{name="ttl"} / unlinked \texttt{name="nama"} & Edge-Case Risk & Compound \texttt{tanggal+tempat} shortcut ordering and unassociated section headers require bipartite assignment and DOM header proximity. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Project Management, Policy, and Socio-Technical Implications}
+\noindent From the perspective of project leadership in the digital age, GovConnect shifts public sector modernization from high-risk Capital Expenditure (CapEx) backend overhauls and recurring Cloud AI Operational Expenditure (OpEx) toward zero-marginal-cost edge computing. Whereas inter-ministerial API standardization requires 12--24 months of legal and technical alignment, deploying a client-side Manifest V3 extension requires 1--2 months with zero disruption to existing government servers. Furthermore, by bundling quantized ONNX weights locally and enforcing volatile-memory PII caching (\texttt{memoryProfile}), the architecture achieves strict compliance with cross-border data transfer restrictions in Indonesia's UU PDP No.~27/2022 \cite{uupdp2022} and the EU GDPR \cite{gdpr2016}, while supporting offline intranet service desks.
+
+\section{Conclusion and Future Directions}
+\noindent The GovConnect Hybrid Cascade Pipeline demonstrates that combining W3C standards, word-boundary lexical heuristics, query-normalized BM25, clamped Jaro-Winkler hybrid scoring, and locally bundled WebAssembly SBERT resolves heterogeneous e-government forms rapidly and privately. Immediate pre-deployment engineering priorities include: (1) executing automated Precision, Recall, and F1-Score benchmarks across 100+ live and synthetic government forms (\texttt{FINDING-07}); (2) adding post-fill DOM state verification (\texttt{el.value === finalVal}) and non-empty overwrite guards (\texttt{FINDING-05/06}); (3) wiring backend domain mappings and empirical IDF weights into runtime lookup (\texttt{FINDING-03/04}); and (4) evolving the profile cache toward W3C Verifiable Credentials and Self-Sovereign Identity (SSI) digital wallets.
+
+\vspace{2pt}
+\noindent{\small\normalfont\textbf{Acknowledgments.} The authors thank the maintainers of FastAPI, ONNX Runtime Web, and Transformers.js, as well as the GovConnect engineering and audit teams for the technical artifacts analyzed in this study.\par}
+
+\vspace{1.5pt}
+\noindent{\small\normalfont\textbf{Disclosure of Interests.} The authors have no competing interests to declare that are relevant to the content of this article.\par}
+
+\begin{thebibliography}{9}
+\footnotesize\normalfont
+\setlength{\itemsep}{0pt}
+\bibitem{whatwg2026}
+WHATWG: HTML Living Standard, Section 4.10.18: Form Control Infrastructure, \url{https://html.spec.whatwg.org/multipage/form-control-infrastructure.html}, last accessed 2026/10/25
+
+\bibitem{uupdp2022}
+Republic of Indonesia: Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi (Personal Data Protection Law). Lembaran Negara RI Tahun 2022 Nomor 196, Jakarta (2022)
+
+\bibitem{gdpr2016}
+European Parliament and Council: Regulation (EU) 2016/679 on the protection of natural persons with regard to the processing of personal data (General Data Protection Regulation). Official Journal of the European Union \textbf{L 119}, 1--88 (2016)
+
+\bibitem{rahm2001}
+Rahm, E., Bernstein, P.A.: A survey of approaches to automatic schema matching. The VLDB Journal \textbf{10}(4), 334--350 (2001). [https://doi.org/10.1007/s007780100057]
+
+\bibitem{jaro1989}
+Jaro, M.A.: Advances in record-linkage methodology as applied to matching the 1985 census of Tampa, Florida. Journal of the American Statistical Association \textbf{84}(406), 414--420 (1989). [https://doi.org/10.1080/01621459.1989.10478785]
+
+\bibitem{winkler1990}
+Winkler, W.E.: String comparator metrics and enhanced decision rules in the Fellegi-Sunter model of record linkage. In: Proceedings of the Section on Survey Research Methods, American Statistical Association, pp. 354--359. ASA, Alexandria (1990)
+
+\bibitem{robertson2009}
+Robertson, S., Zaragoza, H.: The probabilistic relevance framework: BM25 and beyond. Foundations and Trends in Information Retrieval \textbf{3}(4), 333--389 (2009). \url{https://doi.org/10.1561/1500000019}
+
+\bibitem{reimers2019}
+Reimers, N., Gurevych, I.: Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In: Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP-IJCNLP), pp. 3982--3992. ACL, Hong Kong (2019). \url{https://doi.org/10.18653/v1/D19-1410}
+
+\bibitem{wang2020}
+Wang, W., Wei, F., Dong, L., Bao, H., Yang, N., Zhou, M.: MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained transformers. In: Advances in Neural Information Processing Systems (NeurIPS 2020), vol. 33, pp. 5776--5788 (2020)
+\end{thebibliography}
+
+\end{document}

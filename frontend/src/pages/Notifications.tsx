@@ -15,10 +15,10 @@ const FILTER_TABS: { key: FilterType; label: string; icon: string }[] = [
 ];
 
 const PALETTE: Record<string, { iconColor: string }> = {
-  success: { iconColor: 'text-emerald-400' },
-  warning: { iconColor: 'text-amber-400' },
-  info: { iconColor: 'text-[#7BBDE8]' },
-  system: { iconColor: 'text-[#6EA2B3]' },
+  success: { iconColor: 'text-emerald-500 dark:text-emerald-400' },
+  warning: { iconColor: 'text-amber-500 dark:text-amber-400' },
+  info: { iconColor: 'text-blue-600 dark:text-[#7BBDE8]' },
+  system: { iconColor: 'text-slate-500 dark:text-[#6EA2B3]' },
 };
 
 const ICON_MAP: Record<string, string> = {
@@ -41,6 +41,21 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function formatNotificationDateTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function NotifCard({
   notif,
   onRead,
@@ -60,8 +75,8 @@ function NotifCard({
       onClick={() => !notif.read && onRead(notif.id)}
       className={`group relative flex items-start gap-4 p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${
         notif.read
-          ? 'bg-[#171F2F] border-[#243048] hover:border-[#7BBDE8]/60'
-          : 'bg-[#171F2F] border-[#243048] hover:border-[#7BBDE8] border-l-4 border-l-[#7BBDE8] shadow-sm'
+          ? 'bg-white dark:bg-[#171F2F] border-slate-200 dark:border-[#243048] hover:border-blue-400 dark:hover:border-[#7BBDE8]/60'
+          : 'bg-white dark:bg-[#171F2F] border-slate-200 dark:border-[#243048] hover:border-blue-500 dark:hover:border-[#7BBDE8] border-l-4 border-l-blue-600 dark:border-l-[#7BBDE8] shadow-sm'
       }`}
     >
       {/* Icon tanpa pembungkus langsung dari FontAwesome */}
@@ -72,17 +87,22 @@ function NotifCard({
       <div className="flex-1 min-w-0">
         {/* Header: Judul dan Waktu terpisah jelas */}
         <div className="flex items-start justify-between gap-3">
-          <h3 className={`text-[15px] font-bold leading-snug tracking-tight ${notif.read ? 'text-[#BDD8E9]/75' : 'text-white'}`}>
+          <h3 className={`text-[15px] font-bold leading-snug tracking-tight ${notif.read ? 'text-slate-500 dark:text-[#BDD8E9]/75' : 'text-slate-900 dark:text-white'}`}>
             {notif.title}
           </h3>
-          <span className="text-[12px] text-[#6EA2B3] font-medium whitespace-nowrap tabular-nums shrink-0 mt-0.5">
-            {timeAgo(notif.created_at)}
-          </span>
+          <div className="flex flex-col items-end shrink-0 mt-0.5 text-right">
+            <span className="text-[12px] text-slate-500 dark:text-[#6EA2B3] font-medium whitespace-nowrap tabular-nums">
+              {timeAgo(notif.created_at)}
+            </span>
+            <span className="text-[11px] text-slate-400 dark:text-[#6EA2B3]/75 font-normal whitespace-nowrap">
+              {formatNotificationDateTime(notif.created_at)}
+            </span>
+          </div>
         </div>
 
         {/* Isi Pesan dengan pemisahan tipografi yang jelas */}
         {notif.desc && (
-          <p className="text-[13.5px] leading-relaxed text-[#BDD8E9]/85 mt-2">
+          <p className="text-[13.5px] leading-relaxed text-slate-600 dark:text-[#BDD8E9]/85 mt-2">
             {notif.desc}
           </p>
         )}
@@ -93,7 +113,7 @@ function NotifCard({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRead(notif.id); }}
-              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#7BBDE8] hover:text-white transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-600 dark:text-[#7BBDE8] hover:text-blue-800 dark:hover:text-white transition-colors cursor-pointer"
             >
               <FontAwesome name="check" className="text-xs" />
               <span>Tandai sudah dibaca</span>
@@ -104,7 +124,7 @@ function NotifCard({
             type="button"
             onClick={(e) => { e.stopPropagation(); onDelete(notif.id); }}
             disabled={deleting}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#6EA2B3] hover:text-rose-400 transition-colors cursor-pointer ml-auto"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-400 dark:text-[#6EA2B3] hover:text-rose-500 dark:hover:text-rose-400 transition-colors cursor-pointer ml-auto"
           >
             {deleting ? <FontAwesome name="spinner" spin className="text-xs" /> : <FontAwesome name="trash" className="text-xs" />}
             <span>Hapus</span>
@@ -276,15 +296,15 @@ export function NotificationsPage() {
                 onClick={() => setFilter(tab.key)}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   isActive
-                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                    : 'bg-[#171F2F] text-[#6EA2B3] border border-[#243048] hover:border-[#7BBDE8] hover:text-white'
+                    ? 'bg-blue-600 dark:bg-[#7BBDE8] text-white dark:text-[#101828] font-bold shadow-xs'
+                    : 'bg-white dark:bg-[#171F2F] text-slate-600 dark:text-[#6EA2B3] border border-slate-200 dark:border-[#243048] hover:border-blue-500 dark:hover:border-[#7BBDE8] hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <FontAwesome name={tab.icon} className="text-xs" />
                 <span>{tab.label}</span>
                 <span
                   className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
-                    isActive ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
+                    isActive ? 'bg-white/20 dark:bg-[#101828]/20 text-white dark:text-[#101828]' : 'bg-slate-100 dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3]'
                   }`}
                 >
                   {count}

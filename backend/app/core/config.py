@@ -70,6 +70,8 @@ class Settings:
     APP_VERSION: str = os.getenv("APP_VERSION", "2.0.0")
     API_V1_PREFIX: str = os.getenv("API_V1_PREFIX", "/api/v1")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    # B-H2: Auto-migration switch (default true for dev/test, can be disabled in prod)
+    AUTO_MIGRATE: bool = os.getenv("AUTO_MIGRATE", "true").lower() in ("true", "1", "yes")
 
     # Basis Data (default non-kredensial: SQLite lokal; MySQL wajib via env)
     DATABASE_URL: str = os.getenv(

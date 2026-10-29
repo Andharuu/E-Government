@@ -1,17 +1,19 @@
 // Side Panel Script — GovConnect
 // Asisten Autofill Cerdas dengan Transisi Fluid Scanning & Sinkronisasi Real-Time
 
-const API_BASE = "http://127.0.0.1:8000/api/v1";
-const DASHBOARD_URL = "http://localhost:5173/dashboard";
+var API_BASE = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.API_BASE) || "http://127.0.0.1:8000/api/v1";
+var DASHBOARD_URL = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.DASHBOARD_URL) || "http://localhost:5173/dashboard";
 
 // Verifikasi origin dashboard SECARA PERSIS (bukan substring).
-const GOVCONNECT_WEB_ORIGINS = [
+var GOVCONNECT_WEB_ORIGINS = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.WEB_ORIGINS) || [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5174",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
 ];
 function isGovConnectDashboardUrl(url) {
   if (!url) return false;
@@ -341,31 +343,35 @@ async function refreshProfile() {
   }
 }
 
-// Dengarkan perpindahan tab atau update halaman aktif
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  const token = await getToken();
-  if (!token) return;
-  try {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (tab) {
+// Dengarkan perpindahan tab atau update halaman aktif (dengan pengecekan lingkungan aman)
+if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.onActivated && chrome.tabs.onActivated.addListener) {
+  chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const tab = await chrome.tabs.get(activeInfo.tabId);
+      if (tab) {
+        currentTab = tab;
+        updatePageHeader(tab);
+        await refreshProfile();
+        await detectPageFieldsWithFluidScan();
+      }
+    } catch {}
+  });
+}
+
+if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.onUpdated && chrome.tabs.onUpdated.addListener) {
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete" && tab.active) {
+      const token = await getToken();
+      if (!token) return;
       currentTab = tab;
       updatePageHeader(tab);
       await refreshProfile();
       await detectPageFieldsWithFluidScan();
     }
-  } catch {}
-});
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.active) {
-    const token = await getToken();
-    if (!token) return;
-    currentTab = tab;
-    updatePageHeader(tab);
-    await refreshProfile();
-    await detectPageFieldsWithFluidScan();
-  }
-});
+  });
+}
 
 window.addEventListener("focus", async () => {
   const token = await getToken();
@@ -582,16 +588,16 @@ function renderFieldList() {
 
     item.innerHTML = `
       <input type="checkbox" id="chk_${i}" class="field-checkbox" data-index="${i}" data-uid="${uid}" ${isChecked ? "checked" : ""} ${!hasValue ? "disabled" : ""}>
-      <label for="chk_${i}" class="field-info">
+      <div class="field-content">
         <div class="field-name">
-          <span>${field.name || field.id || formatFieldLabel(field.profileKey) || "(field)"}</span>
+          <span>${escapeHtml(field.name || field.id || formatFieldLabel(field.profileKey) || "(field)")}</span>
         </div>
-        <div class="field-profile-preview">
-          ${formatFieldLabel(field.profileKey)}: ${hasValue ? `<span class="field-profile-val">${escapeHtml(truncate(profileValue, 24))}</span>` : "<span style='color: #94A3B8;'>data belum terisi di profil</span>"}
+        <div class="field-meta">
+          <span>${escapeHtml(formatFieldLabel(field.profileKey))}:</span> ${hasValue ? `<span class="field-val-matched">${escapeHtml(truncate(profileValue, 24))}</span>` : "<span class='field-val-empty'>Data belum ada di profil</span>"}
         </div>
-      </label>
-      <span class="badge-tag ${hasValue ? "tag-matched" : "tag-empty"}">
-        ${hasValue ? '<i class="fa-regular fa-circle-check" style="font-size: 8.5px; margin-right: 3px;"></i>Cocok' : '<i class="fa-solid fa-xmark" style="font-size: 8px; margin-right: 2px;"></i>Kosong'}
+      </div>
+      <span class="status-pill ${hasValue ? "matched" : "empty"}">
+        ${hasValue ? '<i class="fa-solid fa-check" style="font-size: 8.5px;"></i><span>Cocok</span>' : '<span>Kosong</span>'}
       </span>
     `;
 
@@ -625,7 +631,7 @@ function renderFieldList() {
     }
 
     item.addEventListener("click", (e) => {
-      if (e.target.tagName.toLowerCase() === "input" || e.target.closest("label")) {
+      if (e.target.tagName.toLowerCase() === "input") {
         return;
       }
       if (chk && !chk.disabled) {
@@ -1012,7 +1018,7 @@ function formatFieldLabel(key) {
   return map[key] || customFieldLabels[key] || key;
 }
 
-function sendMessageToTab(tabId, message, timeoutMs = 4000) {
+function sendMessageToTab(tabId, message, timeoutMs = 5000) {
   return new Promise((resolve) => {
     let done = false;
     const timer = setTimeout(() => {
@@ -1022,17 +1028,47 @@ function sendMessageToTab(tabId, message, timeoutMs = 4000) {
       }
     }, timeoutMs);
 
-    chrome.tabs.sendMessage(tabId, message, (response) => {
+    const tryForwardViaBackground = () => {
+      try {
+        if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({
+            action: "FORWARD_TO_TAB",
+            tabId: tabId,
+            tabMessage: message
+          }, (response) => {
+            if (!done) {
+              done = true;
+              clearTimeout(timer);
+              resolve(response || null);
+            }
+          });
+          return;
+        }
+      } catch (e) {}
       if (!done) {
         done = true;
         clearTimeout(timer);
-        if (chrome.runtime.lastError) {
-          resolve(null);
-        } else {
-          resolve(response);
-        }
+        resolve(null);
       }
-    });
+    };
+
+    try {
+      if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.sendMessage) {
+        chrome.tabs.sendMessage(tabId, message, (response) => {
+          if (!done) {
+            if (chrome.runtime.lastError || !response) {
+              tryForwardViaBackground();
+            } else {
+              done = true;
+              clearTimeout(timer);
+              resolve(response);
+            }
+          }
+        });
+        return;
+      }
+    } catch (e) {}
+    tryForwardViaBackground();
   });
 }
 

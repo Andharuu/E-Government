@@ -167,16 +167,15 @@ async def push_activity_to_queue(activity_data: Dict[str, Any]):
 
     # Buat notifikasi otomatis dari event aktivitas autofill
     try:
-        db = SessionLocal()
-        _generate_activity_notification(
-            user_id=activity_data["user_id"],
-            status=activity_data.get("status", "success"),
-            domain=activity_data.get("website_domain", ""),
-            fields_filled=activity_data.get("fields_filled", 0),
-            db=db,
-        )
-        db.commit()
-        db.close()
+        with SessionLocal() as db:
+            _generate_activity_notification(
+                user_id=activity_data["user_id"],
+                status=activity_data.get("status", "success"),
+                domain=activity_data.get("website_domain", ""),
+                fields_filled=activity_data.get("fields_filled", 0),
+                db=db,
+            )
+            db.commit()
     except Exception as e:
         logger.error(f"Gagal membuat notifikasi otomatis: {e}")
 

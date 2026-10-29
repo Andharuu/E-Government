@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { profileApi, type Profile } from '../services/api';
-import { Flaticon, FontAwesome } from '../components/ui';
+import { FontAwesome } from '../components/ui';
 import { Link } from 'react-router-dom';
 
 export interface ServiceTemplate {
@@ -417,15 +417,15 @@ export function TemplatesPage() {
                 onClick={() => setActiveCategoryFilter(cat.id)}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   isAct
-                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                    : 'bg-[#171F2F] text-[#6EA2B3] border border-[#243048] hover:border-[#7BBDE8] hover:text-white'
+                    ? 'bg-blue-600 dark:bg-[#7BBDE8] text-white dark:text-[#101828] font-bold shadow-xs'
+                    : 'bg-white dark:bg-[#171F2F] text-slate-600 dark:text-[#6EA2B3] border border-slate-200 dark:border-[#243048] hover:border-blue-500 dark:hover:border-[#7BBDE8] hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <FontAwesome name={cat.icon} className="text-xs" />
                 <span>{cat.label}</span>
                 <span
                   className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
-                    isAct ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
+                    isAct ? 'bg-white/20 dark:bg-[#101828]/20 text-white dark:text-[#101828]' : 'bg-slate-100 dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3]'
                   }`}
                 >
                   {cat.count}
@@ -490,7 +490,7 @@ export function TemplatesPage() {
                       className="text-[#6EA2B3] hover:text-rose-400 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
                       title="Hapus template kustom ini"
                     >
-                      <Flaticon name="trash" className="text-xs" />
+                      <FontAwesome name="trash" className="text-xs" />
                     </button>
                   )}
                 </div>
@@ -542,7 +542,7 @@ export function TemplatesPage() {
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[#7BBDE8] hover:bg-[#101828] rounded-lg transition-colors cursor-pointer"
                     title="Salin ringkasan data template ini"
                   >
-                    <Flaticon name={isCopied ? 'check' : 'copy'} className={`text-xs ${isCopied ? 'text-emerald-400' : ''}`} />
+                    <FontAwesome name={isCopied ? 'check-pure' : 'copy'} className={`text-xs ${isCopied ? 'text-emerald-400' : ''}`} />
                     <span>{isCopied ? 'Tersalin' : 'Salin'}</span>
                   </button>
                   <span className="text-[13px] font-semibold text-[#7BBDE8] group-hover:underline inline-flex items-center gap-1">
@@ -591,14 +591,14 @@ export function TemplatesPage() {
                 onClick={() => setSelectedTemplate(null)}
                 className="p-1 text-[#6EA2B3] hover:text-white text-[20px] transition-colors cursor-pointer"
               >
-                <Flaticon name="cross-small" className="text-sm" />
+                <FontAwesome name="xmark" className="text-sm" />
               </button>
             </div>
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               <div className="bg-[#101828] border border-[#243048] rounded-[10px] p-3.5 flex items-start gap-3">
-                <Flaticon name="info" className="text-[#7BBDE8] text-[16px] shrink-0 mt-0.5" />
+                <FontAwesome name="circle-info" className="text-[#7BBDE8] text-base shrink-0 mt-0.5" />
                 <p className="text-[13px] leading-[20px] text-white">
                   {selectedTemplate.description}
                 </p>
@@ -636,7 +636,7 @@ export function TemplatesPage() {
                         <div>
                           {isFilled ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
-                              <Flaticon name="check" className="text-[9px]" /> Terisi
+                              <FontAwesome name="check-pure" className="text-[9px]" /> Terisi
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] leading-[16px] font-medium bg-[#101828] text-[#6EA2B3] border border-[#243048] rounded-full">
@@ -658,7 +658,7 @@ export function TemplatesPage() {
                 onClick={() => handleCopySummary(selectedTemplate)}
                 className="inline-flex items-center gap-2 px-3.5 py-2 text-[14px] font-medium text-white bg-[#101828] hover:border-[#7BBDE8] border border-[#243048] rounded-[10px] transition-colors cursor-pointer"
               >
-                <Flaticon name="copy" className="text-xs" />
+                <FontAwesome name="copy" className="text-xs" />
                 <span>Salin ringkasan data</span>
               </button>
 
@@ -667,7 +667,7 @@ export function TemplatesPage() {
                   to="/profile"
                   className="inline-flex items-center gap-2 px-4 py-2 text-[14px] font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-[10px] transition-colors cursor-pointer shadow-xs"
                 >
-                  <Flaticon name="edit" className="text-xs" />
+                  <FontAwesome name="pen-to-square" className="text-xs" />
                   <span>Lengkapi data di profil</span>
                 </Link>
               </div>
@@ -690,7 +690,7 @@ export function TemplatesPage() {
                 onClick={() => setIsCreateModalOpen(false)}
                 className="p-1 text-[#6EA2B3] hover:text-white text-[20px] transition-colors cursor-pointer"
               >
-                <Flaticon name="cross-small" className="text-sm" />
+                <FontAwesome name="xmark" className="text-sm" />
               </button>
             </div>
 

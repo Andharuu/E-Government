@@ -1,6 +1,28 @@
-const API_BASE = "http://127.0.0.1:8000/api/v1";
-const DASHBOARD_URL = "http://localhost:5173/dashboard";
+var API_BASE = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.API_BASE) || "http://127.0.0.1:8000/api/v1";
+var DASHBOARD_URL = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.DASHBOARD_URL) || "http://localhost:5173/dashboard";
 let isRegisterMode = false;
+
+// ============================================================
+// Helper fetch dengan AbortController timeout (E-H4)
+// ============================================================
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`Koneksi timeout (${timeoutMs / 1000} detik). Server backend tidak merespons.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 // ============================================================
 // Inisialisasi: cek apakah sudah login
@@ -108,7 +130,7 @@ async function handleAuth() {
         showError("Konfirmasi password tidak cocok.");
         return;
       }
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -131,7 +153,7 @@ async function handleAuth() {
 
 async function doLogin(email, password) {
   const body = new URLSearchParams({ username: email, password });
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString()
@@ -158,10 +180,10 @@ async function doLogin(email, password) {
 async function showMainScreen(token) {
   try {
     const [profRes, statsRes] = await Promise.all([
-      fetch(`${API_BASE}/profile/me`, {
+      fetchWithTimeout(`${API_BASE}/profile/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       }),
-      fetch(`${API_BASE}/activities/stats`, {
+      fetchWithTimeout(`${API_BASE}/activities/stats`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
     ]);
@@ -324,9 +346,18 @@ function clearUserEmail() {
 async function tryAutoSyncFromOpenTabs() {
   try {
     const tabs = await chrome.tabs.query({});
-    const dashboardTab = tabs.find(t =>
-      t.url && (t.url.includes("localhost:5173") || t.url.includes("127.0.0.1:5173"))
-    );
+    const dashboardTab = tabs.find(t => {
+      if (!t.url) return false;
+      if (typeof GovConnectConfig !== "undefined") {
+        return GovConnectConfig.isDashboardUrl(t.url);
+      }
+      try {
+        const origin = new URL(t.url).origin;
+        return origin === "http://localhost:5173" || origin === "http://127.0.0.1:5173";
+      } catch {
+        return false;
+      }
+    });
 
     if (dashboardTab?.id) {
       const results = await chrome.scripting.executeScript({

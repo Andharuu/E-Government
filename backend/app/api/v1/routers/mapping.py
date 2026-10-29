@@ -1,5 +1,6 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from app.core.security import limiter
 from sqlalchemy.orm import Session
 
 from app.api.v1.routers.auth import get_current_user
@@ -17,7 +18,9 @@ router = APIRouter(prefix="/mappings", tags=["Field Mapping"])
 
 
 @router.get("", response_model=List[MappingResponse])
+@limiter.limit("60/minute")
 def get_mappings(
+    request: Request,
     domain: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -34,7 +37,9 @@ def get_mappings(
 
 
 @router.post("", response_model=MappingResponse)
+@limiter.limit("60/minute")
 def create_or_upsert_mapping(
+    request: Request,
     payload: MappingCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -70,7 +75,9 @@ def create_or_upsert_mapping(
 
 
 @router.post("/bulk", response_model=List[MappingResponse])
+@limiter.limit("30/minute")
 def create_bulk_mappings(
+    request: Request,
     payload: MappingBulkCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -109,7 +116,9 @@ def create_bulk_mappings(
 
 
 @router.put("/{mapping_id}", response_model=MappingResponse)
+@limiter.limit("60/minute")
 def update_mapping(
+    request: Request,
     mapping_id: int,
     payload: MappingUpdate,
     db: Session = Depends(get_db),
@@ -137,7 +146,9 @@ def update_mapping(
 
 
 @router.delete("/{mapping_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("60/minute")
 def delete_mapping(
+    request: Request,
     mapping_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -160,7 +171,9 @@ def delete_mapping(
 
 
 @router.delete("", response_model=MessageResponse)
+@limiter.limit("20/minute")
 def clear_mappings(
+    request: Request,
     domain: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

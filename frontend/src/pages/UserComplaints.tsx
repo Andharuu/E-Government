@@ -9,11 +9,11 @@ import {
   ReportTypeBadge, SeverityBadge, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL,
   SEVERITY_META, EmptyState, LoadingBlock, formatDateTime,
 } from '../components/admin/adminUi';
-import { FontAwesome, Flaticon, CustomSelect } from '../components/ui';
+import { FontAwesome, CustomSelect } from '../components/ui';
 
 const FIELD_CLS =
-  'w-full h-11 px-4 text-sm bg-[#101828] border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-white placeholder:text-[#6EA2B3]';
-const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] mb-2';
+  'w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:border-blue-600 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]';
+const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-[#6EA2B3] mb-2';
 
 const SERVICE_CATEGORY_OPTIONS = [
   { value: 'pelayanan', label: 'Pelayanan' },
@@ -120,7 +120,7 @@ export function UserComplaintsPage() {
     setTimeout(() => setCopiedRef(null), 2000);
   };
 
-  const canSubmit = Boolean(title.trim() && description.trim());
+  const canSubmit = Boolean(title.trim().length >= 3 && description.trim().length >= 10 && description.length <= 2000);
 
   const securityKindOptions = useMemo(
     () => Object.entries(SECURITY_KIND_LABEL).map(([v, l]) => ({ value: v, label: l })),
@@ -174,7 +174,7 @@ export function UserComplaintsPage() {
               : 'text-[#6EA2B3] hover:text-white'
           }`}
         >
-          <Flaticon name="document" className="text-xs" />
+          <FontAwesome name="file-lines" className="text-xs" />
           <span>Buat Laporan Baru</span>
         </button>
 
@@ -187,7 +187,7 @@ export function UserComplaintsPage() {
               : 'text-[#6EA2B3] hover:text-white'
           }`}
         >
-          <Flaticon name="time-past" className="text-xs" />
+          <FontAwesome name="clock" className="text-xs" />
           <span>Riwayat Laporan ({complaints.length})</span>
         </button>
       </div>
@@ -220,7 +220,7 @@ export function UserComplaintsPage() {
                     <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                       reportType === 'layanan' ? 'bg-[#7BBDE8] text-[#101828]' : 'bg-[#171F2F] text-[#6EA2B3]'
                     }`}>
-                      <Flaticon name="comment-dots" className="text-xs" />
+                      <FontAwesome name="comment-dots" className="text-xs" />
                     </span>
                     <div>
                       <p className="text-sm font-bold text-white">Pengaduan Layanan Publik</p>
@@ -357,6 +357,7 @@ export function UserComplaintsPage() {
                 className="w-full p-4 rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 bg-[#101828] text-sm outline-none transition-colors text-white placeholder:text-[#6EA2B3] resize-none"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
+                maxLength={2000}
                 rows={5}
                 placeholder={
                   reportType === 'keamanan'
@@ -365,6 +366,15 @@ export function UserComplaintsPage() {
                 }
                 required
               />
+              {/* Character counter (F-H8) */}
+              <div className="flex justify-between items-center mt-1.5 px-1 text-xs">
+                <span className="text-[#6EA2B3]">
+                  {description.trim().length < 10 ? 'Minimal 10 karakter' : 'Panjang deskripsi memadai'}
+                </span>
+                <span className={`tabular-nums ${description.length >= 2000 ? 'text-rose-400 font-bold' : 'text-[#6EA2B3]'}`}>
+                  {description.length} / 2000 karakter
+                </span>
+              </div>
             </div>
 
             {/* Status Feedback */}

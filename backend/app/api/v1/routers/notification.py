@@ -248,9 +248,7 @@ def stream_notifications(
 
     async def event_generator():
         last_id = 0
-        db = SessionLocal()
-        try:
-            # Kirim cursor awal: id terbaru yang sudah ada
+        with SessionLocal() as db:
             latest = (
                 db.query(Notification)
                 .filter(Notification.user_id == user_id)
@@ -258,35 +256,37 @@ def stream_notifications(
                 .first()
             )
             last_id = latest.id if latest else 0
-            yield f"event: ready\ndata: {json.dumps({'last_id': last_id})}\n\n"
+        yield f"event: ready\ndata: {json.dumps({'last_id': last_id})}\n\n"
 
-            idle = 0
-            while True:
-                if await request.is_disconnected():
-                    break
+        idle = 0
+        while True:
+            if await request.is_disconnected():
+                break
 
+            with SessionLocal() as db:
                 rows = (
                     db.query(Notification)
                     .filter(Notification.user_id == user_id, Notification.id > last_id)
                     .order_by(Notification.id.asc())
                     .all()
                 )
+                serialized = [
+                    (row.id, NotificationResponse.model_validate(row).model_dump(mode="json"))
+                    for row in rows
+                ]
 
-                if rows:
-                    idle = 0
-                    for row in rows:
-                        last_id = row.id
-                        data = NotificationResponse.model_validate(row).model_dump(mode="json")
-                        yield f"event: notification\ndata: {json.dumps(data)}\n\n"
-                else:
-                    idle += 1
-                    # Heartbeat tiap ~15 detik agar koneksi tidak timeout
-                    if idle % 15 == 0:
-                        yield ": ping\n\n"
+            if serialized:
+                idle = 0
+                for row_id, data in serialized:
+                    last_id = row_id
+                    yield f"event: notification\ndata: {json.dumps(data)}\n\n"
+            else:
+                idle += 1
+                # Heartbeat tiap ~15 detik agar koneksi tidak timeout
+                if idle % 15 == 0:
+                    yield ": ping\n\n"
 
-                await asyncio.sleep(1)
-        finally:
-            db.close()
+            await asyncio.sleep(2)
 
     return StreamingResponse(
         event_generator(),

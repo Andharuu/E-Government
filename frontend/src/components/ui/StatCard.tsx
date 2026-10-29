@@ -24,22 +24,22 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white rounded-[16px] border border-[#BDD8E9]/60 p-5 shadow-[0_1px_2px_rgba(0,29,57,0.04)] flex items-start justify-between gap-3 ${className}`}
+      className={`group bg-white dark:bg-[#171F2F] rounded-[16px] border border-slate-200 dark:border-[#243048] p-5 shadow-sm flex items-start justify-between gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${className}`}
     >
       <div className="min-w-0">
-        <p className="text-[13px] leading-[20px] font-medium text-[#49769F] truncate">
+        <p className="text-[13px] leading-[20px] font-medium text-slate-500 dark:text-[#6EA2B3] truncate">
           {title}
         </p>
         <div className="flex items-baseline gap-2 mt-2">
-          <span className="text-[28px] leading-[34px] font-semibold text-[#001D39] tracking-[-0.02em] tabular-nums">
+          <span className="text-[28px] leading-[34px] font-semibold text-slate-900 dark:text-white tracking-[-0.02em] tabular-nums">
             {value}
           </span>
           {trend && (
             <span
               className={`text-[12px] leading-[16px] font-medium px-2 py-0.5 rounded-full ${
                 trend.positive
-                  ? 'bg-[#BDD8E9]/40 text-[#0A4174]'
-                  : 'bg-[#FFF1F2] text-[#BE123C]'
+                  ? 'bg-blue-50 dark:bg-[#BDD8E9]/20 text-blue-700 dark:text-[#7BBDE8]'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
               }`}
             >
               {trend.positive ? '+' : ''}
@@ -48,14 +48,14 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
         {subLabel && (
-          <p className="text-[12px] leading-[18px] font-normal text-[#6EA2B3] truncate mt-1">
+          <p className="text-[12px] leading-[18px] font-normal text-slate-400 dark:text-[#6EA2B3] truncate mt-1">
             {subLabel}
           </p>
         )}
       </div>
 
       {icon && (
-        <div className="shrink-0 flex items-center justify-center text-[20px] text-[#0A4174] pt-0.5">
+        <div className="shrink-0 flex items-center justify-center text-[20px] text-blue-600 dark:text-[#7BBDE8] pt-0.5 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6">
           {icon}
         </div>
       )}

@@ -192,7 +192,7 @@ def _build_agendas() -> list[dict]:
             "deadline": "Sesuai jadwal booking",
             "description": "Pengajuan paspor biasa baru, perpanjangan, dan pergantian akibat penuh/habis.",
             "importance": "sedang",
-            "url": "https://www.imigrasigo.id",
+            "url": "https://www.imigrasi.go.id",
         },
         {
             "id": 24,

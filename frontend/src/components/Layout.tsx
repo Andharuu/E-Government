@@ -1,4 +1,7 @@
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import logoDark from '../assets/logo dark.png';
+import logoLight from '../assets/logo light.png';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FontAwesome } from './ui';
@@ -70,6 +73,7 @@ const SEARCH_ITEMS: SearchResultItem[] = [
 
 
 export function Layout() {
+  const { theme, toggleTheme } = useTheme();
   const token = localStorage.getItem('govconnect_token');
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -105,9 +109,17 @@ export function Layout() {
     }
   }, [location.pathname]);
 
-  // Search feature state
+  // Search feature state with 300ms debounce (F-M5)
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -289,17 +301,17 @@ export function Layout() {
     return items;
   }, [userProfile, recentActivities, notifications]);
 
-  // Filter search results against dynamic items
+  // Filter search results against dynamic items (menggunakan debouncedSearchQuery)
   const filteredSearchResults = useMemo(() => {
-    if (searchQuery.trim() === '') return dynamicSearchItems.slice(0, 6);
-    const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim() === '') return dynamicSearchItems.slice(0, 6);
+    const q = debouncedSearchQuery.toLowerCase();
     return dynamicSearchItems.filter(item =>
       item.title.toLowerCase().includes(q) ||
       item.desc.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q) ||
       (item.keywords && item.keywords.toLowerCase().includes(q))
     );
-  }, [searchQuery, dynamicSearchItems]);
+  }, [debouncedSearchQuery, dynamicSearchItems]);
 
   const handleSelectSearchResult = (path: string) => {
     setIsSearchOpen(false);
@@ -338,7 +350,7 @@ export function Layout() {
   const userInitial = (user?.email?.charAt(0) || 'U').toUpperCase();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#001D39] text-[#BDD8E9] font-sans selection:bg-[#7BBDE8] selection:text-[#001D39]">
+    <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#001D39] text-slate-800 dark:text-[#BDD8E9] font-sans selection:bg-[#7BBDE8] selection:text-[#001D39]">
       {/* Mobile Backdrop Overlay */}
       {mobileOpen && (
         <div
@@ -351,7 +363,7 @@ export function Layout() {
       {/* SIDEBAR: TailAdmin Dark Architecture with GovConnect Color Hierarchy     */}
       {/* ========================================================================= */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-40 h-screen flex flex-col justify-between shrink-0 bg-[#101828] border-r border-[#1E293B] transition-all duration-300 md:translate-x-0 ${
+        className={`fixed top-0 left-0 bottom-0 z-40 h-screen flex flex-col justify-between shrink-0 bg-white dark:bg-[#101828] border-r border-slate-200 dark:border-[#1E293B] shadow-sm dark:shadow-none transition-all duration-300 md:translate-x-0 ${
           sidebarCollapsed ? 'w-[88px]' : 'w-[270px]'
         } ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
       >
@@ -361,13 +373,13 @@ export function Layout() {
             <div className={`flex items-center h-20 transition-all duration-300 ${sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <img
-                  src="/logo-govconnect.png"
+                  src={theme === 'dark' ? logoDark : logoLight}
                   alt="GovConnect"
                   className="w-11 h-11 object-contain shrink-0 drop-shadow-sm"
                   title="GovConnect"
                 />
                 {!sidebarCollapsed && (
-                  <span className="font-extrabold text-white text-[25px] tracking-tight leading-tight truncate">
+                  <span className="font-extrabold text-slate-900 dark:text-white text-[25px] tracking-tight leading-tight truncate">
                     GovConnect
                   </span>
                 )}
@@ -376,8 +388,8 @@ export function Layout() {
                 <button
                   type="button"
                   onClick={() => setMobileOpen(false)}
-                  className="md:hidden text-[#6EA2B3] hover:text-white p-1 cursor-pointer transition-colors"
-                  aria-label="Tutup menu"
+                  aria-label="Tutup navigasi seluler"
+                  className="md:hidden text-slate-400 dark:text-[#6EA2B3] hover:text-slate-700 dark:hover:text-white p-1 cursor-pointer transition-colors"
                 >
                   <FontAwesome name="xmark" className="text-base" />
                 </button>
@@ -390,7 +402,7 @@ export function Layout() {
                 /* ===== ADMIN SECTION ===== */
                 <div>
                   {!sidebarCollapsed ? (
-                    <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                    <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-[#6EA2B3] uppercase truncate">
                       ADMINISTRATION
                     </p>
                   ) : (
@@ -404,14 +416,14 @@ export function Layout() {
                         end={item.end}
                         title={sidebarCollapsed ? item.label : undefined}
                         className={({ isActive }) =>
-                          `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                          `group relative flex items-center text-[14px] transition-all duration-200 active:scale-[0.98] cursor-pointer ${
                             sidebarCollapsed
                               ? 'justify-center h-11 w-11 mx-auto rounded-xl'
                               : 'gap-3 px-3.5 h-11 rounded-lg'
                           } ${
                             isActive
-                              ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
-                              : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
+                              ? 'bg-blue-50 dark:bg-[#171F2F] text-blue-700 dark:text-white font-semibold shadow-xs border border-blue-200 dark:border-[#243048]'
+                              : 'text-slate-600 dark:text-[#BDD8E9]/80 hover:bg-slate-100 dark:hover:bg-[#171F2F]/60 hover:text-slate-900 dark:hover:text-white font-medium'
                           }`
                         }
                       >
@@ -422,7 +434,7 @@ export function Layout() {
                               className={`text-[17px] text-center shrink-0 transition-colors ${
                                 sidebarCollapsed ? 'w-full' : 'w-5'
                               } ${
-                                isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
+                                isActive ? 'text-blue-600 dark:text-[#7BBDE8]' : 'text-slate-400 dark:text-[#6EA2B3] group-hover:text-slate-700 dark:group-hover:text-white'
                               }`}
                             />
                             {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -437,11 +449,11 @@ export function Layout() {
                 <>
                   <div>
                     {!sidebarCollapsed ? (
-                      <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                      <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-[#6EA2B3] uppercase truncate">
                         MENU
                       </p>
                     ) : (
-                      <div className="h-0.5 w-6 bg-[#243048] mx-auto my-3 rounded-full" title="MENU" />
+                      <div className="h-0.5 w-6 bg-slate-200 dark:bg-[#243048] mx-auto my-3 rounded-full" title="MENU" />
                     )}
                     <nav className="space-y-1">
                       {menuNavItems.map((item) => (
@@ -450,14 +462,14 @@ export function Layout() {
                           to={item.path}
                           title={sidebarCollapsed ? item.label : undefined}
                           className={({ isActive }) =>
-                            `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                            `group relative flex items-center text-[14px] transition-all duration-200 active:scale-[0.98] cursor-pointer ${
                               sidebarCollapsed
                                 ? 'justify-center h-11 w-11 mx-auto rounded-xl'
                                 : 'gap-3 px-3.5 h-11 rounded-lg'
                             } ${
                               isActive
-                                ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
-                                : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
+                                ? 'bg-blue-50 dark:bg-[#171F2F] text-blue-700 dark:text-white font-semibold shadow-xs border border-blue-200 dark:border-[#243048]'
+                                : 'text-slate-600 dark:text-[#BDD8E9]/80 hover:bg-slate-100 dark:hover:bg-[#171F2F]/60 hover:text-slate-900 dark:hover:text-white font-medium'
                             }`
                           }
                         >
@@ -468,13 +480,13 @@ export function Layout() {
                                 className={`text-[17px] text-center shrink-0 transition-colors ${
                                   sidebarCollapsed ? 'w-full' : 'w-5'
                                 } ${
-                                  isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
+                                  isActive ? 'text-blue-600 dark:text-[#7BBDE8]' : 'text-slate-400 dark:text-[#6EA2B3] group-hover:text-slate-700 dark:group-hover:text-white'
                                 }`}
                               />
                               {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                               {item.path === '/notifications' && unreadCount > 0 && (
                                 !sidebarCollapsed ? (
-                                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 text-[10px] font-bold rounded-full bg-[#7BBDE8]/25 text-[#7BBDE8] border border-[#7BBDE8]/40 px-1.5">
+                                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-[#7BBDE8]/25 text-blue-700 dark:text-[#7BBDE8] border border-blue-200 dark:border-[#7BBDE8]/40 px-1.5">
                                     {unreadCount > 99 ? '99+' : unreadCount}
                                   </span>
                                 ) : (
@@ -490,11 +502,11 @@ export function Layout() {
 
                   <div>
                     {!sidebarCollapsed ? (
-                      <p className="px-3 pb-2 text-[11px] font-medium tracking-wider text-[#6EA2B3] uppercase truncate">
+                      <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-[#6EA2B3] uppercase truncate">
                         OTHERS
                       </p>
                     ) : (
-                      <div className="h-0.5 w-6 bg-[#243048] mx-auto my-3 rounded-full" title="OTHERS" />
+                      <div className="h-0.5 w-6 bg-slate-200 dark:bg-[#243048] mx-auto my-3 rounded-full" title="OTHERS" />
                     )}
                     <nav className="space-y-1">
                       {generalNavItems.map((item) => (
@@ -503,14 +515,14 @@ export function Layout() {
                           to={item.path}
                           title={sidebarCollapsed ? item.label : undefined}
                           className={({ isActive }) =>
-                            `group relative flex items-center text-[14px] transition-colors cursor-pointer ${
+                            `group relative flex items-center text-[14px] transition-all duration-200 active:scale-[0.98] cursor-pointer ${
                               sidebarCollapsed
                                 ? 'justify-center h-11 w-11 mx-auto rounded-xl'
                                 : 'gap-3 px-3.5 h-11 rounded-lg'
                             } ${
                               isActive
-                                ? 'bg-[#171F2F] text-white font-semibold shadow-xs border border-[#243048]'
-                                : 'text-[#BDD8E9]/80 hover:bg-[#171F2F]/60 hover:text-white font-medium'
+                                ? 'bg-blue-50 dark:bg-[#171F2F] text-blue-700 dark:text-white font-semibold shadow-xs border border-blue-200 dark:border-[#243048]'
+                                : 'text-slate-600 dark:text-[#BDD8E9]/80 hover:bg-slate-100 dark:hover:bg-[#171F2F]/60 hover:text-slate-900 dark:hover:text-white font-medium'
                             }`
                           }
                         >
@@ -521,7 +533,7 @@ export function Layout() {
                                 className={`text-[17px] text-center shrink-0 transition-colors ${
                                   sidebarCollapsed ? 'w-full' : 'w-5'
                                 } ${
-                                  isActive ? 'text-[#7BBDE8]' : 'text-[#6EA2B3] group-hover:text-white'
+                                  isActive ? 'text-blue-600 dark:text-[#7BBDE8]' : 'text-slate-400 dark:text-[#6EA2B3] group-hover:text-slate-700 dark:group-hover:text-white'
                                 }`}
                               />
                               {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -541,18 +553,18 @@ export function Layout() {
       {/* ========================================================================= */}
       {/* MAIN CONTENT AREA: TailAdmin Dark Navbar + Crisp Surface Canvas           */}
       {/* ========================================================================= */}
-      <div className={`flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#101828] transition-all duration-300 ${
+      <div className={`flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-slate-50 dark:bg-[#101828] transition-all duration-300 ${
         sidebarCollapsed ? 'md:ml-[88px]' : 'md:ml-[270px]'
       }`}>
         {/* Top Navbar: TailAdmin Dark Style with Crisp Bottom Divider */}
-        <header className="shrink-0 z-30 h-20 bg-[#101828] border-b border-[#1E293B] px-4 sm:px-8 flex items-center justify-between gap-4">
+        <header className="shrink-0 z-30 h-20 bg-white dark:bg-[#101828] border-b border-slate-200 dark:border-[#1E293B] px-4 sm:px-8 flex items-center justify-between gap-4">
           {/* Left: Sidebar Toggle Button (Minimize / Maximize) + TailAdmin Search bar */}
           <div className="flex items-center gap-3 sm:gap-4 flex-1">
             {/* Sidebar Toggle Button (Minimize / Maximize di kiri search bar) */}
             <button
               type="button"
               onClick={toggleSidebar}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#243048] bg-[#171F2F] text-[#BDD8E9] hover:bg-[#243048] hover:text-white transition-all cursor-pointer shrink-0 shadow-xs"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0 shadow-xs"
               title={sidebarCollapsed ? "Perbesar sidebar (Maximize)" : "Perkecil sidebar (Minimize)"}
               aria-label="Toggle navigasi sidebar"
             >
@@ -561,7 +573,7 @@ export function Layout() {
 
             {/* Search Input with TailAdmin ⌘ K badge - Extended width to the right */}
             <div className="relative flex-1 max-w-2xl lg:max-w-3xl" ref={searchContainerRef}>
-              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6EA2B3]">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#6EA2B3]">
                 <FontAwesome name="magnifying-glass" className="text-sm" />
               </span>
               <input
@@ -574,7 +586,7 @@ export function Layout() {
                 }}
                 onFocus={() => setIsSearchOpen(true)}
                 placeholder="Cari fitur, layanan, data profil..."
-                className="h-11 w-full rounded-xl border border-[#243048] bg-[#171F2F] pl-10 pr-16 text-[14px] text-white placeholder-[#6EA2B3] focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 focus:bg-[#171F2F] outline-none transition-colors"
+                className="h-11 w-full rounded-xl border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] pl-10 pr-16 text-[14px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#6EA2B3] focus:border-blue-500 dark:focus:border-[#7BBDE8] focus:ring-2 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:bg-white dark:focus:bg-[#171F2F] outline-none transition-colors"
               />
               <button
                 type="button"
@@ -582,7 +594,7 @@ export function Layout() {
                   searchInputRef.current?.focus();
                   setIsSearchOpen(true);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded-md border border-[#243048] bg-[#101828] px-2 py-0.5 text-[11px] font-medium text-[#BDD8E9] hover:bg-[#243048] cursor-pointer transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded-md border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] cursor-pointer transition-colors"
                 title="Pintasan keyboard (⌘K / Ctrl+K)"
               >
                 <span>⌘</span>
@@ -591,23 +603,23 @@ export function Layout() {
 
               {/* Quick Search Dropdown Panel (TailAdmin Dark Style) */}
               {isSearchOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#171F2F] rounded-2xl border border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-3 border-b border-[#243048] bg-[#101828]/50 flex items-center justify-between text-[11px] text-[#BDD8E9] font-medium">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#171F2F] rounded-2xl border border-slate-200 dark:border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3 border-b border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#101828]/50 flex items-center justify-between text-[11px] text-slate-500 dark:text-[#BDD8E9] font-medium">
                     <span>Hasil Pencarian Cepat</span>
                   </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-[#243048]">
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-[#243048]">
                     {filteredSearchResults.length > 0 ? (
                       filteredSearchResults.map((item) => (
                         <button
                           key={item.id}
                           onClick={() => handleSelectSearchResult(item.path)}
-                          className="w-full p-3 text-left hover:bg-[#0A4174]/40 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                          className="w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-[#0A4174]/40 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
                         >
                           <div className="min-w-0">
-                            <span className="text-[13px] font-semibold text-white group-hover:text-[#7BBDE8] transition-colors">
+                            <span className="text-[13px] font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-[#7BBDE8] transition-colors">
                               {item.title}
                             </span>
-                            <p className="text-[11px] text-[#6EA2B3] truncate mt-0.5">{item.desc}</p>
+                            <p className="text-[11px] text-slate-500 dark:text-[#6EA2B3] truncate mt-0.5">{item.desc}</p>
                           </div>
                           <FontAwesome name="arrow-right" className="text-xs text-[#6EA2B3] group-hover:text-[#7BBDE8] group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
                         </button>
@@ -625,6 +637,27 @@ export function Layout() {
 
           {/* Right: Circular Notification Bell + User Profile Dropdown (TailAdmin Dark Style) */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            {/* Theme Toggle Button (Dark / Light Mode) — di sebelah kiri tombol notifikasi */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs group"
+              title={theme === 'dark' ? 'Beralih ke mode terang (Light mode)' : 'Beralih ke mode gelap (Dark mode)'}
+              aria-label="Toggle mode gelap atau terang"
+            >
+              {theme === 'dark' ? (
+                <FontAwesome
+                  name="sun"
+                  className="text-base text-amber-400 group-hover:rotate-45 transition-transform duration-300"
+                />
+              ) : (
+                <FontAwesome
+                  name="moon"
+                  className="text-base text-[#0A4174] group-hover:-rotate-12 transition-transform duration-300"
+                />
+              )}
+            </button>
+
             {/* Circular Notification Bell */}
             <div className="relative" ref={notifContainerRef}>
               <button
@@ -633,7 +666,7 @@ export function Layout() {
                   setIsNotifOpen(!isNotifOpen);
                   setIsUserMenuOpen(false);
                 }}
-                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#243048] bg-[#171F2F] text-[#BDD8E9] hover:bg-[#243048] hover:text-white transition-colors cursor-pointer"
+                className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                 aria-label="Buka Notifikasi"
               >
                 {unreadCount > 0 && (
@@ -647,21 +680,21 @@ export function Layout() {
 
               {/* Notification Dropdown Panel (TailAdmin Dark Style - Simple & Proper) */}
               {isNotifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#171F2F] rounded-2xl border border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-3.5 border-b border-[#243048] bg-[#101828]/50 flex items-center justify-between">
-                    <span className="text-[13px] font-bold text-white">Notifikasi</span>
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-[#171F2F] rounded-2xl border border-slate-200 dark:border-[#243048] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3.5 border-b border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#101828]/50 flex items-center justify-between">
+                    <span className="text-[13px] font-bold text-slate-900 dark:text-white">Notifikasi</span>
                     {unreadCount > 0 && (
                       <button
                         type="button"
                         onClick={() => markAllRead()}
-                        className="text-[12px] font-semibold text-[#7BBDE8] hover:text-white cursor-pointer transition-colors"
+                        className="text-[12px] font-semibold text-blue-600 dark:text-[#7BBDE8] hover:text-blue-800 dark:hover:text-white cursor-pointer transition-colors"
                       >
                         Tandai semua dibaca
                       </button>
                     )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-[#243048]/60">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-[#243048]/60">
                     {notifications.length > 0 ? (
                       notifications.map((n) => (
                         <div
@@ -669,8 +702,8 @@ export function Layout() {
                           onClick={() => {
                             if (!n.read) markRead(n.id);
                           }}
-                          className={`px-4 py-3 hover:bg-[#101828]/60 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
-                            !n.read ? 'bg-[#0A4174]/15' : ''
+                          className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-[#101828]/60 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
+                            !n.read ? 'bg-blue-50/60 dark:bg-[#0A4174]/15' : ''
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -679,12 +712,12 @@ export function Layout() {
                                 !n.read ? 'bg-[#7BBDE8]' : 'bg-transparent'
                               }`}
                             />
-                            <span className={`text-[13px] truncate ${!n.read ? 'font-semibold text-white' : 'font-medium text-[#BDD8E9]/80'}`}>
+                            <span className={`text-[13px] truncate ${!n.read ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-600 dark:text-[#BDD8E9]/80'}`}>
                               {n.title}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-[11px] text-[#6EA2B3] font-medium tabular-nums">
+                            <span className="text-[11px] text-slate-400 dark:text-[#6EA2B3] font-medium tabular-nums">
                               {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <button
@@ -693,7 +726,7 @@ export function Layout() {
                                 e.stopPropagation();
                                 remove(n.id);
                               }}
-                              className="text-[#6EA2B3] hover:text-rose-400 p-1 cursor-pointer transition-colors"
+                              className="text-slate-400 dark:text-[#6EA2B3] hover:text-rose-500 dark:hover:text-rose-400 p-1 cursor-pointer transition-colors"
                               title="Hapus"
                             >
                               <FontAwesome name="trash" className="text-xs" />
@@ -702,17 +735,17 @@ export function Layout() {
                         </div>
                       ))
                     ) : (
-                      <div className="p-8 text-center text-[13px] text-[#6EA2B3]">
+                      <div className="p-8 text-center text-[13px] text-slate-400 dark:text-[#6EA2B3]">
                         {notifsLoading ? 'Memuat notifikasi...' : 'Tidak ada notifikasi saat ini'}
                       </div>
                     )}
                   </div>
 
-                  <div className="p-3 border-t border-[#0A4174]/60 bg-[#0A4174]/20 text-center">
+                  <div className="p-3 border-t border-slate-200 dark:border-[#0A4174]/60 bg-slate-50 dark:bg-[#0A4174]/20 text-center">
                     <NavLink
                       to="/notifications"
                       onClick={() => setIsNotifOpen(false)}
-                      className="text-xs font-bold text-[#7BBDE8] hover:text-white transition-colors inline-flex items-center gap-1.5"
+                      className="text-xs font-bold text-blue-600 dark:text-[#7BBDE8] hover:text-blue-800 dark:hover:text-white transition-colors inline-flex items-center gap-1.5"
                     >
                       <span>Lihat Semua Notifikasi</span>
                       <FontAwesome name="arrow-right" className="text-[10px]" />
@@ -730,36 +763,36 @@ export function Layout() {
                   setIsUserMenuOpen(!isUserMenuOpen);
                   setIsNotifOpen(false);
                 }}
-                className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-[#0A4174]/30 transition-colors cursor-pointer text-left"
+                className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#0A4174]/30 transition-colors cursor-pointer text-left"
                 aria-label="Menu Akun Pengguna"
               >
                 <div className="h-10 w-10 rounded-full border border-[#7BBDE8]/40 bg-[#0A4174] text-[#7BBDE8] font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
                   {userInitial}
                 </div>
                 <div className="hidden sm:block">
-                  <p className="text-[14px] font-medium text-white leading-tight truncate max-w-[130px]">
+                  <p className="text-[14px] font-medium text-slate-900 dark:text-white leading-tight truncate max-w-[130px]">
                     {userProfile?.full_name || user?.email?.split('@')[0] || 'andharu'}
                   </p>
                   {isAdmin && (
-                    <p className="text-[12px] text-[#6EA2B3] leading-tight mt-0.5 font-normal">
+                    <p className="text-[12px] text-slate-500 dark:text-[#6EA2B3] leading-tight mt-0.5 font-normal">
                       Administrator
                     </p>
                   )}
                 </div>
                 <FontAwesome
                   name="chevron-down"
-                  className={`text-xs text-[#6EA2B3] hidden sm:block transition-transform duration-200 ${
-                    isUserMenuOpen ? 'rotate-180 text-white' : ''
+                  className={`text-xs text-slate-400 dark:text-[#6EA2B3] hidden sm:block transition-transform duration-200 ${
+                    isUserMenuOpen ? 'rotate-180 text-slate-900 dark:text-white' : ''
                   }`}
                 />
               </button>
 
               {/* User Dropdown Menu (TailAdmin Dark) */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-[#243048] bg-[#171F2F] shadow-2xl p-2 z-50 text-white animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-3 border-b border-[#243048] bg-[#101828]/50 rounded-xl mb-1">
-                    <p className="text-sm font-semibold text-white truncate">{userProfile?.full_name || user?.email?.split('@')[0] || 'andharu'}</p>
-                    <p className="text-xs text-[#6EA2B3] truncate mt-0.5">{user?.email}</p>
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#171F2F] shadow-2xl p-2 z-50 text-slate-900 dark:text-white animate-in fade-in zoom-in-95 duration-150">
+                  <div className="p-3 border-b border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#101828]/50 rounded-xl mb-1">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{userProfile?.full_name || user?.email?.split('@')[0] || 'andharu'}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#6EA2B3] truncate mt-0.5">{user?.email}</p>
                     {isAdmin && (
                       <span className="inline-block mt-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#7BBDE8]/20 text-[#7BBDE8] border border-[#7BBDE8]/30">
                         Administrator
@@ -771,30 +804,30 @@ export function Layout() {
                     <NavLink
                       to="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
                     >
-                      <FontAwesome name="user" className="text-xs text-[#7BBDE8]" />
+                      <FontAwesome name="user" className="text-xs text-blue-600 dark:text-[#7BBDE8]" />
                       <span>Profil Saya</span>
                     </NavLink>
                     <NavLink
                       to="/settings"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
                     >
-                      <FontAwesome name="shield-halved" className="text-xs text-[#7BBDE8]" />
+                      <FontAwesome name="shield-halved" className="text-xs text-blue-600 dark:text-[#7BBDE8]" />
                       <span>Pengaturan &amp; Keamanan</span>
                     </NavLink>
                     <NavLink
                       to="/activity"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-[#BDD8E9] hover:bg-[#243048] hover:text-white rounded-lg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
                     >
-                      <FontAwesome name="clock" className="text-xs text-[#7BBDE8]" />
+                      <FontAwesome name="clock" className="text-xs text-blue-600 dark:text-[#7BBDE8]" />
                       <span>Riwayat Aktivitas</span>
                     </NavLink>
                   </div>
 
-                  <div className="pt-1 border-t border-[#243048]">
+                  <div className="pt-1 border-t border-slate-200 dark:border-[#243048]">
                     <button
                       type="button"
                       onClick={() => {
@@ -816,7 +849,7 @@ export function Layout() {
         {/* Content Body */}
         <main
           ref={mainRef}
-          className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden page-enter w-full bg-[#101828]"
+          className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden page-enter w-full bg-slate-50 dark:bg-[#101828]"
         >
           <Outlet />
         </main>

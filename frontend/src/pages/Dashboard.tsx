@@ -8,26 +8,26 @@ import {
   Tooltip,
   XAxis,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { FontAwesome } from '../components/ui';
-import { Chart, registerables } from 'chart.js';
-
-Chart.register(...registerables);
 
 function CustomAreaTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#171F2F] text-white px-4 py-3 rounded-xl border border-[#243048] shadow-2xl text-xs">
-      <p className="font-semibold mb-2 text-[#6EA2B3]">{label}</p>
+    <div className="bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white px-4 py-3 rounded-xl border border-slate-200 dark:border-[#243048] shadow-2xl text-xs">
+      <p className="font-semibold mb-2 text-slate-600 dark:text-[#6EA2B3]">{label}</p>
       {payload.map((entry: any, idx: number) => (
         <div key={idx} className="flex items-center justify-between gap-4 py-0.5">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-            <span className="text-[#BDD8E9] font-medium">
+            <span className="text-slate-600 dark:text-[#BDD8E9] font-medium">
               {entry.name === 'autofill' ? 'Sesi Formulir' : 'Field Terisi'}
             </span>
           </div>
-          <span className="font-bold text-white tabular-nums">{entry.value}</span>
+          <span className="font-bold text-slate-900 dark:text-white tabular-nums">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -57,12 +57,66 @@ export function useCountUp(target: number, duration = 1200) {
   return value;
 }
 
-function SkeletonCard() {
+function DashboardSkeleton() {
   return (
-    <div className="rounded-2xl bg-[#171F2F] p-6 animate-pulse">
-      <div className="h-4 bg-[#243048]/60 rounded w-1/3 mb-4" />
-      <div className="h-8 bg-[#243048]/60 rounded w-2/3 mb-2" />
-      <div className="h-4 bg-[#243048]/60 rounded w-1/2" />
+    <div className="space-y-6 pb-12 w-full max-w-7xl mx-auto animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="h-8 bg-slate-200 dark:bg-[#243048] rounded-xl w-64 mb-2" />
+          <div className="h-4 bg-slate-200 dark:bg-[#243048]/60 rounded-lg w-96" />
+        </div>
+        <div className="h-10 bg-slate-200 dark:bg-[#243048] rounded-xl w-32" />
+      </div>
+
+      {/* 4 Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl bg-white dark:bg-[#171F2F] p-5 border border-slate-200 dark:border-[#243048]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-4 bg-slate-200 dark:bg-[#243048]/70 rounded w-24" />
+              <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-[#243048]" />
+            </div>
+            <div className="h-7 bg-slate-200 dark:bg-[#243048] rounded w-28 mb-2" />
+            <div className="h-3 bg-slate-200 dark:bg-[#243048]/60 rounded w-36" />
+          </div>
+        ))}
+      </div>
+
+      {/* Chart Row: 2/3 Area Chart + 1/3 Donut Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-[#171F2F] p-6 border border-slate-200 dark:border-[#243048] h-[380px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-5 bg-slate-200 dark:bg-[#243048] rounded w-44" />
+            <div className="h-8 bg-slate-200 dark:bg-[#243048] rounded-lg w-32" />
+          </div>
+          <div className="h-[260px] bg-slate-100 dark:bg-[#101828]/60 rounded-xl w-full" />
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-[#171F2F] p-6 border border-slate-200 dark:border-[#243048] h-[380px] flex flex-col items-center justify-between">
+          <div className="h-5 bg-slate-200 dark:bg-[#243048] rounded w-36 self-start" />
+          <div className="w-44 h-44 rounded-full border-8 border-slate-200 dark:border-[#243048] my-auto" />
+          <div className="h-4 bg-slate-200 dark:bg-[#243048]/60 rounded w-48" />
+        </div>
+      </div>
+
+      {/* Recent Activities Table Skeleton */}
+      <div className="rounded-2xl bg-white dark:bg-[#171F2F] p-6 border border-slate-200 dark:border-[#243048]">
+        <div className="h-5 bg-slate-200 dark:bg-[#243048] rounded w-48 mb-6" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-[#243048]/40">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-[#243048]" />
+                <div>
+                  <div className="h-4 bg-slate-200 dark:bg-[#243048] rounded w-48 mb-1" />
+                  <div className="h-3 bg-slate-200 dark:bg-[#243048]/60 rounded w-28" />
+                </div>
+              </div>
+              <div className="h-4 bg-slate-200 dark:bg-[#243048] rounded w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -77,8 +131,7 @@ export function Dashboard() {
   const [timeRange, setTimeRange] = useState<'harian' | 'mingguan' | 'bulanan'>('bulanan');
   const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
 
-  const chartRef = useRef<HTMLCanvasElement | null>(null);
-  const chartInstanceRef = useRef<Chart<'doughnut'> | null>(null);
+
 
   const fetchAnalytics = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -103,7 +156,7 @@ export function Dashboard() {
     // 1. Polling setiap 4 detik untuk memastikan data autofill realtime
     const pollTimer = setInterval(() => {
       fetchAnalytics(true);
-    }, 4000);
+    }, 30000);
 
     // 2. Refetch ketika user kembali ke tab dasbor (focus & visibilitychange)
     const onFocus = () => fetchAnalytics(true);
@@ -178,74 +231,7 @@ export function Dashboard() {
     setSelectedSegment((prev) => (prev === idx ? null : idx));
   };
 
-  // TailAdmin Donut Chart Setup (Tanpa Gaps, Flat Ends, Seamless Ring, Tanpa Animasi & Tanpa Box Info)
-  useEffect(() => {
-    if (!chartRef.current || loading) return;
-
-    const ctx = chartRef.current.getContext('2d');
-    if (!ctx) return;
-
-    const total = resultsData.reduce((sum, d) => sum + d.value, 0);
-    const hasData = total > 0;
-
-    const chartLabels = hasData ? resultsData.map((d) => d.name) : ['Belum Ada Sesi'];
-    const chartValues = hasData ? resultsData.map((d) => d.value) : [1];
-    const chartColors = hasData ? resultsData.map((d) => d.color) : ['#243048'];
-
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.data.labels = chartLabels;
-      chartInstanceRef.current.data.datasets[0].data = chartValues;
-      chartInstanceRef.current.data.datasets[0].backgroundColor = chartColors;
-      chartInstanceRef.current.update();
-      return;
-    }
-
-    chartInstanceRef.current = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: chartLabels,
-        datasets: [
-          {
-            data: chartValues,
-            backgroundColor: chartColors,
-            borderWidth: 0,
-            borderRadius: 0,
-            spacing: 0,
-            hoverOffset: 0,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '70%',
-        rotation: -90,
-        animation: false,
-        onClick: (_event, elements) => {
-          if (!hasData) return;
-          if (elements.length > 0) {
-            const clickedIdx = elements[0].index;
-            handleSelectSegment(clickedIdx);
-          } else {
-            handleSelectSegment(null);
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            enabled: false,
-          },
-        },
-      },
-    });
-
-    return () => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy();
-        chartInstanceRef.current = null;
-      }
-    };
-  }, [resultsData, loading, selectedSegment]);
+  const hasChartData = resultsData.some((d) => d.value > 0);
 
   // Data Keamanan & Privasi Akun — Terhubung langsung ke sistem
   const privacyAuditItems = useMemo(() => {
@@ -400,17 +386,7 @@ export function Dashboard() {
   const timeSavedMinutes = Math.floor((analytics?.estimated_time_saved_seconds ?? (periodMetrics.fields * 30)) / 60);
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-        <div className="rounded-2xl bg-[#171F2F] p-6 h-80 animate-pulse" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -430,7 +406,8 @@ export function Dashboard() {
           type="button"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#171F2F] hover:bg-[#243048] border border-[#243048] text-xs font-semibold text-[#BDD8E9] hover:text-white transition-colors cursor-pointer self-start sm:self-auto disabled:opacity-50 shadow-sm"
+          aria-label="Segarkan data ringkasan dashboard"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#171F2F] hover:bg-[#243048] border border-[#243048] text-xs font-semibold text-[#BDD8E9] hover:text-white transition-all duration-200 active:scale-95 cursor-pointer self-start sm:self-auto disabled:opacity-50 shadow-sm group"
         >
           <FontAwesome
             name="rotate-right"
@@ -442,7 +419,7 @@ export function Dashboard() {
 
       {/* Row 1: 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60">
+        <div className="group rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#385175]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold tracking-wider uppercase text-[#7BBDE8]">
               {activeInfoSlide === 0 ? 'Total Pengisian' : 'Rasio Sukses'}
@@ -484,7 +461,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60">
+        <div className="group rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#385175]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6EA2B3]">Waktu yang dihemat</span>
             <span className="text-xs text-[#7BBDE8] bg-[#7BBDE8]/15 px-2 py-0.5 rounded-md font-bold">
@@ -501,7 +478,7 @@ export function Dashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60">
+        <div className="group rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#385175]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6EA2B3]">Kelengkapan profil</span>
           </div>
@@ -515,7 +492,7 @@ export function Dashboard() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60">
+        <div className="group rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#385175]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6EA2B3]">Total Autofill</span>
           </div>
@@ -531,7 +508,7 @@ export function Dashboard() {
       </div>
 
       {/* Row 2: Box Aktivitas Pengisian Formulir (Memanjang Penuh di Layar / Full Width) */}
-      <div className="w-full rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col">
+      <div className="w-full rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col transition-all duration-300 hover:border-[#385175]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-base font-bold text-white">Aktivitas Pengisian Formulir</h2>
@@ -643,7 +620,7 @@ export function Dashboard() {
       {/* Row 3: Hasil Pengisian Formulir (Kiri Bawah) & Ringkasan Audit Privasi (Kanan Bawah) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Box Kiri Bawah: Hasil Pengisian Formulir (Desain TailAdmin Sessions By Device, Tanpa Titik Tiga & Legend Horizontal) */}
-        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
           <div className="flex items-center justify-between pb-2">
             <div>
               <h2 className="text-base font-bold text-white">Hasil Pengisian Formulir</h2>
@@ -657,7 +634,24 @@ export function Dashboard() {
               className="w-56 h-56 sm:w-64 sm:h-64 relative flex items-center justify-center cursor-pointer"
               onClick={() => handleSelectSegment(null)}
             >
-              <canvas ref={(el) => { chartRef.current = el; }} />
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={hasChartData ? resultsData : [{ name: 'Belum Ada Sesi', value: 1, color: '#94A3B8' }]}
+                    innerRadius={68}
+                    outerRadius={88}
+                    paddingAngle={hasChartData ? 3 : 0}
+                    dataKey="value"
+                    onClick={(_, index) => handleSelectSegment(index)}
+                    cursor="pointer"
+                    stroke="none"
+                  >
+                    {(hasChartData ? resultsData : [{ name: 'Belum Ada Sesi', value: 1, color: '#94A3B8' }]).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 {activeSegmentItem ? (
                   <div className="flex flex-col items-center justify-center text-center px-4">
@@ -724,7 +718,7 @@ export function Dashboard() {
         </div>
 
         {/* Box Kanan Bawah: Ringkasan Audit Privasi (Tanpa Badge, Tanpa Garis Pembatas, Icon Selaras) */}
-        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
           <div className="flex items-center justify-between pb-2">
             <div>
               <h2 className="text-base font-bold text-white">Ringkasan Audit Privasi</h2>
@@ -736,13 +730,13 @@ export function Dashboard() {
             {privacyAuditItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-start gap-3.5 hover:bg-[#101828]/30 -mx-2 px-2 py-2 rounded-xl transition-colors"
+                className="flex items-start gap-3.5 hover:bg-[#101828]/50 -mx-2 px-2 py-2 rounded-xl transition-all duration-200 group cursor-default"
               >
-                <div className="shrink-0 pt-0.5">
+                <div className="shrink-0 pt-0.5 transition-transform duration-300 group-hover:scale-120 group-hover:rotate-6">
                   <FontAwesome name={item.icon} variant="solid" className="text-base text-[#7BBDE8]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13.5px] font-semibold text-white truncate">
+                  <p className="text-[13.5px] font-semibold text-white truncate transition-colors group-hover:text-[#7BBDE8]">
                     {item.title}
                   </p>
                   <p className="text-xs text-[#8ab4c8] font-normal mt-0.5 leading-relaxed">

@@ -1,21 +1,15 @@
 // Background Service Worker — GovConnect
 // Mode Panel Samping Cerdas dengan Deteksi Semantik & Sinkronisasi Profil Otomatis
 
-const API_BASE = "http://127.0.0.1:8000/api/v1";
-const DASHBOARD_URL = "http://localhost:5173/dashboard";
+importScripts('config.js');
 
-// Verifikasi origin dashboard SECARA PERSIS (bukan substring) untuk mencegah
-// bypass seperti "http://evil.com/?x=localhost:5173".
-const GOVCONNECT_WEB_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-];
 function isGovConnectDashboardUrl(url) {
+  if (typeof GovConnectConfig !== "undefined") {
+    return GovConnectConfig.isDashboardUrl(url);
+  }
   if (!url) return false;
   try {
-    return GOVCONNECT_WEB_ORIGINS.includes(new URL(url).origin);
+    return (self.GOVCONNECT_WEB_ORIGINS || []).includes(new URL(url).origin);
   } catch {
     return false;
   }
@@ -92,53 +86,59 @@ async function setupOffscreenDocument() {
 }
 
 // ============================================================
-// Data Drift Security - Update Dictionaries
+// Data Drift Security - Update Dictionaries dengan Retry Logic (E-M3)
 // ============================================================
-async function checkAndUpdateDictionaries() {
-  try {
-    // Di lingkungan lokal / dev atau saat remote manifest belum tersedia,
-    // fetch dapat gagal (offline/DNS). Gunakan fallback aman tanpa melempar error.
-    const res = await fetch("https://api.govconnect.app/dict-manifest.json").catch(() => null);
-    if (!res || !res.ok) {
-      // Remote dictionary tidak tersedia / offline; gunakan kamus bawaan (bundled).
-      return;
-    }
-
-    const manifest = await res.json().catch(() => null);
-    if (!manifest) return;
-    const remoteVersion = manifest.version;
-    if (!remoteVersion) return;
-
-    // T9: integritas WAJIB — tolak update tanpa hash yang benar.
-    if (!manifest.hash) {
-      console.warn("GovConnect: Update kamus tanpa hash — DITOLAK (integritas tidak terverifikasi).");
-      return;
-    }
-
-    const storage = await chrome.storage.local.get("govconnect_keyword_version");
-    const localVersion = storage.govconnect_keyword_version;
-
-    if (localVersion !== remoteVersion) {
-      const dataString = JSON.stringify(manifest.data);
-      const encoder = new TextEncoder();
-      const dataBuffer = encoder.encode(dataString);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-      if (hashHex !== manifest.hash) {
-        console.warn("GovConnect: SHA-256 validation failed for dictionary update!");
+async function checkAndUpdateDictionaries(retries = 3, delayMs = 1500) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch("https://api.govconnect.app/dict-manifest.json").catch(() => null);
+      if (!res || !res.ok) {
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, delayMs * attempt));
+          continue;
+        }
         return;
       }
 
-      await chrome.storage.local.set({
-        govconnect_keyword_version: remoteVersion,
-        govconnect_keywords: manifest.data
-      });
-      console.log(`GovConnect: Dictionary updated to version ${remoteVersion}`);
+      const manifest = await res.json().catch(() => null);
+      if (!manifest) return;
+      const remoteVersion = manifest.version;
+      if (!remoteVersion) return;
+
+      // T9: integritas WAJIB — tolak update tanpa hash yang benar.
+      if (!manifest.hash) {
+        console.warn("GovConnect: Update kamus tanpa hash — DITOLAK (integritas tidak terverifikasi).");
+        return;
+      }
+
+      const storage = await chrome.storage.local.get("govconnect_keyword_version");
+      const localVersion = storage.govconnect_keyword_version;
+
+      if (localVersion !== remoteVersion) {
+        const dataString = JSON.stringify(manifest.data);
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(dataString);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+        if (hashHex !== manifest.hash) {
+          console.warn("GovConnect: SHA-256 validation failed for dictionary update!");
+          return;
+        }
+
+        await chrome.storage.local.set({
+          govconnect_keyword_version: remoteVersion,
+          govconnect_keywords: manifest.data
+        });
+        console.log(`GovConnect: Dictionary updated to version ${remoteVersion}`);
+      }
+      return; // Berhasil, keluar dari loop
+    } catch (err) {
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, delayMs * attempt));
+      }
     }
-  } catch (err) {
-    // Fallback hening ke kamus bawaan jika terjadi gangguan jaringan
   }
 }
 
@@ -237,12 +237,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "GET_CURRENT_TAB_INFO") {
     if (sender.tab) {
       sendResponse({ tab: sender.tab });
-    } else {
-      chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
-        sendResponse({ tab: tabs[0] || null });
-      });
+      return false;
     }
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(tabs => {
+      if (tabs && tabs.length > 0) {
+        sendResponse({ tab: tabs[0] });
+      } else {
+        chrome.tabs.query({ active: true }).then(allActive => {
+          sendResponse({ tab: allActive[0] || null });
+        });
+      }
+    }).catch(() => {
+      sendResponse({ tab: null });
+    });
     return true;
+  }
+
+  if (message.action === "FORWARD_TO_TAB") {
+    const targetTabId = message.tabId;
+    if (targetTabId) {
+      chrome.tabs.sendMessage(targetTabId, message.tabMessage, (resp) => {
+        const err = chrome.runtime.lastError;
+        sendResponse(err ? { error: err.message } : resp);
+      });
+      return true;
+    }
   }
 
   if (message.action === "SEND_TAB_MESSAGE") {

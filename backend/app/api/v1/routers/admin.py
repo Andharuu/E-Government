@@ -1,11 +1,11 @@
 """Admin-only router: dashboard stats, complaint list (no PII), audit logs, user management."""
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, desc, case
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from fastapi.responses import StreamingResponse
 import csv
@@ -179,7 +179,7 @@ def get_dashboard_stats(
     """Aggregate statistics for admin dashboard."""
     total_users = db.query(func.count(User.id)).scalar() or 0
     active_users = db.query(func.count(User.id)).filter(User.is_active == True).scalar() or 0
-    week_ago_users = datetime.utcnow() - timedelta(days=7)
+    week_ago_users = datetime.now(timezone.utc) - timedelta(days=7)
     new_users_7d = db.query(func.count(User.id)).filter(
         User.created_at >= week_ago_users
     ).scalar() or 0
@@ -249,7 +249,7 @@ def get_dashboard_stats(
     ).scalar() or 0
 
     # SLA breaches: open complaints older than 3 days
-    sla_cutoff = datetime.utcnow() - timedelta(days=3)
+    sla_cutoff = datetime.now(timezone.utc) - timedelta(days=3)
     sla_breached = db.query(func.count(Complaint.id)).filter(
         Complaint.status.in_(["diterima", "diproses"]),
         Complaint.created_at < sla_cutoff,
@@ -266,36 +266,36 @@ def get_dashboard_stats(
             durations.append(delta.total_seconds() / 3600.0)
     avg_response_hours = round(sum(durations) / len(durations), 2) if durations else 0.0
 
-    # 14-day complaint trend (aggregate counts only)
+    # 14-day complaint trend (aggregate in single query)
+    fourteen_days_ago = (datetime.now(timezone.utc) - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
+    recent_complaints = db.query(Complaint.created_at).filter(Complaint.created_at >= fourteen_days_ago).all()
+    counts_map = {}
+    for (c_time,) in recent_complaints:
+        if c_time:
+            d_str = c_time.strftime("%Y-%m-%d")
+            counts_map[d_str] = counts_map.get(d_str, 0) + 1
+
     complaints_trend = []
     for i in range(13, -1, -1):
-        day_start = (datetime.utcnow() - timedelta(days=i)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        day_end = day_start + timedelta(days=1)
-        count = db.query(func.count(Complaint.id)).filter(
-            Complaint.created_at >= day_start, Complaint.created_at < day_end
-        ).scalar() or 0
-        complaints_trend.append({"date": day_start.strftime("%Y-%m-%d"), "count": count})
+        day_date = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
+        complaints_trend.append({"date": day_date, "count": counts_map.get(day_date, 0)})
 
-    # Admin workload (cases handled per admin) - internal, no citizen PII
+    # Admin workload (cases handled per admin) - optimized single JOIN query
     workload_rows = (
-        db.query(Complaint.assigned_admin_id, func.count(Complaint.id))
+        db.query(User.email, func.count(Complaint.id))
+        .join(User, Complaint.assigned_admin_id == User.id)
         .filter(Complaint.assigned_admin_id.isnot(None))
-        .group_by(Complaint.assigned_admin_id)
+        .group_by(User.email)
         .all()
     )
-    admin_workload = []
-    for admin_id, count in workload_rows:
-        a = db.query(User).filter(User.id == admin_id).first()
-        admin_workload.append({
-            "admin_email": a.email if a else "unknown",
-            "handled_count": count,
-        })
+    admin_workload = [
+        {"admin_email": email or "unknown", "handled_count": count}
+        for email, count in workload_rows
+    ]
     admin_workload.sort(key=lambda x: x["handled_count"], reverse=True)
 
     # PII views today (from audit log)
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     pii_views_today = (
         db.query(func.count(AuditLog.id))
         .filter(AuditLog.was_pii_exposed == True, AuditLog.created_at >= today_start)
@@ -322,7 +322,7 @@ def get_dashboard_stats(
     encryption_coverage = round((filled_pii / total_pii_slots) * 100, 1) if profile_count else 0.0
 
     # Recent activities (last 7 days, anonymized)
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     recent = (
         db.query(Notification)
         .filter(Notification.created_at >= week_ago)
@@ -391,7 +391,9 @@ def _build_complaint_item(db: Session, c: Complaint) -> AdminComplaintItem:
     )
     age_days = 0
     if c.created_at:
-        age_days = max(0, (datetime.utcnow() - c.created_at).days)
+        now = datetime.now(timezone.utc)
+        cat = c.created_at if c.created_at.tzinfo is not None else c.created_at.replace(tzinfo=timezone.utc)
+        age_days = max(0, (now - cat).days)
     return AdminComplaintItem(
         id=c.id,
         reference_number=c.reference_number,
@@ -546,7 +548,7 @@ def update_complaint_status(
         complaint.resolution = payload.resolution
     complaint.assigned_admin_id = admin.id
     if payload.status in ("selesai", "ditolak"):
-        complaint.resolved_at = datetime.utcnow()
+        complaint.resolved_at = datetime.now(timezone.utc)
     else:
         # Status kembali ke non-final → hapus waktu penyelesaian agar konsisten.
         complaint.resolved_at = None
@@ -572,18 +574,41 @@ def update_complaint_status(
 @router.get("/users", response_model=List[AdminUserItem])
 def list_users(
     request: Request,
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Batas jumlah pengguna"),
+    offset: Optional[int] = Query(0, ge=0, description="Offset paginasi"),
+    search: Optional[str] = Query(None, description="Pencarian email"),
     admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """List users. Shows email and profile completion % only, NO PII."""
-    users = db.query(User).order_by(desc(User.created_at)).all()
+    """List users with eager loading & single-query aggregation (Anti N+1)."""
+    query = db.query(User).options(joinedload(User.profile)).order_by(desc(User.created_at))
+
+    if search:
+        query = query.filter(User.email.ilike(f"%{search.strip()}%"))
+
+    if offset:
+        query = query.offset(offset)
+    if limit:
+        query = query.limit(limit)
+
+    users = query.all()
+
+    # Single aggregation query for complaint counts across all returned users
+    user_ids = [u.id for u in users]
+    complaint_counts = {}
+    if user_ids:
+        rows = (
+            db.query(Complaint.user_id, func.count(Complaint.id))
+            .filter(Complaint.user_id.in_(user_ids))
+            .group_by(Complaint.user_id)
+            .all()
+        )
+        complaint_counts = {uid: cnt for uid, cnt in rows}
 
     items = []
     for u in users:
-        complaint_count = db.query(func.count(Complaint.id)).filter(
-            Complaint.user_id == u.id
-        ).scalar() or 0
-        profile = db.query(Profile).filter(Profile.user_id == u.id).first()
+        complaint_count = complaint_counts.get(u.id, 0)
+        profile = u.profile
 
         # Calculate completion WITHOUT decrypting (count filled encrypted fields)
         completion = 0.0
@@ -726,7 +751,7 @@ def export_complaints_csv(
         "severity", "status", "age_days", "created_at", "updated_at",
     ])
     for c in complaints:
-        age = max(0, (datetime.utcnow() - c.created_at).days) if c.created_at else 0
+        age = max(0, (datetime.now(timezone.utc) - (c.created_at if c.created_at.tzinfo is not None else c.created_at.replace(tzinfo=timezone.utc))).days) if c.created_at else 0
         writer.writerow([
             _csv_safe(c.reference_number), _csv_safe(getattr(c, "report_type", "layanan") or "layanan"),
             _csv_safe(c.title), _csv_safe(c.category), _csv_safe(c.priority),

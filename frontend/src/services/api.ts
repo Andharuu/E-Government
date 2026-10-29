@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -20,8 +20,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       localStorage.removeItem('govconnect_token');
       localStorage.removeItem('govconnect_email');
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-        window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('govconnect:session-expired'));
       }
     }
     return Promise.reject(error);
@@ -141,7 +141,8 @@ export const adminApi = {
   getComplaint: (id: number) => api.get<Complaint>(`/admin/complaints/${id}`),
   updateComplaintStatus: (id: number, data: { status: string; resolution?: string }) =>
     api.put<Complaint>(`/admin/complaints/${id}/status`, data),
-  getUsers: () => api.get<AdminUserItem[]>('/admin/users'),
+  getUsers: (params?: { limit?: number; offset?: number; search?: string }) =>
+    api.get<AdminUserItem[]>('/admin/users', { params }),
   toggleUserActive: (id: number) => api.post<{ detail: string }>(`/admin/users/${id}/toggle-active`),
   getAuditLogs: (params?: { action?: string; limit?: number; offset?: number }) =>
     api.get<AuditLog[]>('/admin/audit-logs', { params }),

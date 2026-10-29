@@ -2,12 +2,14 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useId } from 'react';
 import { authApi, activityApi } from '../services/api';
 import { FontAwesome } from '../components/ui';
+import { useTheme } from '../context/ThemeContext';
 
 const INPUT_CLS =
-  'w-full h-11 px-4 text-sm bg-[#101828] border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-white placeholder:text-[#6EA2B3]';
-const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] mb-2';
+  'w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:border-blue-600 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]';
+const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-[#6EA2B3] mb-2';
 
 export function SettingsPage() {
+  const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const currentPasswordId = useId();
   const newPasswordId = useId();
@@ -95,42 +97,7 @@ export function SettingsPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 pb-12">
-      <style>{`
-        @keyframes drawCheckmark {
-          0% {
-            stroke-dasharray: 24;
-            stroke-dashoffset: 24;
-            opacity: 0;
-            transform: scale(0.6);
-          }
-          50% {
-            opacity: 1;
-            stroke-dashoffset: 6;
-          }
-          100% {
-            stroke-dasharray: 24;
-            stroke-dashoffset: 0;
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        @keyframes pulseCheckGlow {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.7;
-          }
-          50% {
-            transform: scale(1.2);
-            opacity: 0.2;
-          }
-        }
-        .verified-check-path {
-          animation: drawCheckmark 0.65s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-        }
-        .verified-pulse-glow {
-          animation: pulseCheckGlow 2.5s ease-in-out infinite;
-        }
-      `}</style>
+      
 
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
@@ -147,17 +114,7 @@ export function SettingsPage() {
         <div className="flex items-center gap-2.5 bg-[#171F2F] border border-[#243048] hover:border-emerald-500/50 rounded-xl px-3.5 py-2 self-start sm:self-auto shadow-xs transition-colors">
           <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
             <span className="absolute inset-0 rounded-full bg-emerald-500/20 verified-pulse-glow" />
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-emerald-400 relative z-10">
-              <circle cx="12" cy="12" r="9.5" stroke="#10B981" strokeWidth="1.8" className="opacity-40" />
-              <path
-                d="M7.5 12.5L10.5 15.5L16.5 8.5"
-                stroke="#10B981"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="verified-check-path"
-              />
-            </svg>
+<FontAwesome name="circle-check" className="text-emerald-400 text-base relative z-10" />
           </div>
           <span className="text-xs font-semibold text-white whitespace-nowrap">
             Status: Terverifikasi &amp; Terlindungi
@@ -189,6 +146,44 @@ export function SettingsPage() {
               <span className="text-sm font-medium text-white">Enkripsi Klien AES-256</span>
               <FontAwesome name="shield-halved" className="text-xs text-emerald-400 shrink-0" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CARD 1.5: PENGATURAN TEMA GELAP / TERANG ── */}
+      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-4 border border-[#243048]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-white">Mode Tampilan (Dark &amp; Light Mode)</h2>
+            <p className="text-xs text-[#6EA2B3] mt-0.5">
+              Pilih preferensi tema antarmuka GovConnect. Tema tersimpan secara otomatis pada peramban Anda.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#101828] border border-[#243048] self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                theme === 'dark'
+                  ? 'bg-[#171F2F] text-white shadow-xs border border-[#243048]'
+                  : 'text-[#6EA2B3] hover:text-white'
+              }`}
+            >
+              <FontAwesome name="moon" className="text-xs text-blue-400" />
+              <span>Mode Gelap</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                theme === 'light'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                  : 'text-[#6EA2B3] hover:text-slate-900'
+              }`}
+            >
+              <FontAwesome name="sun" className="text-xs text-amber-500" />
+              <span>Mode Terang</span>
+            </button>
           </div>
         </div>
       </div>

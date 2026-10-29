@@ -24,6 +24,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isExtensionConnected, setIsExtensionConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setToken(null);
+      setSessionExpired(true);
+    };
+
+    window.addEventListener('govconnect:session-expired', handleExpired);
+
+    // Periodic check token expiration (F-M1)
+    const checkTimer = setInterval(() => {
+      const currentToken = localStorage.getItem('govconnect_token');
+      if (currentToken) {
+        try {
+          const payload = JSON.parse(atob(currentToken.split('.')[1]));
+          if (payload.exp && Date.now() >= payload.exp * 1000) {
+            handleExpired();
+          }
+        } catch {}
+      }
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('govconnect:session-expired', handleExpired);
+      clearInterval(checkTimer);
+    };
+  }, []);
 
   useEffect(() => {
     // Token HANYA diambil dari storage (tidak lagi dari URL hash — hash bocor
@@ -138,6 +167,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading
     }}>
       {children}
+
+      {/* Grace period / Session Expiry Modal (F-M1) */}
+      {sessionExpired && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-[#243048]">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center mb-4 text-xl">
+              <i className="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <h3 className="text-lg font-bold mb-2">Sesi Masuk Berakhir</h3>
+            <p className="text-sm text-slate-600 dark:text-[#BDD8E9]/80 mb-6 leading-relaxed">
+              Sesi autentikasi Anda telah kedaluwarsa demi menjaga keamanan akun. Silakan masuk kembali untuk melanjutkan aktivitas.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSessionExpired(false);
+                window.location.href = '/login';
+              }}
+              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer text-sm"
+            >
+              Masuk Kembali
+            </button>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

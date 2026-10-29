@@ -1,203 +1,263 @@
-# GovConnect — E-Government Autofill Assistant
+# GovConnect — Platform Asisten Pengisian Formulir & Layanan Publik Digital
 
-> Platform asisten pengisian formulir layanan publik otomatis terintegrasi berbasis **Chrome Extension (Manifest V3)**, **FastAPI (Modular Architecture)**, **MySQL / SQLite**, dan **React 19 (Vite + TypeScript + Tailwind CSS v4)**.
+> Platform otomasi pengisian formulir instansi pemerintah berbasis **Google Chrome Extension (Manifest V3)**, **FastAPI REST Engine**, **MySQL / SQLite**, dan **React 19 (Vite + TypeScript + Tailwind CSS v4)** dengan standar keamanan enkripsi lokal dan kepatuhan regulasi perlindungan data pribadi nasional.
 
 ---
 
-## 📌 Deskripsi Sistem
+## 📌 Gambaran Umum Sistem
 
-**GovConnect** adalah ekosistem *e-government digital assistant* yang mengotomatisasi pengisian formulir layanan publik menggunakan profil kependudukan pengguna yang tersimpan secara terstruktur dan aman. Sistem ini dirancang untuk mengeliminasi friksi pengisian data identitas berulang pada berbagai portal digital (pendaftaran beasiswa, perizinan, layanan kependudukan, BPJS, perbankan, dan lainnya).
+**GovConnect** dirancang untuk mengeliminasi friksi birokrasi digital akibat pengisian data kependudukan secara berulang (seperti permohonan akta, KTP, perizinan, beasiswa, bansos, kepolisian, dan pajak). Dengan ekosistem terpadu antara ekstensi peramban cerdas, portal dashboard warga, dan panel operasional administrator instansi, GovConnect menyajikan pengalaman pengisian formulir instan (0.3 detik) yang akurat, aman, dan mematuhi privasi warga negara.
 
-Sistem terdiri dari tiga pilar komponen utama yang saling terhubung:
+Sistem terdiri dari 3 pilar terintegrasi:
 
-| Komponen | Teknologi Utama | Fungsi Utama |
+| Komponen | Stack Teknologi | Peran & Fitur Utama |
 |---|---|---|
-| **Backend API Engine** | Python 3.10+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 | Manajemen profil kependudukan, sinkronisasi mapping per-domain, analitik & KPI, otentikasi JWT HS256, rate limiting, dan proteksi privasi. |
-| **Chrome Extension** | Manifest V3 · Vanilla JS · Side Panel API | Deteksi form otomatis dengan **Algoritma Hybrida**, inspeksi form, workspace side panel interaktif, dan injeksi autofill 1-klik. |
-| **Web Dashboard** | React 19 · TypeScript · Vite · Tailwind CSS v4 · Recharts | Antarmuka manajemen master profil (29+ atribut), visualisasi analitik penggunaan, manajemen keamanan akun, dan testing preset. |
+| **Backend API Engine** | Python 3.10+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 | Manajemen profil kependudukan (29+ atribut), otentikasi JWT HS256, sistem tiket aduan & bantuan publik terintegrasi basis data, endpoint analitik, audit log keamanan, notifikasi real-time (SSE), dan panel kendali admin. |
+| **Chrome Extension (MV3)** | Manifest V3 · Vanilla JS · Chrome Side Panel API | Deteksi form otomatis dengan **Algoritma Hybrid Cascade**, inspeksi form, workspace side panel interaktif, autofill 1-klik terotorisasi, dan fallback semantik lokal. |
+| **Web Portal & Dashboard** | React 19 · TypeScript · Vite · Tailwind CSS v4 · FontAwesome | Landing page modern & responsif, halaman demo simulator, sistem autentikasi split-screen dinamis, dashboard analitik pengguna, pustaka template instansi, serta dashboard pengawasan admin lengkap. |
 
 ---
 
-### 🏛️ Alur Kerja Sistem (System Architecture)
+## 🏛️ Arsitektur Sistem Terintegrasi
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                  Google Chrome Browser                 │
-│                                                        │
-│ ┌──────────────────────────┐ REST API (Bearer JWT)   ┌────────────────────────────────┐
-│ │      Web Dashboard       │◄───────────────────────►│        FastAPI Backend         │
-│ │(React 19 + TS + Tailwind)│                         │          (Port 8000)           │
-│ └──────────────────────────┘                         │  • API v1 Routers              │
-│                                                      │  • Business Logic Services     │
-│ ┌────────────────────────────────────────────────┐   │  • Alembic DB Migrations       │
-│ │             Chrome Extension (MV3)             │   │  • Sliding-Window Rate Limiting│
-│ │                                                │   └────────────────┬───────────────┘
-│ │ ┌──────────────────┐      ┌──────────────────┐ │                    │
-│ │ │ Popup/Side Panel │◄────►│ Background Worker│◄══════(Telemetry)════╛
-│ │ │ (Auth & Workspace)│     │(State & Msg Relay)│ │
-│ │ └──────────────────┘      └─────────┬────────┘ │   ┌────────────────────────────────┐
-│ │                                     │          │   │         Database Engine        │
-│ │ ┌──────────────────┐      ┌─────────▼────────┐ │   │ • Production: MySQL (Docker)   │
-│ │ │ Content Script   │◄────►│ Offscreen Doc    │ │   │ • Test/Local: SQLite Instan    │
-│ │ │ [ DOM Engine ]   │      │ [ AI Inference ] │ │   └────────────────────────────────┘
-│ │ │ • Cascade Match  │      │ • SBERT Model    │ │
-│ │ │ • Shadow DOM     │      │ • ONNX WASM      │ │
-│ │ └────────┬─────────┘      └──────────────────┘ │
-│ └──────────┼─────────────────────────────────────┘
-│            │ DOM Injection
-│ ┌──────────▼───────────────┐
-│ │  Target E-Gov Form Page  │
-│ └──────────────────────────┘
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Google Chrome Browser                           │
+│                                                                        │
+│ ┌───────────────────────────┐ REST API (Bearer JWT)  ┌───────────────┴────────────────┐
+│ │   Web Dashboard & Portal  │◄──────────────────────►│        FastAPI REST Engine     │
+│ │(React 19 + TS + Tailwind) │                        │          (Port 8000)           │
+│ └───────────────────────────┘                        │  • Auth & User Profiling       │
+│                                                      │  • Public Help & Complaints    │
+│ ┌────────────────────────────────────────────────┐   │  • Admin Control & Audit Logs  │
+│ │            Chrome Extension (MV3)              │   │  • SSE Real-time Notifications │
+│ │                                                │   │  • Sliding-Window Rate Limiter │
+│ │ ┌───────────────────┐     ┌──────────────────┐ │   └────────────────┬───────────────┘
+│ │ │ Popup/Side Panel  │◄───►│Background Worker │◄═════(Telemetry)═════╛
+│ │ │(Auth & Workspace) │     │ (State & Relay)  │ │
+│ │ └───────────────────┘     └────────┬─────────┘ │   ┌────────────────────────────────┐
+│ │                                    │           │   │        Database Storage        │
+│ │ ┌───────────────────┐     ┌────────▼─────────┐ │   │ • Production: MySQL (Docker)   │
+│ │ │  Content Script   │◄───►│  Offscreen Doc   │ │   │ • Local / Testing: SQLite      │
+│ │ │  [ DOM Engine ]   │     │[Local Inference] │ │   └────────────────────────────────┘
+│ │ │ • Cascade Matcher │     │• SBERT Embeddings│ │
+│ │ │ • Shadow DOM      │     │• ONNX WASM       │ │
+│ │ └─────────┬─────────┘     └──────────────────┘ │
+│ └───────────┼────────────────────────────────────┘
+│             │ DOM Autofill Injection
+│ ┌───────────▼───────────────┐
+│ │ Target E-Gov Form Page    │
+│ │ (Dukcapil, Polri, dsb.)   │
+│ └───────────────────────────┘
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Struktur Proyek (Directory Tree)
-
-Codebase menggunakan arsitektur modular berlapis (*Separation of Concerns*) untuk memudahkan pemeliharaan dan pengujian:
+## 📁 Struktur Direktori Proyek
 
 ```
 E-Government/
-├── backend/                            # Layanan RESTful API Engine
-│   ├── alembic/ & alembic.ini          # Konfigurasi migrasi database SQLAlchemy
+├── backend/                            # RESTful API Engine (FastAPI)
+│   ├── alembic/ & alembic.ini          # Konfigurasi skrip migrasi basis data
 │   ├── app/
-│   │   ├── main.py                     # Entry point FastAPI, CORS, logger & global exception
-│   │   ├── database.py                 # Inisialisasi engine & session database (MySQL / SQLite)
-│   │   ├── core/                       # Pengaturan sistem inti & utilitas keamanan
-│   │   ├── api/v1/                     # Lapisan HTTP Routing v1
-│   │   │   ├── api.py                  # Router agregator v1
-│   │   │   └── routers/                # Sub-router modular
-│   │   │       ├── auth.py             # Otentikasi: register, login, me
-│   │   │       ├── profile.py          # Endpoint profil (GET, PUT, PATCH)
-│   │   │       ├── mapping.py          # Endpoint custom field mapping
-│   │   │       └── activity.py         # Endpoint aktivitas, stats & analytics
-│   │   ├── models/entities.py          # Model SQLAlchemy: User, Profile, Mapping, Activity
-│   │   ├── schemas/schemas.py          # Skema validasi Pydantic (Request / Response)
-│   │   └── services/                   # Lapisan logika bisnis terisolasi
-│   ├── tests/                          # Automated Test Suite (Pytest)
-│   ├── .env.example                    # Template konfigurasi environment
-│   ├── docker-compose.yml              # Orkestrasi container MySQL
-│   ├── pytest.ini                      # Konfigurasi runner test pytest
-│   └── requirements.txt                # Dependensi Python
+│   │   ├── main.py                     # Entry point FastAPI, CORS, middleware, global error handler
+│   │   ├── database.py                 # Koneksi DB (MySQL / SQLite), pool & session manager
+│   │   ├── core/                       # Pengaturan sistem (config.py), security util & hashing
+│   │   ├── models/entities.py          # ORM SQLAlchemy: User, Profile, Mapping, Activity, Complaint, dsb.
+│   │   ├── schemas/schemas.py          # Skema Pydantic v2 untuk validasi request & response
+│   │   ├── services/                   # Business logic terisolasi (activity, auth, admin, complaints)
+│   │   └── api/v1/                     # Routing modular HTTP API v1
+│   │       ├── api.py                  # Router agregator v1
+│   │       └── routers/                # Endpoint modular:
+│   │           ├── auth.py             # Registrasi, login, refresh token, ganti kata sandi
+│   │           ├── profile.py          # Manajemen 29+ data identitas kependudukan
+│   │           ├── mapping.py          # Sinkronisasi pemetaan field per-domain
+│   │           ├── activity.py         # Log aktivitas autofill & agregasi statistik
+│   │           ├── complaints.py       # Pengaduan pengguna & endpoint tiket bantuan publik
+│   │           ├── admin.py            # Operasional admin (KPI, audit log, pengguna, pengumuman)
+│   │           ├── notification.py     # Notifikasi sistem & SSE streaming
+│   │           └── public_services.py  # Jadwal dan agenda layanan publik terintegrasi
+│   ├── tests/                          # 28 Automated unit & integration tests (Pytest)
+│   ├── requirements.txt                # Dependensi Python
+│   ├── docker-compose.yml              # Container MySQL untuk lingkungan produksi
+│   └── .env.example                    # Template variabel lingkungan backend
 │
-├── frontend/                           # Web Dashboard SPA
+├── frontend/                           # Single Page Application (React 19 + TypeScript + Vite)
+│   ├── public/
+│   │   └── govconnect-extension.zip    # Bundle ekstensi siap pasang untuk unduhan instan
 │   ├── src/
-│   │   ├── pages/                      # Dashboard, Profile, Activity, Settings, Auth
-│   │   ├── components/                 # Komponen modular (Sidebar, Navbar, Card, Modal)
-│   │   └── services/                   # Axios HTTP client, token interceptor
-│   ├── package.json                    # Dependensi Node.js (React 19, Tailwind v4, Vite 8)
-│   └── vite.config.ts                  # Konfigurasi Vite & Tailwind CSS bundler
+│   │   ├── App.tsx                     # Definisi routing aplikasi & route protection (Public, User, Admin)
+│   │   ├── index.css                   # Tailwind v4 theme, custom scrollbar & micro-interactions
+│   │   ├── pages/
+│   │   │   ├── Landing.tsx             # Landing page modern & responsif
+│   │   │   ├── Demo.tsx                # Halaman simulasi live autofill GovConnect vs Form Dukcapil
+│   │   │   ├── AuthPage.tsx            # Halaman autentikasi terpadu (Login & Register split-screen)
+│   │   │   ├── Login.tsx / Register.tsx# Wrapper modular halaman autentikasi
+│   │   │   ├── Dashboard.tsx           # Dasbor analitik, grafik efisiensi & audit privasi warga
+│   │   │   ├── Profile.tsx             # Manajemen master data kependudukan (29+ atribut)
+│   │   │   ├── Templates.tsx           # Pustaka template instansi resmi & pembuat template kustom
+│   │   │   ├── Activity.tsx            # Riwayat & audit log transaksi pengisian formulir
+│   │   │   ├── UserComplaints.tsx      # Pusat tiket pengaduan & pelaporan kendala oleh warga
+│   │   │   ├── Notifications.tsx       # Pusat notifikasi & pemberitahuan sistem
+│   │   │   ├── PublicServices.tsx      # Direktori direktori agenda layanan publik pemerintah
+│   │   │   ├── Settings.tsx            # Pengaturan keamanan, ekspor data & preferensi akun
+│   │   │   └── admin/                  # Modul Khusus Administrator:
+│   │   │       ├── AdminDashboard.tsx  # Metrik eksekutif, tren aduan & banner mitigasi bug/keamanan
+│   │   │       ├── AdminComplaints.tsx # Manajemen tiket warga & publik dengan filter status/prioritas
+│   │   │       ├── AdminUsers.tsx      # Manajemen akun warga, hak akses & status verifikasi
+│   │   │       ├── AdminAudit.tsx      # Riwayat audit log sistem & aktivitas administratif
+│   │   │       └── AdminAnnouncements.tsx # Publikasi pengumuman & broadcast layanan resmi
+│   │   ├── components/
+│   │   │   ├── Layout.tsx              # Sidebar TailAdmin style, header pencarian & profil dropdown
+│   │   │   ├── auth/                   # Komponen khusus autentikasi:
+│   │   │   │   ├── AuthShowcasePreview.tsx # Mockup browser Dukcapil adaptif Light & Dark mode
+│   │   │   │   ├── AuthTermsModal.tsx  # Modal regulasi detail (UU PDP, UU Adminduk, UU ITE, PP PSTE)
+│   │   │   │   └── AuthHelpModal.tsx   # Modal bantuan publik langsung terhubung ke database admin
+│   │   │   ├── admin/adminUi.tsx       # Komponen UI bersama modul admin (KpiCard, StatusBadge, dsb.)
+│   │   │   └── ui/                     # Komponen UI atomik (Button, Input, Card, FontAwesome, dsb.)
+│   │   ├── context/                    # React Context (AuthContext & ThemeContext)
+│   │   └── services/api.ts             # Axios HTTP client dengan interceptor token JWT
+│   └── package.json                    # Dependensi frontend
 │
-├── extension/                          # Chrome Extension (Manifest V3)
-│   ├── manifest.json                   # Definisi ekstensi, CSP & permissions
-│   ├── background.js                   # Service worker, session state & relay pesan
-│   ├── content_script.js               # DOM Engine, Shadow DOM piercing, MutationObserver
-│   ├── offscreen.html & offscreen.js   # Offscreen Document host & AI Inferencing
-│   ├── popup.html & popup.js           # Auth Gateway & panel kontrol cepat
-│   ├── sidepanel.html & sidepanel.js   # Side panel workspace autofill & inspector form
-│   └── lib/                            # Zero-remote-code execution local libraries
-│       ├── transformers.js             # ESM Bundled @xenova/transformers
-│       └── ort-wasm*.wasm              # ONNX Runtime WebAssembly binaries
+├── extension/                          # Chrome Extension Manifest V3
+│   ├── manifest.json                   # Konfigurasi perizinan, service worker, & side panel
+│   ├── config.js                       # Konfigurasi terpusat URL backend & dashboard
+│   ├── background.js                   # Service worker, session state sync, dan relay komunikasi
+│   ├── content_script.js               # DOM Engine, shadow DOM piercing, mutation observer, autofill
+│   ├── sidepanel.html & sidepanel.js   # Side panel workspace, inspektur form & kendali autofill
+│   ├── popup.html & popup.js           # Auth gateway & panel kontrol ringkas toolbar
+│   └── offscreen.html & offscreen.js   # Offscreen document host inferensi semantik lokal
 │
-├── test-page/                          # Portal Uji Coba & Benchmarking Autofill
-│   └── ...                             # Dummy forms & benchmarks
-├── test-form.html                      # Integration Testbed komprehensif
-│
-├── STATE_PROGRESS.md                   # State arsitektur sistem terkini & single source of truth
-└── docs/                               # Dokumentasi Teknis
-    ├── core-architecture.md            # Arsitektur inti sistem
-    ├── PRD.md                          # Product Requirements Document
-    └── ...
+├── test-page/ & test-form.html         # Testbed pengujian formulir (30+ variasi input pemerintah)
+└── README.md                           # Dokumentasi komprehensif sistem
 ```
 
 ---
 
-## ⚡ Arsitektur Hybrid Cascade Pipeline & Offscreen AI Inference
+## 🚀 Fitur-Fitur Utama Sistem
 
-Ekstensi GovConnect memecahkan tantangan klasifikasi formulir heterogen menggunakan **Hybrid Cascade Pipeline**, yang diproses secara bertingkat:
+### 1. Ekosistem Autentikasi Modern & Terpadu (`/login` & `/register`)
+* **Split-Screen Layout**:
+  * **Sisi Kiri**: Formulir bersih dengan logo unwrapped, toggle mode gelap/terang bulat, custom checkbox (*Ingat Saya* via localStorage & *Persetujuan Regulasi*), serta tombol aksi bertema resmi **GovConnect Navy** (`#001D39` & `#0A4174`).
+  * **Sisi Kanan**: Pratinjau browser mockup Dukcapil interaktif dengan 4 floating cards (Kecepatan 0.3s, Brankas Terenkripsi, 25.000+ Warga, Deteksi Kolom 100%).
+* **Adaptasi Penuh Light Mode**: Pratinjau sisi kanan beradaptasi cerdas dengan kontras tinggi, latar canvas abu-abu lembut (`#F1F6FA`), kartu putih bersih (`bg-white/95`), serta teks data yang tajam.
+* **Transisi In-Place Bebas Flicker**: Beralih antara Login dan Register terjadi langsung di tempat (*fade-in in-place*) tanpa efek geser horizontal yang mengganggu, menjaga persistensi logo, toggle, footer, dan pratinjau kanan.
+* **Modal Regulasi Kependudukan Lengkap (`AuthTermsModal.tsx`)**:
+  * Memuat landasan hukum resmi: **UU No. 27/2022 (UU PDP)**, **UU No. 24/2013 (UU Adminduk)**, **UU No. 1/2024 (UU ITE)**, dan **PP No. 71/2019 (PP PSTE)**.
+  * Merinci klasifikasi data wajib sistem, enkripsi peramban lokal, prinsip *zero third-party tracker*, dan hak subjek data untuk mencabut persetujuan atau menghapus akun secara permanen.
+* **Pusat Bantuan Publik Terhubung Database (`AuthHelpModal.tsx`)**:
+  * Pengunjung dapat menyampaikan kendala/laporan langsung dari halaman login/register tanpa perlu masuk akun terlebih dahulu.
+  * Formulir mengirim data ke endpoint backend `POST /api/v1/complaints/public-help`, menghasilkan nomor tiket unik (`HLP-YYYYMMDD-HHMMSS-XXX`) yang langsung muncul secara real-time pada panel admin.
 
-1. **Pass 0 — Standar W3C HTML5 `autocomplete`**: Kecocokan 100% instan berdasarkan atribut baku form.
-2. **Pass 1 — Exact Match, Prefix Stripper & Abbreviation Expansion**: Membersihkan ID obfuscation dan menerjemahkan singkatan *legacy*. Termasuk deteksi **Pass 1.5** untuk sub-komponen dropdown tanggal.
-3. **Pass 2 — BM25 & Context Modifiers**: Memberikan penalti tabrakan antar elemen (mis. telepon darurat vs pribadi). Untuk label panjang, **BM25 Lexical Similarity Engine** akan diaktivasi.
-4. **Pass 3 — Jaro-Winkler + Overlap Lexical**: Kalkulasi skor kemiripan berbobot untuk pencocokan elemen yang salah ketik (typo).
-5. **Pass 4 — Offscreen SBERT Semantic Fallback**: Jika label terlalu abstrak (misal: "Orang yang melahirkan pemohon"), tugas inferensi akan dilempar ke **Offscreen Document**. Model bahasa kecil SBERT `all-MiniLM-L6-v2` menghitung vektor kemiripan (*Cosine Similarity*) menggunakan WASM thread secara lokal tanpa memanggil API eksternal (CSP Compliant).
+### 2. Standarisasi Ikon & Animasi Dinamis Menyeluruh
+* **Standardisasi 100% FontAwesome**: Seluruh sisa ikon legacy (*Flaticon* dan SVG mentah) di Dasbor Pengguna dan Dasbor Admin telah distandardisasi menggunakan komponen `FontAwesome`.
+* **Micro-Interactions Fluid pada Ikon**:
+  * Hover langsung pada ikon memicu efek membesar halus (`scale(1.18)`), kemiringan tipis (`rotate(4deg)`), dan pendaran lembut (*soft glow*).
+  * Hover pada tombol/menu/tautan induk secara otomatis menganimasikan ikon di dalamnya (`scale(1.14)`).
+  * Animasi khusus sesuai fungsi: Ikon refresh berputar 180°, ikon panah/chevron meluncur maju secara mulus (`translateX(3px)`), ikon lonceng notifikasi bergetar halus (*bell wobble*), dan ikon hapus sedikit miring dengan aksen merah.
+* **Umpan Balik Taktil & Elevasi Kartu**:
+  * Respon tekan fisik (*active press*) pada seluruh tombol dan tautan (`active:scale-[0.975]`).
+  * Efek elevasi kartu metrik saat disentuh kursor (`hover:-translate-y-1 hover:shadow-xl`).
+  * Custom scrollbar ramping (6px) yang elegan pada mode terang maupun gelap.
 
-Pengecualian: **Custom Persistent Mapping** memungkinkan pengguna mem-bypass AI dan membuat pemetaan prioritas untuk domain spesifik.
+### 3. Asisten Ekstensi Peramban Cerdas (Chrome Extension MV3)
+* **Algoritma Hybrid Cascade Pipeline**:
+  1. *Pass 0*: Atribut standar W3C HTML5 `autocomplete`.
+  2. *Pass 1*: Exact match, pembersihan prefix acak, ekspansi singkatan birokrasi, dan deteksi komponen tanggal komposit.
+  3. *Pass 2*: BM25 Lexical Matching & modifier konteks.
+  4. *Pass 3*: Jaro-Winkler lexical proximity distance.
+  5. *Pass 4*: Offscreen SBERT semantic inference model (`all-MiniLM-L6-v2`) via WebAssembly lokal (tanpa transmisi data ke API eksternal).
+* **Otorisasi Eksplisit 1-Klik**: Menjamin privasi warga dengan membatasi eksekusi pengisian formulir hanya saat warga mengklik tombol konfirmasi pada panel ekstensi.
+* **Distribusi Instan**: Ekstensi telah dikemas ke dalam arsip zip siap pakai (`govconnect-extension.zip`) di direktori publik untuk pengunduhan langsung dari web.
 
-### Cakupan 29+ Atribut Profil Master
-* **Identitas Diri**: NIK (16 digit), Nama Lengkap, Gelar Depan/Belakang, Tempat Lahir, Tanggal Lahir, Jenis Kelamin, Agama, Status Perkawinan, Golongan Darah.
-* **Kontak**: Email, Nomor Telepon/HP, Nomor WhatsApp.
-* **Alamat Lengkap**: Alamat Domisili, RT/RW, Kelurahan/Desa, Kecamatan, Kota/Kabupaten, Provinsi, Kode Pos, Negara.
-* **Pendidikan & Karir**: Pendidikan Terakhir, Nama Sekolah/Kampus, Jurusan/Program Studi, Pekerjaan/Profesi, Nama Instansi/Perusahaan, NIP/NRP/NIM.
-* **Dokumen Tambahan & Kontak Darurat**: Nomor Kartu Keluarga (KK), Nomor NPWP, Nomor BPJS Kesehatan, Nomor Paspor, Nomor SIM, Nama Kontak Darurat, Nomor Telepon Kontak Darurat.
-
----
-
-## 🔌 Dokumentasi REST API
-
-Base URL: `http://127.0.0.1:8000`
-
-### 1. Health & Server Info
-| Method | Endpoint | Deskripsi | Auth |
-|---|---|---|:---:|
-| `GET` | `/` | Cek status server, versi aplikasi, dan tautan dokumentasi | Publik |
-| `GET` | `/health` | Health-check endpoint untuk monitoring & uptime tracker | Publik |
-| `GET` | `/docs` | Swagger UI interaktif (OpenAPI specification) | Publik |
-| `GET` | `/redoc` | ReDoc alternative API documentation | Publik |
-
-### 2. Autentikasi & Akun (`/api/v1/auth`)
-| Method | Endpoint | Deskripsi | Auth |
-|---|---|---|:---:|
-| `POST` | `/api/v1/auth/register` | Mendaftarkan akun pengguna baru (Password min. 6 karakter) | Publik |
-| `POST` | `/api/v1/auth/login` | Login via form OAuth2 password & menerbitkan Bearer JWT | Publik |
-| `GET` | `/api/v1/auth/me` | Mengambil data akun pengguna yang sedang login | Bearer JWT |
-| `POST` | `/api/v1/auth/change-password` | Mengubah kata sandi akun pengguna | Bearer JWT |
-
-### 3. Profil Pengguna (`/api/v1/profile`)
-| Method | Endpoint | Deskripsi | Auth |
-|---|---|---|:---:|
-| `GET` | `/api/v1/profile/me` | Mengambil data profil 29+ field beserta skor kelengkapan (%) | Bearer JWT |
-| `PUT` | `/api/v1/profile/me` | Pembaruan menyeluruh (*full update*) seluruh field profil | Bearer JWT |
-| `PATCH` | `/api/v1/profile/me` | Pembaruan parsial (*delta update*) pada field tertentu saja | Bearer JWT |
-
-### 4. Custom Field Mappings (`/api/v1/mappings`)
-| Method | Endpoint | Deskripsi | Auth |
-|---|---|---|:---:|
-| `GET` | `/api/v1/mappings` | Mengambil daftar mapping tersimpan (opsional `?domain=...`) | Bearer JWT |
-| `POST` | `/api/v1/mappings` | Tambah atau upsert mapping field tunggal untuk suatu domain | Bearer JWT |
-| `POST` | `/api/v1/mappings/bulk` | Sinkronisasi batch daftar field mapping dari Chrome Extension | Bearer JWT |
-| `PUT` | `/api/v1/mappings/{id}` | Memperbarui mapping field spesifik berdasarkan ID | Bearer JWT |
-| `DELETE` | `/api/v1/mappings/{id}` | Menghapus satu mapping spesifik | Bearer JWT |
-| `DELETE` | `/api/v1/mappings` | Membersihkan seluruh mapping pengguna (opsional `?domain=...`) | Bearer JWT |
-
-### 5. Aktivitas & Analitik (`/api/v1/activities`)
-| Method | Endpoint | Deskripsi | Auth |
-|---|---|---|:---:|
-| `GET` | `/api/v1/activities` | Riwayat autofill dengan filter `status`, `domain`, `limit`, `offset` | Bearer JWT |
-| `POST` | `/api/v1/activities` | Mencatat log aktivitas autofill (**tanpa mencatat data sensitif**) | Bearer JWT |
-| `GET` | `/api/v1/activities/stats` | Agregasi KPI instan: Total Autofill, Success Rate, Waktu Hemat | Bearer JWT |
-| `GET` | `/api/v1/activities/analytics`| Data analitik visual grafik tren harian & distribusi website (`?days=7`) | Bearer JWT |
-| `GET` | `/api/v1/activities/{id}` | Mengambil rincian spesifik satu entri log aktivitas | Bearer JWT |
-| `DELETE` | `/api/v1/activities/{id}` | Menghapus satu catatan log riwayat | Bearer JWT |
-| `DELETE` | `/api/v1/activities` | Menghapus seluruh riwayat aktivitas (*Hak Kendali Privasi*) | Bearer JWT |
+### 4. Panel Kendali Administrator Komprehensif (`/admin`)
+* **Live KPI & Statistik Operasional**: Total pengguna aktif, registrasi 7 hari terakhir, total pengaduan, tiket tertunda, dan monitoring pelanggaran SLA (>3 hari).
+* **Banner Mitigasi Bug & Keamanan**: Panel prioritas tinggi khusus menangani dugaan celah privasi, bug ekstensi, atau insiden keamanan.
+* **Manajemen Tiket Pengaduan (`/admin/complaints`)**: Filter status (*diterima, diproses, selesai, ditolak*), prioritas (*tinggi, sedang, rendah*), dan penanganan tiket publik.
+* **Manajemen Warga (`/admin/users`)**: Pemantauan akun terdaftar, status verifikasi data, dan hak akses.
+* **Audit Trail Sistem (`/admin/audit`)**: Catatan kronologis seluruh mutasi data dan tindakan administratif penting.
 
 ---
 
-## ⚙️ Prasyarat Sistem
+## 🔌 Dokumentasi RESTful API Backend
 
-Sebelum memulai instalasi, pastikan lingkungan komputer Anda memiliki:
-- **Python** 3.10 atau versi lebih baru → [python.org](https://www.python.org/downloads/)
-- **Node.js** 18 atau 20+ (LTS) & `npm` → [nodejs.org](https://nodejs.org/)
-- **Google Chrome** (versi 116+ dengan dukungan Side Panel API)
-- *(Opsional)* **Docker Desktop** → jika ingin menggunakan MySQL via container
+Base URL: `http://127.0.0.1:8000`  
+Dokumentasi Interaktif: `http://127.0.0.1:8000/docs` (Swagger UI) / `/redoc`
+
+### 1. Autentikasi & Akun (`/api/v1/auth`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `POST` | `/api/v1/auth/register` | Mendaftarkan akun warga baru | Publik |
+| `POST` | `/api/v1/auth/login` | Otentikasi kata sandi & menerbitkan JWT Bearer Token | Publik |
+| `GET` | `/api/v1/auth/me` | Mengambil data akun yang sedang terautentikasi | Warga / Admin |
+| `POST` | `/api/v1/auth/change-password` | Memperbarui kata sandi akun | Warga / Admin |
+
+### 2. Profil Kependudukan Warga (`/api/v1/profile`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `GET` | `/api/v1/profile/me` | Mengambil master data 29+ atribut & skor kelengkapan profil | Warga |
+| `PUT` | `/api/v1/profile/me` | Pembaruan menyeluruh (*full update*) profil kependudukan | Warga |
+| `PATCH` | `/api/v1/profile/me` | Pembaruan parsial (*delta update*) atribut tertentu | Warga |
+
+### 3. Pemetaan Kolom Kustom (`/api/v1/mappings`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `GET` | `/api/v1/mappings` | Mengambil daftar mapping tersimpan (filter `?domain=...`) | Warga |
+| `POST` | `/api/v1/mappings` | Menambah/memperbarui pemetaan kolom tunggal | Warga |
+| `POST` | `/api/v1/mappings/bulk` | Sinkronisasi massal (*batch*) pemetaan kolom dari ekstensi | Warga |
+| `DELETE` | `/api/v1/mappings/{id}` | Menghapus pemetaan kolom spesifik | Warga |
+
+### 4. Aktivitas & Analitik Autofill (`/api/v1/activities`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `GET` | `/api/v1/activities` | Mengambil riwayat pengisian formulir dengan pagination | Warga |
+| `POST` | `/api/v1/activities` | Mencatat log eksekusi autofill (tanpa data sensitif) | Warga |
+| `GET` | `/api/v1/activities/stats` | Statistik ringkas: total form, success rate, efisiensi waktu | Warga |
+| `GET` | `/api/v1/activities/analytics` | Data agregat untuk visualisasi chart harian & mingguan | Warga |
+| `DELETE` | `/api/v1/activities` | Menghapus seluruh riwayat aktivitas (*Hak Kendali Privasi*) | Warga |
+
+### 5. Pengaduan & Bantuan Publik (`/api/v1/complaints`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `POST` | `/api/v1/complaints/public-help` | Mengirim tiket bantuan publik langsung dari login/register | Publik |
+| `GET` | `/api/v1/complaints/me` | Mengambil daftar aduan/tiket milik pengguna yang login | Warga |
+| `POST` | `/api/v1/complaints` | Membuat pengaduan baru dari dalam dasbor warga | Warga |
+| `GET` | `/api/v1/complaints/{id}` | Melihat rincian pengaduan dan status penyelesaian | Warga / Admin |
+
+### 6. Operasional Administrator (`/api/v1/admin`)
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `GET` | `/api/v1/admin/stats` | Agregasi KPI eksekutif, tren 14 hari, & ringkasan keamanan | Admin |
+| `GET` | `/api/v1/admin/complaints` | Menampilkan seluruh aduan warga & publik (filter status/prioritas) | Admin |
+| `PATCH` | `/api/v1/admin/complaints/{id}` | Memperbarui status (*diterima/diproses/selesai/ditolak*) | Admin |
+| `GET` | `/api/v1/admin/users` | Daftar seluruh akun warga beserta status verifikasinya | Admin |
+| `PATCH` | `/api/v1/admin/users/{id}/toggle-status` | Mengaktifkan / menonaktifkan status akun pengguna | Admin |
+| `GET` | `/api/v1/admin/audit` | Mengambil riwayat audit log aktivitas sistem | Admin |
+| `POST` | `/api/v1/admin/announcements` | Menerbitkan pengumuman resmi ke seluruh pengguna | Admin |
+
+### 7. Notifikasi Real-Time & Layanan Publik
+| Method | Endpoint | Deskripsi | Otorisasi |
+|---|---|---|:---:|
+| `GET` | `/api/v1/notifications/stream` | Server-Sent Events (SSE) streaming notifikasi real-time | Warga / Admin |
+| `GET` | `/api/v1/notifications` | Daftar notifikasi yang belum dibaca / tersimpan | Warga / Admin |
+| `PATCH` | `/api/v1/notifications/{id}/read` | Menandai satu notifikasi sebagai telah dibaca | Warga / Admin |
+| `GET` | `/api/v1/public-services` | Direktori agenda dan jadwal layanan publik instansi | Publik |
 
 ---
 
-## 🚀 Panduan Instalasi & Menjalankan Sistem
+## ⚙️ Persyaratan Sistem
 
-### Langkah 1 — Clone Repository
+* **Python** 3.10 atau versi lebih baru
+* **Node.js** 18 atau 20+ (LTS) & `npm`
+* **Google Chrome** versi 116+ (mendukung Side Panel API & Manifest V3)
+* *(Opsional)* **Docker Desktop** untuk container database MySQL
 
+---
+
+## 🚀 Panduan Menjalankan Sistem Secara Lokal
+
+### 1. Kloning Repository
 ```bash
 git clone https://github.com/Andharuu/E-Government.git
 cd E-Government
@@ -205,202 +265,103 @@ cd E-Government
 
 ---
 
-### Langkah 2 — Konfigurasi Environment Backend (`.env`)
+### 2. Menyiapkan & Menjalankan Backend (FastAPI)
 
-Masuk ke direktori `backend` dan salin file template konfigurasi:
+1. Buka terminal dan masuk ke folder `backend`:
+   ```bash
+   cd backend
+   ```
 
-```bash
-cd backend
+2. Buat dan aktifkan virtual environment:
+   ```bash
+   # Windows (PowerShell):
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
 
-# Windows (Command Prompt / PowerShell)
-copy .env.example .env
+   # Linux / macOS:
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-# macOS / Linux
-cp .env.example .env
-```
+3. Salin file environment:
+   ```bash
+   # Windows:
+   copy .env.example .env
 
-Buka file `.env` dan tentukan database engine yang ingin digunakan:
-* **Opsi A: MySQL (Default / Docker)**
-  ```env
-  DATABASE_URL="mysql+pymysql://govuser:govpassword@localhost:3306/govconnect_db"
-  ```
-* **Opsi B: SQLite (Instan & Cepat tanpa Docker)**
-  ```env
-  DATABASE_URL="sqlite:///./govconnect.db"
-  ```
+   # Linux / macOS:
+   cp .env.example .env
+   ```
+   *Secara default konfigurasi menggunakan SQLite (`sqlite:///./govconnect.db`), sehingga Anda dapat langsung menjalankan sistem tanpa perlu menginstal atau menyalakan MySQL.*
 
----
+4. Pasang seluruh dependensi Python:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Langkah 3 — Jalankan Database
+5. Verifikasi pengujian sistem backend:
+   ```bash
+   pytest backend/tests/ -q
+   ```
+   *Hasil: Seluruh 28 pengujian unit dan integrasi lulus 100% (28 passed).*
 
-#### Opsi A: Menggunakan Docker (MySQL)
-Jika memilih MySQL via Docker, jalankan container di folder `backend`:
-```bash
-docker-compose up -d
-```
-Verifikasi bahwa container `govconnect_mysql` berjalan sehat di port `3306`:
-```bash
-docker ps
-```
-
-#### Opsi B: Menggunakan SQLite
-Jika menggunakan SQLite pada `.env`, Anda tidak perlu menjalankan container database apapun. File database `govconnect.db` akan dibuat secara otomatis saat server pertama kali dijalankan.
-
----
-
-### Langkah 4 — Siapkan Virtual Environment & Install Dependensi
-
-Tetap di folder `backend`:
-
-```bash
-# Membuat virtual environment
-python -m venv venv
-
-# Mengaktifkan virtual environment
-# Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-# Windows (CMD):
-.\venv\Scripts\activate.bat
-# macOS / Linux:
-source venv/bin/activate
-```
-
-> **Catatan PowerShell**: Jika muncul pesan pembatasan skrip, jalankan:  
-> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-
-Install paket dependensi Python:
-
-```bash
-pip install -r requirements.txt
-```
+6. Jalankan server FastAPI:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   *Backend aktif dan dapat diakses di: **http://127.0.0.1:8000** (Dokumentasi: `/docs`)*
 
 ---
 
-### Langkah 5 — Jalankan Automated Test Suite (Pytest)
+### 3. Menyiapkan & Menjalankan Frontend (Vite + React 19)
 
-Pastikan seluruh sistem backend berfungsi normal dengan menjalankan 24 test otomatis:
+1. Buka terminal baru dan masuk ke folder `frontend`:
+   ```bash
+   cd frontend
+   ```
 
-```bash
-pytest
-```
+2. Pasang dependensi Node.js:
+   ```bash
+   npm install
+   ```
 
-Hasil yang diharapkan:
-```
-================= 24 passed, 36 warnings in ~2.00s =================
-```
-
----
-
-### Langkah 6 — Jalankan Server FastAPI
-
-Masih di dalam direktori `backend` dengan virtual environment aktif:
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Server berhasil berjalan jika muncul log:
-```
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Memulai GovConnect API Engine v2.0.0
-INFO:     Application startup complete.
-```
-
-Tabel basis data (`users`, `profiles`, `mappings`, `activities`) akan diinisialisasi otomatis saat pertama kali dijalankan.
+3. Jalankan server pengembangan Vite:
+   ```bash
+   npm run dev
+   ```
+   *Frontend aktif dan dapat diakses di: **http://localhost:5173***
 
 ---
 
-### Langkah 7 — Jalankan Dashboard React (Vite)
+### 4. Memasang Chrome Extension (Manifest V3)
 
-Buka terminal **baru**, lalu masuk ke direktori `frontend`:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Dashboard akan aktif di alamat: **http://localhost:5173**
+1. Buka browser **Google Chrome** dan navigasikan ke `chrome://extensions/`.
+2. Aktifkan toggle **"Developer mode"** di pojok kanan atas.
+3. Klik tombol **"Load unpacked"** di pojok kiri atas.
+4. Pilih folder `extension/` dari direktori proyek ini.
+5. Ekstensi **GovConnect — Autofill Assistant** akan langsung aktif di toolbar Chrome Anda.
 
 ---
 
-### Langkah 8 — Pasang Chrome Extension (Manifest V3)
+### 5. Menguji Fitur Ekstensi & Demonstrasi
 
-1. Buka browser **Google Chrome**.
-2. Buka URL `chrome://extensions/`.
-3. Aktifkan toggle **"Developer mode"** di pojok kanan atas.
-4. Klik tombol **"Load unpacked"** di pojok kiri atas.
-5. Arahkan dan pilih folder `extension/` dari direktori proyek ini.
-6. Ekstensi **GovConnect — Autofill Assistant** berhasil terpasang di Chrome.
-
-> 💡 **Tips Pengembang**: Jika Anda melakukan modifikasi pada kode ekstensi, klik ikon refresh 🔄 pada kartu ekstensi di `chrome://extensions/`.
+1. Buka halaman **http://localhost:5173/demo** pada peramban Anda untuk melihat simulasi live pengisian formulir permohonan akta kependudukan.
+2. Atau buka file `test-form.html` langsung di browser Chrome untuk menguji 30+ kombinasi input formulir pemerintah (identitas, alamat, kontak, pendidikan, dokumen pendukung).
+3. Buka Side Panel ekstensi GovConnect, klik **"Isi Formulir"**, dan saksikan data kependudukan terisi otomatis secara akurat dalam waktu 0.3 detik.
 
 ---
 
-### Langkah 9 — Uji Coba Autofill Menggunakan Test Suite Portal
+## 🔒 Standar Keamanan & Perlindungan Privasi
 
-Proyek ini telah dilengkapi dengan portal benchmark formulir komprehensif:
-
-1. Buka file `test-page/index.html` langsung di Google Chrome.
-2. Pilih salah satu formulir pengujian:
-   * **Comprehensive Dummy Form (`dummy_form.html`)**: Memuat 30+ input beragam (identitas, kontak, alamat, institusi, radio button, select, dsb.).
-   * **Standard DemoQA Form (`demoqa_standard.html`)**: Benchmark form standar pengujian otomatisasi QA.
-   * **RoboForm Standard Form (`roboform_standard.html`)**: Benchmark standar industri autofill.
-3. Klik ikon ekstensi **GovConnect** di toolbar Chrome:
-   * Masuk menggunakan akun Anda (atau gunakan fitur registrasi).
-   * Buka **Side Panel Autofill**.
-4. Ekstensi akan memindai formulir secara otomatis menggunakan **Algoritma Hybrida**.
-5. Tinjau field yang terdeteksi, pilih field yang ingin diisi, lalu klik **"⚡ Fill Selected Fields"**.
-6. Formulir akan terisi otomatis secara instan dan log aktivitas akan tercatat di Web Dashboard.
+* **Enkripsi Lokal**: Data identitas kependudukan dilindungi di lingkungan peramban pengguna dan diotentikasi menggunakan JSON Web Token (JWT) bersandi kuat.
+* **Otorisasi Eksplisit 1-Klik**: Ekstensi tidak pernah menginjeksi atau mengirim data formulir secara tersembunyi tanpa persetujuan sadar dari warga.
+* **Zero Third-Party Tracking**: Tidak menggunakan skrip analitik eksternal atau pelacak pihak ketiga komersial apa pun.
+* **Kepatuhan Regulasi**: Dirancang dengan mematuhi prinsip-prinsip pemrosesan data pribadi sesuai **UU PDP No. 27/2022** dan validitas NIK berdasarkan **UU Adminduk No. 24/2013**.
 
 ---
 
-## 📊 Fitur Unggulan Web Dashboard
+## 📄 Lisensi & Informasi Pengembang
 
-Akses di: **http://localhost:5173**
+Proyek ini dikembangkan dalam rangka pemenuhan akademik — **Workshop Pemrograman Framework**.
 
-* 📈 **KPI & Visual Analytics**: Menampilkan statistik total form yang diisi, persentase keberhasilan (*success rate*), estimasi waktu yang dihemat, serta grafik tren harian menggunakan Recharts.
-* 👤 **Master Profile Management**: Wizard pengisian data kependudukan terstruktur dengan indikator kelengkapan profil (*Profile Completion Score*).
-* 🧪 **Preset Pengujian Instan**: Opsi isi otomatis data dummy terverifikasi (Pelajar/Mahasiswa, ASN/PNS, Profesional Swasta) untuk mempercepat demo pengujian.
-* 📜 **Activity Audit Log**: Riwayat transaksi autofill lengkap dengan domain target, jumlah field terisi, status eksekusi, serta filter pencarian.
-* 🔒 **Pusat Keamanan & Privasi**: Fitur ganti kata sandi akun serta tombol pembersihan riwayat (*Clear Activity History*) sesuai prinsip perlindungan data pribadi.
-
----
-
-## 🛑 Cara Menghentikan Layanan
-
-* **Menghentikan FastAPI / Vite**: Tekan `Ctrl + C` pada masing-masing jendela terminal.
-* **Menghentikan Container MySQL**:
-  ```bash
-  cd backend
-  # Hentikan tanpa menghapus data
-  docker-compose stop
-
-  # Hentikan dan bersihkan container (volume data tetap aman)
-  docker-compose down
-
-  # Reset total database (menghapus volume data)
-  docker-compose down -v
-  ```
-
----
-
-## 🐛 Panduan Troubleshooting
-
-| Gejala Masalah | Kemungkinan Penyebab | Solusi |
-|---|---|---|
-| **Ekstensi menunjukkan status "Offline"** | Server FastAPI belum berjalan atau port 8000 terblokir | Pastikan backend berjalan via `uvicorn app.main:app --port 8000`. Cek `http://127.0.0.1:8000` di browser. |
-| **Error `Can't connect to MySQL server`** | Container Docker MySQL belum siap menerima koneksi | Tunggu 10–15 detik hingga MySQL selesai inisialisasi. Cek status via `docker ps`. Alternatifnya, beralih ke SQLite di `.env`. |
-| **Error `ModuleNotFoundError` pada Python** | Virtual environment belum diaktifkan saat menjalankan server | Pastikan awalan `(venv)` terlihat di terminal Anda sebelum menjalankan `uvicorn` atau `pytest`. |
-| **Error PowerShell script execution denied** | Kebijakan eksekusi skrip PowerShell Windows masih terblokir | Jalankan: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`. |
-| **Autofill tidak mengisi kolom tertentu** | Kolom memiliki atribut non-standar atau form dinamis | Buka Side Panel ekstensi, tentukan pemetaan manual melalui form mapper, lalu simpan agar tersinkronisasi ke server. |
-| **CORS Error pada Browser Console** | Origin extension atau dashboard belum diizinkan | Pastikan `.env` memiliki `CORS_ORIGINS` yang mencakup URL frontend dan `CORS_ORIGIN_REGEX="^chrome-extension://[a-zA-Z0-9]+$"`. |
-
----
-
-## 📄 Lisensi & Kontributor
-
-Proyek ini dikembangkan untuk keperluan akademik — **Workshop Pemrograman Framework**.
-
-* **Repository**: [github.com/Andharuu/E-Government](https://github.com/Andharuu/E-Government)
-* **Arsitektur & Spesifikasi Lengkap**: Lihat folder [docs/](file:///c:/Users/BR/govconnect/docs/)
+* **Repositori Resmi**: [github.com/Andharuu/E-Government](https://github.com/Andharuu/E-Government)
+* **Dokumentasi Teknis Lanjutan**: Tersedia di direktori `docs/`

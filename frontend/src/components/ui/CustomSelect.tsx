@@ -80,21 +80,21 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         disabled={disabled}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         onKeyDown={handleKeyDown}
-        className={`w-full h-11 px-4 text-sm bg-[#101828] border rounded-xl outline-none transition-all duration-150 flex items-center justify-between text-left cursor-pointer select-none ${
+        className={`w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border rounded-xl outline-none transition-all duration-150 flex items-center justify-between text-left cursor-pointer select-none ${
           isOpen
-            ? 'border-[#7BBDE8] ring-4 ring-[#7BBDE8]/15 text-white'
-            : 'border-[#243048] hover:border-[#7BBDE8]/60 text-white'
+            ? 'border-blue-500 dark:border-[#7BBDE8] ring-4 ring-blue-500/15 dark:ring-[#7BBDE8]/15 text-slate-900 dark:text-white'
+            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 text-slate-900 dark:text-white'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className={`truncate text-sm font-medium ${selectedOption ? 'text-white' : 'text-[#6EA2B3]'}`}>
+        <span className={`truncate text-sm font-medium ${selectedOption ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-[#6EA2B3]'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <FontAwesome
           name="chevron-down"
-          className={`text-[11px] text-[#6EA2B3] transition-transform duration-200 shrink-0 ml-2 ${
-            isOpen ? 'rotate-180 text-[#7BBDE8]' : ''
+          className={`text-[11px] text-slate-400 dark:text-[#6EA2B3] transition-transform duration-200 shrink-0 ml-2 ${
+            isOpen ? 'rotate-180 text-blue-600 dark:text-[#7BBDE8]' : ''
           }`}
         />
       </button>
@@ -105,7 +105,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           role="listbox"
           tabIndex={-1}
           aria-labelledby={selectId}
-          className="absolute z-50 left-0 right-0 mt-1.5 p-1.5 bg-[#101828] border border-[#243048] rounded-xl shadow-2xl overflow-y-auto max-h-60 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100"
+          className="absolute z-50 left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] rounded-xl shadow-2xl overflow-y-auto max-h-60 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100"
         >
           {options.map((option) => {
             const isSelected = option.value === value;
@@ -120,13 +120,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 }}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm cursor-pointer transition-colors duration-100 select-none ${
                   isSelected
-                    ? 'bg-[#7BBDE8]/15 text-[#7BBDE8] font-semibold'
-                    : 'text-slate-200 hover:bg-[#171F2F] hover:text-white'
+                    ? 'bg-blue-50 dark:bg-[#7BBDE8]/15 text-blue-600 dark:text-[#7BBDE8] font-semibold'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#171F2F] hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <span className="truncate">{option.label}</span>
                 {isSelected && (
-                  <FontAwesome name="check" className="text-xs text-[#7BBDE8] shrink-0 ml-2" />
+                  <FontAwesome name="check" className="text-xs text-blue-600 dark:text-[#7BBDE8] shrink-0 ml-2" />
                 )}
               </div>
             );

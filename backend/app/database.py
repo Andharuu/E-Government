@@ -186,14 +186,23 @@ def _bootstrap_admins():
         db.close()
 
 
+def run_schema_migrations():
+    """Menjalankan migrasi skema ringan secara eksplisit (B-H2)."""
+    _ensure_complaint_report_columns()
+    _ensure_activity_columns()
+    _ensure_profile_columns()
+    _ensure_profile_encryption_columns()
+
+
 def init_db():
     """Inisialisasi tabel basis data jika belum tersedia."""
     try:
         Base.metadata.create_all(bind=engine)
-        _ensure_complaint_report_columns()
-        _ensure_activity_columns()
-        _ensure_profile_columns()
-        _ensure_profile_encryption_columns()
+        # B-H2: Cegah auto-migration runtime tanpa lock di environment production
+        if settings.AUTO_MIGRATE and settings.ENVIRONMENT.lower() != "production":
+            run_schema_migrations()
+        else:
+            logger.info("Auto-migration startup dilewati (gunakan script migrasi/Alembic terpisah untuk production).")
         _bootstrap_admins()
         logger.info("Basis data berhasil diinisialisasi.")
     except Exception as exc:

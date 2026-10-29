@@ -9,8 +9,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`bg-[#171F2F] text-white rounded-2xl border border-[#243048] shadow-sm transition-colors duration-150 ${
-          hover ? 'hover:border-[#7BBDE8]' : ''
+        className={`bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-[#243048] shadow-sm transition-all duration-300 ${
+          hover ? 'hover:-translate-y-1 hover:shadow-lg hover:border-blue-400 dark:hover:border-[#7BBDE8]' : ''
         } ${className}`}
         {...props}
       >
@@ -25,7 +25,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 border-b border-[#243048] flex items-center justify-between gap-4 ${className}`}
+      className={`p-6 border-b border-slate-200 dark:border-[#243048] flex items-center justify-between gap-4 ${className}`}
       {...props}
     >
       {children}
@@ -38,7 +38,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttribut
   ({ className = '', children, ...props }, ref) => (
     <h3
       ref={ref}
-      className={`text-base font-bold text-white tracking-tight ${className}`}
+      className={`text-base font-bold text-slate-900 dark:text-white tracking-tight ${className}`}
       {...props}
     >
       {children}
@@ -51,7 +51,7 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
   ({ className = '', children, ...props }, ref) => (
     <p
       ref={ref}
-      className={`text-xs text-[#6EA2B3] mt-1 ${className}`}
+      className={`text-xs text-slate-500 dark:text-[#6EA2B3] mt-1 ${className}`}
       {...props}
     >
       {children}
@@ -73,7 +73,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 pt-4 border-t border-[#BDD8E9]/50 flex items-center justify-between gap-4 ${className}`}
+      className={`p-6 pt-4 border-t border-slate-200 dark:border-[#BDD8E9]/50 flex items-center justify-between gap-4 ${className}`}
       {...props}
     >
       {children}

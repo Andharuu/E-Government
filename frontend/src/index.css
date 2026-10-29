@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 @import "@flaticon/flaticon-uicons/css/regular/rounded.css";
 @import "@flaticon/flaticon-uicons/css/bold/rounded.css";
@@ -32,7 +33,7 @@
   --color-blue-900: #001326;
   --color-blue-950: #000B17;
 
-  --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
@@ -61,7 +62,7 @@
     --primary-tint: #BDD8E9;
     --sidebar-bg: #001D39;
 
-    /* Design Tokens - Semantik (Peringatan tetap merah/amber sesuai instruksi) */
+    /* Design Tokens - Semantik */
     --status-success-text: #0A4174;
     --status-success-bg: #BDD8E9;
     --status-success-dot: #4E8EA2;
@@ -85,7 +86,8 @@
   }
 
   html {
-    font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
     background-color: var(--sidebar-bg);
     -webkit-font-smoothing: antialiased;
@@ -93,7 +95,7 @@
   }
 
   body {
-    font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--sidebar-bg);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
@@ -166,13 +168,478 @@
 
   /* ============================================================
      Perlindungan PII (data pribadi) — penyamaran visual opsional.
-     Field bertanda [data-pii] akan tersamar (bullet) saat kontainer
-     memiliki kelas .pii-masked. Fokus pada field otomatis membuka
-     samaran agar pengguna tetap dapat mengedit dengan nyaman.
      ============================================================ */
   .pii-masked [data-pii]:not(:focus) {
     -webkit-text-security: disc;
     text-security: disc;
     letter-spacing: 0.12em;
   }
+}
+
+/* ============================================================
+   DARK & LIGHT MODE ARCHITECTURE
+   The baseline theme is dark mode. When .light is active on html,
+   the design tokens transform cleanly to high-contrast modern light mode.
+   ============================================================ */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light {
+  /* Surfaces & Backgrounds */
+  .bg-\[\#101828\] {
+    background-color: #F8FAFC !important;
+  }
+  .bg-\[\#171F2F\] {
+    background-color: #FFFFFF !important;
+  }
+  .bg-\[\#001D39\] {
+    background-color: #F1F5F9 !important;
+  }
+  .bg-\[\#0A4174\]\/15,
+  .bg-\[\#0A4174\]\/20,
+  .bg-\[\#0A4174\]\/30 {
+    background-color: #EFF6FF !important;
+  }
+
+  /* Borders & Dividers */
+  .border-\[\#243048\],
+  .border-\[\#1E293B\],
+  .border-\[\#243048\]\/60 {
+    border-color: #E2E8F0 !important;
+  }
+  .divide-\[\#243048\] > :not([hidden]) ~ :not([hidden]),
+  .divide-\[\#243048\]\/60 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #E2E8F0 !important;
+  }
+
+  /* Headings typography in light mode */
+  h1.text-white,
+  h2.text-white,
+  h3.text-white,
+  h4.text-white,
+  h5.text-white,
+  h6.text-white {
+    color: #0F172A !important;
+  }
+
+  /* Text colors for labels and body (excluding primary action buttons) */
+  p.text-white,
+  div.text-white:not([class*="bg-blue"]):not([class*="bg-[#0A"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not(button *),
+  span.text-white:not(button span):not([class*="bg-blue"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="badge"]) {
+    color: #0F172A !important;
+  }
+
+  /* Secondary, body, and muted texts */
+  .text-\[\#BDD8E9\],
+  .text-\[\#BDD8E9\]\/75,
+  .text-\[\#BDD8E9\]\/80,
+  .text-\[\#BDD8E9\]\/85,
+  .text-\[\#a5cbde\] {
+    color: #334155 !important;
+  }
+
+  .text-\[\#6EA2B3\],
+  .text-\[\#49769F\],
+  .text-\[\#89b3c4\],
+  .text-\[\#8ab4c8\] {
+    color: #475569 !important;
+  }
+
+  .text-\[\#94A3B8\] {
+    color: #64748B !important;
+  }
+
+  /* Accent texts in light mode: deep navy or sky blue for high contrast */
+  .text-\[\#7BBDE8\] {
+    color: #0A4174 !important;
+  }
+
+  /* Icons in light mode: high contrast adjustments */
+  i.text-\[\#7BBDE8\],
+  svg.text-\[\#7BBDE8\],
+  [class*="text-[#7BBDE8]"] i,
+  [class*="text-[#7BBDE8]"] svg {
+    color: #0A4174 !important;
+  }
+
+  i.text-\[\#6EA2B3\],
+  svg.text-\[\#6EA2B3\],
+  [class*="text-[#6EA2B3]"] i,
+  [class*="text-[#6EA2B3]"] svg {
+    color: #475569 !important;
+  }
+
+  i.text-\[\#49769F\],
+  svg.text-\[\#49769F\],
+  [class*="text-[#49769F]"] i,
+  [class*="text-[#49769F]"] svg {
+    color: #475569 !important;
+  }
+
+  i.text-\[\#BDD8E9\],
+  svg.text-\[\#BDD8E9\],
+  [class*="text-[#BDD8E9]"] i,
+  [class*="text-[#BDD8E9]"] svg {
+    color: #334155 !important;
+  }
+
+  /* Badges & Chips */
+  .bg-\[\#7BBDE8\]\/10,
+  .bg-\[\#7BBDE8\]\/15,
+  .bg-\[\#7BBDE8\]\/20,
+  .bg-\[\#7BBDE8\]\/25 {
+    background-color: #EFF6FF !important;
+    color: #1D4ED8 !important;
+    border-color: #BFDBFE !important;
+  }
+
+  .bg-\[\#BDD8E9\]\/15,
+  .bg-\[\#BDD8E9\]\/20,
+  .bg-\[\#BDD8E9\]\/25,
+  .bg-\[\#BDD8E9\]\/30,
+  .bg-\[\#BDD8E9\]\/40 {
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+  }
+
+  .border-\[\#7BBDE8\]\/30,
+  .border-\[\#7BBDE8\]\/40,
+  .border-\[\#7BBDE8\]\/50,
+  .border-\[\#7BBDE8\]\/60 {
+    border-color: #BFDBFE !important;
+  }
+
+  .border-\[\#BDD8E9\]\/20,
+  .border-\[\#BDD8E9\]\/50,
+  .border-\[\#BDD8E9\]\/60 {
+    border-color: #CBD5E1 !important;
+  }
+
+  /* Status badges text contrast */
+  .text-emerald-400 {
+    color: #059669 !important;
+  }
+  .text-amber-400 {
+    color: #D97706 !important;
+  }
+  .text-rose-400 {
+    color: #E11D48 !important;
+  }
+  .text-blue-400 {
+    color: #2563EB !important;
+  }
+  .text-sky-400 {
+    color: #0284C7 !important;
+  }
+
+  .bg-emerald-500\/10,
+  .bg-emerald-500\/15 {
+    background-color: #ECFDF5 !important;
+    border-color: #A7F3D0 !important;
+  }
+  .bg-amber-500\/10,
+  .bg-amber-500\/15 {
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+  }
+  .bg-rose-500\/10,
+  .bg-rose-500\/15 {
+    background-color: #FFF1F2 !important;
+    border-color: #FECDD3 !important;
+  }
+
+  /* Inputs, selects, and textareas */
+  input.bg-\[\#101828\],
+  input.bg-\[\#171F2F\],
+  select.bg-\[\#101828\],
+  textarea.bg-\[\#101828\],
+  select.text-white,
+  input.text-white,
+  textarea.text-white {
+    background-color: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #0F172A !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94A3B8 !important;
+  }
+
+  /* Native calendar/date picker color scheme */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    color-scheme: light !important;
+  }
+
+  /* Tables in light mode */
+  table thead tr.bg-\[\#101828\],
+  table tr.bg-\[\#101828\] {
+    background-color: #F1F5F9 !important;
+  }
+  table th {
+    color: #475569 !important;
+  }
+  table tr:hover.hover\:bg-\[\#101828\]\/50:hover,
+  table tr:hover.hover\:bg-\[\#101828\]\/30:hover {
+    background-color: #F1F5F9 !important;
+  }
+
+  /* Hover states */
+  .hover\:bg-\[\#101828\]\/60:hover,
+  .hover\:bg-\[\#101828\]\/50:hover,
+  .hover\:bg-\[\#101828\]\/30:hover,
+  .hover\:bg-\[\#171F2F\]\/60:hover,
+  .hover\:bg-\[\#243048\]:hover {
+    background-color: #F1F5F9 !important;
+  }
+
+  /* Cards with shadow in light mode */
+  .bg-\[\#171F2F\] {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Recharts charts grid and text */
+  .recharts-cartesian-grid line {
+    stroke: #E2E8F0 !important;
+  }
+  .recharts-text {
+    fill: #64748B !important;
+  }
+
+  /* Tooltip styling in light mode */
+  .recharts-default-tooltip,
+  .custom-tooltip {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+  }
+}
+
+/* Verified animation keyframes (migrated from Settings.tsx F-M8) */
+@keyframes drawCheckmark {
+  0% {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    stroke-dashoffset: 6;
+  }
+  100% {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseCheckGlow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.2;
+  }
+}
+
+.verified-check-path {
+  animation: drawCheckmark 0.65s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.verified-pulse-glow {
+  animation: pulseCheckGlow 2.5s ease-in-out infinite;
+}
+
+
+/* Outcrowd dynamic animations & floating keyframes */
+@keyframes outcrowdFloatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.6deg);
+  }
+}
+
+@keyframes outcrowdFloatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-0.6deg);
+  }
+}
+
+@keyframes outcrowdFloatDelayed {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(-0.8deg);
+  }
+}
+
+@keyframes outcrowdPulseGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
+.animate-float-slow {
+  animation: outcrowdFloatSlow 5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: outcrowdFloatReverse 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: outcrowdFloatDelayed 5.5s ease-in-out 1s infinite;
+}
+
+.animate-pulse-glow {
+  animation: outcrowdPulseGlow 4s ease-in-out infinite;
+}
+
+/* ========================================================================= */
+/* UNIVERSAL FLUID ICON MICRO-INTERACTIONS & DYNAMIC TRANSITIONS             */
+/* ========================================================================= */
+
+/* Base transition for all FontAwesome icons */
+i.fa-solid, i.fa-regular, i.fa-brands {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease, opacity 0.2s ease, filter 0.25s ease;
+  will-change: transform;
+}
+
+/* Direct hover on any icon */
+i.fa-solid:not(.fa-spin):hover,
+i.fa-regular:not(.fa-spin):hover {
+  transform: scale(1.18) rotate(4deg);
+  filter: drop-shadow(0 2px 8px rgba(123, 189, 232, 0.35));
+}
+
+/* Hovering on button, anchor, navlink, or group container animates its icon */
+button:hover i.fa-solid:not(.fa-spin),
+button:hover i.fa-regular:not(.fa-spin),
+a:hover i.fa-solid:not(.fa-spin),
+a:hover i.fa-regular:not(.fa-spin),
+.group:hover i.fa-solid:not(.fa-spin),
+.group:hover i.fa-regular:not(.fa-spin) {
+  transform: scale(1.14) rotate(3deg);
+}
+
+/* Directional Chevrons & Arrows glide forward smoothly instead of rotating */
+button:hover i.fa-chevron-right, a:hover i.fa-chevron-right, .group:hover i.fa-chevron-right,
+button:hover i.fa-arrow-right, a:hover i.fa-arrow-right, .group:hover i.fa-arrow-right,
+button:hover i.fa-caret-right, a:hover i.fa-caret-right, .group:hover i.fa-caret-right {
+  transform: translateX(3px) scale(1.12) !important;
+}
+
+button:hover i.fa-chevron-left, a:hover i.fa-chevron-left, .group:hover i.fa-chevron-left,
+button:hover i.fa-arrow-left, a:hover i.fa-arrow-left, .group:hover i.fa-arrow-left,
+button:hover i.fa-caret-left, a:hover i.fa-caret-left, .group:hover i.fa-caret-left {
+  transform: translateX(-3px) scale(1.12) !important;
+}
+
+button:hover i.fa-chevron-down, a:hover i.fa-chevron-down, .group:hover i.fa-chevron-down,
+button:hover i.fa-caret-down, a:hover i.fa-caret-down, .group:hover i.fa-caret-down {
+  transform: translateY(2px) scale(1.12) !important;
+}
+
+button:hover i.fa-chevron-up, a:hover i.fa-chevron-up, .group:hover i.fa-chevron-up,
+button:hover i.fa-caret-up, a:hover i.fa-caret-up, .group:hover i.fa-caret-up {
+  transform: translateY(-2px) scale(1.12) !important;
+}
+
+/* Refresh / Rotate / Sync icons spin 180 degrees smoothly on hover */
+button:hover i.fa-rotate-right, a:hover i.fa-rotate-right, i.fa-rotate-right:hover,
+button:hover i.fa-arrows-rotate, a:hover i.fa-arrows-rotate, i.fa-arrows-rotate:hover {
+  transform: rotate(180deg) scale(1.15) !important;
+}
+
+/* Trash / Delete icons tilt with warning accent */
+button:hover i.fa-trash, button:hover i.fa-trash-can,
+a:hover i.fa-trash, a:hover i.fa-trash-can {
+  transform: scale(1.2) rotate(-8deg) !important;
+  color: #f43f5e !important;
+}
+
+/* Copy icons elevate on hover */
+button:hover i.fa-copy, a:hover i.fa-copy {
+  transform: translateY(-2px) scale(1.16) !important;
+}
+
+/* Bell wobble notification vibration on hover */
+@keyframes bellWobble {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(-14deg) scale(1.15); }
+  40% { transform: rotate(14deg) scale(1.15); }
+  60% { transform: rotate(-8deg) scale(1.15); }
+  80% { transform: rotate(8deg) scale(1.15); }
+  100% { transform: rotate(0) scale(1.15); }
+}
+
+button:hover i.fa-bell, a:hover i.fa-bell, .group:hover i.fa-bell {
+  animation: bellWobble 0.6s ease-in-out !important;
+}
+
+/* Tactile press response on buttons, links, icons (Active state) */
+button:not(:disabled):active,
+a:active,
+[role="button"]:active {
+  transform: scale(0.975);
+}
+
+button:active i.fa-solid,
+button:active i.fa-regular,
+a:active i.fa-solid,
+a:active i.fa-regular,
+i.fa-solid:active,
+i.fa-regular:active {
+  transform: scale(0.88) !important;
+  transition-duration: 0.1s !important;
+}
+
+/* Smooth Interactive Cards Hover Elevation */
+.interactive-card {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.2s ease;
+}
+.interactive-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Dark mode custom scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #243048;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #49769F;
 }

@@ -27,13 +27,6 @@ const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
     'npwp', 'bpjs_number', 'driver_license'
   ],
 };
-import {
-  Save, AlertCircle,
-  Plus, Trash2, Edit3, Copy, Check,
-  Upload, Camera, FolderPlus, X, Eye,
-  RefreshCw
-} from 'lucide-react';
-
 import type {
   CustomFieldType,
   CustomFieldItem,
@@ -119,6 +112,18 @@ export function ProfilePage() {
     }
   };
 
+  // Peringatan sebelum meninggalkan halaman jika ada perubahan belum disimpan (F-M3)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   useEffect(() => {
     profileApi.get()
       .then(res => {
@@ -176,6 +181,9 @@ export function ProfilePage() {
   }, []);
 
   const handleChange = (key: string, value: string) => {
+    if (key === 'nik') {
+      value = value.replace(/\D/g, '').slice(0, 16);
+    }
     setProfile(prev => {
       if (!prev) return null;
       const updated = { ...prev, [key]: value };
@@ -450,6 +458,19 @@ export function ProfilePage() {
     setMessage(null);
 
     try {
+      if (profile.nik && profile.nik.trim()) {
+        const cleanNik = profile.nik.trim();
+        if (!/^\d{16}$/.test(cleanNik)) {
+          setMessage({
+            type: 'error',
+            text: 'Format NIK tidak valid. Nomor Induk Kependudukan (NIK) harus terdiri tepat dari 16 digit angka.',
+          });
+          setSaving(false);
+          isSavingRef.current = false;
+          return;
+        }
+      }
+
       const customPayload = {
         categories: userCategories,
         fields: customFields,
@@ -467,7 +488,7 @@ export function ProfilePage() {
 
       try {
         localStorage.setItem('govconnect_profile_updated_at', Date.now().toString());
-        window.postMessage({ type: 'GOVCONNECT_PROFILE_UPDATED', profile: res.data }, '*');
+        window.postMessage({ type: 'GOVCONNECT_PROFILE_UPDATED', profile: res.data }, window.location.origin);
       } catch (storageErr) {
         console.warn('Gagal sinkronisasi event ekstensi:', storageErr);
       }
@@ -661,11 +682,11 @@ export function ProfilePage() {
             >
               {copiedKey === key ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Tersalin
+                  <FontAwesome name="check" className="text-[11px]" /> Tersalin
                 </span>
               ) : (
                 <>
-                  <Copy className="w-3 h-3" />
+                  <FontAwesome name="copy" className="text-[11px]" />
                   <span>Salin</span>
                 </>
               )}
@@ -869,7 +890,7 @@ export function ProfilePage() {
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex items-center gap-2.5">
-                            <Camera className="w-4 h-4 text-[#7BBDE8] shrink-0" />
+                            <FontAwesome name="camera" className="text-sm text-[#7BBDE8] shrink-0" />
                             <div>
                               <div className="text-xs font-bold text-white leading-tight">{slot.title}</div>
                             </div>
@@ -885,7 +906,7 @@ export function ProfilePage() {
                                 onClick={() => setPreviewPhoto({ title: slot.title, data: photo.data, name: photo.name })}
                                 className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
                               >
-                                <Eye className="w-3.5 h-3.5 text-[#7BBDE8]" />
+                                <FontAwesome name="eye" className="text-xs text-[#7BBDE8]" />
                                 <span>Lihat</span>
                               </button>
                               <button
@@ -893,7 +914,7 @@ export function ProfilePage() {
                                 onClick={() => fileInputRefs.current[slot.id]?.click()}
                                 className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
                               >
-                                <Upload className="w-3.5 h-3.5 text-[#7BBDE8]" />
+                                <FontAwesome name="arrow-up-from-bracket" className="text-xs text-[#7BBDE8]" />
                                 <span>Ganti</span>
                               </button>
                             </div>
@@ -903,7 +924,7 @@ export function ProfilePage() {
                             onClick={() => fileInputRefs.current[slot.id]?.click()}
                             className="rounded-xl border border-dashed border-[#243048] aspect-[16/10] mb-3 flex flex-col items-center justify-center p-3 text-center cursor-pointer hover:bg-[#171F2F] transition-colors"
                           >
-                            <Upload className="w-6 h-6 text-[#6EA2B3] mb-1.5" />
+                            <FontAwesome name="arrow-up-from-bracket" className="text-xl text-[#6EA2B3] mb-1.5" />
                             <span className="text-xs font-semibold text-[#7BBDE8]">Unggah Foto Berkas</span>
                             <span className="text-[10px] text-[#6EA2B3] mt-0.5">JPG / PNG maksimal 5MB</span>
                           </div>
@@ -920,7 +941,7 @@ export function ProfilePage() {
                             onClick={() => handleRemoveStandardPhoto(slot.id)}
                             className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold cursor-pointer shrink-0 ml-2 text-xs"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <FontAwesome name="trash" className="text-[11px]" />
                             <span>Hapus</span>
                           </button>
                         )}
@@ -944,7 +965,7 @@ export function ProfilePage() {
               onClick={() => openAddFieldModal(catId)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <FontAwesome name="plus" className="text-xs" />
               <span>Tambah Kolom</span>
             </button>
           </div>
@@ -971,7 +992,7 @@ export function ProfilePage() {
                           </div>
                         ) : (
                           <div className="w-12 h-12 rounded-lg bg-[#171F2F] border border-[#243048] flex items-center justify-center shrink-0 text-[#6EA2B3]">
-                            <Camera className="w-5 h-5" />
+                            <FontAwesome name="camera" className="text-base" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
@@ -984,7 +1005,7 @@ export function ProfilePage() {
                         onClick={() => handleDeleteField(field.id, field.key)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-800/40 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <FontAwesome name="trash" className="text-[11px]" />
                         <span>Hapus</span>
                       </button>
                     </div>
@@ -1043,7 +1064,7 @@ export function ProfilePage() {
                             className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
                             title="Salin nilai"
                           >
-                            {copiedKey === field.key ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedKey === field.key ? <FontAwesome name="check" className="text-xs text-emerald-400" /> : <FontAwesome name="copy" className="text-xs" />}
                           </button>
                           <button
                             type="button"
@@ -1051,7 +1072,7 @@ export function ProfilePage() {
                             className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
                             title="Edit data"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            <FontAwesome name="pen" className="text-xs" />
                           </button>
                           <button
                             type="button"
@@ -1059,7 +1080,7 @@ export function ProfilePage() {
                             className="p-1.5 text-rose-400 hover:text-rose-300 rounded-lg transition-colors cursor-pointer"
                             title="Hapus data"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <FontAwesome name="trash" className="text-xs" />
                           </button>
                         </div>
                       </div>
@@ -1099,7 +1120,7 @@ export function ProfilePage() {
             onClick={() => setShowAddCategoryModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
-            <FolderPlus className="w-4 h-4" />
+            <FontAwesome name="folder-plus" className="text-sm" />
             <span>Kategori Baru</span>
           </button>
         </div>
@@ -1240,7 +1261,7 @@ export function ProfilePage() {
                         onClick={() => handleDeleteCategory(cat.id)}
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <FontAwesome name="trash" className="text-[11px]" />
                         <span>Hapus Kategori</span>
                       </button>
                     )}
@@ -1266,7 +1287,7 @@ export function ProfilePage() {
                           onClick={() => handleDeleteCategory(currentCat.id)}
                           className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-xl transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <FontAwesome name="trash" className="text-xs" />
                           <span>Hapus Kategori</span>
                         </button>
                       )}
@@ -1275,7 +1296,7 @@ export function ProfilePage() {
                         onClick={() => openAddFieldModal(currentCat.id)}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <FontAwesome name="plus" className="text-xs" />
                         <span>Tambah Data</span>
                       </button>
                     </div>
@@ -1295,11 +1316,11 @@ export function ProfilePage() {
           <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-md p-4 flex items-center gap-3 max-w-sm sm:max-w-md">
             {message.type === 'success' ? (
               <div className="w-8 h-8 rounded-full bg-emerald-950/40 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-800/40">
-                <Check className="w-4 h-4" />
+                <FontAwesome name="check" className="text-xs" />
               </div>
             ) : (
               <div className="w-8 h-8 rounded-full bg-rose-950/40 text-rose-400 flex items-center justify-center shrink-0 border border-rose-800/40">
-                <AlertCircle className="w-4 h-4" />
+                <FontAwesome name="circle-exclamation" className="text-sm" />
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -1314,7 +1335,7 @@ export function ProfilePage() {
               className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
               title="Tutup notifikasi"
             >
-              <X className="w-4 h-4" />
+              <FontAwesome name="xmark" className="text-sm" />
             </button>
           </div>
         </div>
@@ -1322,10 +1343,10 @@ export function ProfilePage() {
 
       {/* ── Floating Unsaved Changes Dock Bar ── */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl bg-[#171F2F] text-white rounded-2xl border border-[#243048] shadow-lg px-6 py-4 flex items-center justify-between gap-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-[#243048] shadow-2xl px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8] animate-pulse shrink-0" />
-            <p className="text-xs font-semibold truncate text-[#6EA2B3]">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0A4174] dark:bg-[#7BBDE8] animate-pulse shrink-0" />
+            <p className="text-xs font-semibold truncate text-slate-600 dark:text-[#6EA2B3]">
               Ada perubahan data profil yang belum disimpan
             </p>
           </div>
@@ -1334,7 +1355,7 @@ export function ProfilePage() {
             <button
               type="button"
               onClick={handleResetChanges}
-              className="px-4 py-2 text-xs font-medium text-[#6EA2B3] hover:text-white rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-[#6EA2B3] dark:hover:text-white rounded-xl transition-colors cursor-pointer"
             >
               Batalkan
             </button>
@@ -1344,7 +1365,7 @@ export function ProfilePage() {
               disabled={saving}
               className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {saving ? <FontAwesome name="rotate" spin className="text-xs" /> : <FontAwesome name="floppy-disk" className="text-xs" />}
               <span>{saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}</span>
             </button>
           </div>
@@ -1366,7 +1387,7 @@ export function ProfilePage() {
                 className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
                 title="Tutup dialog"
               >
-                <X className="w-5 h-5" />
+                <FontAwesome name="xmark" className="text-base" />
               </button>
             </div>
 
@@ -1465,12 +1486,12 @@ export function ProfilePage() {
                   >
                     {newPhotoData ? (
                       <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
-                        <Check className="w-4 h-4" />
+                        <FontAwesome name="check" className="text-xs" />
                         <span className="truncate max-w-[200px]">{newPhotoData.name}</span>
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        <Upload className="w-5 h-5 text-[#6EA2B3] mx-auto" />
+                        <FontAwesome name="arrow-up-from-bracket" className="text-lg text-[#6EA2B3] mx-auto" />
                         <p className="text-xs font-semibold text-[#7BBDE8]">Pilih berkas foto</p>
                       </div>
                     )}
@@ -1545,7 +1566,7 @@ export function ProfilePage() {
                 className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
                 title="Tutup dialog"
               >
-                <X className="w-5 h-5" />
+                <FontAwesome name="xmark" className="text-base" />
               </button>
             </div>
 
@@ -1620,7 +1641,7 @@ export function ProfilePage() {
                 className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
                 title="Tutup pratinjau"
               >
-                <X className="w-5 h-5" />
+                <FontAwesome name="xmark" className="text-base" />
               </button>
             </div>
             <div className="p-4 bg-[#101828] flex items-center justify-center overflow-auto max-h-[75vh]">

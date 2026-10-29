@@ -48,13 +48,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-center transition-colors duration-150 cursor-pointer select-none disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+        className={`inline-flex items-center justify-center transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer select-none disabled:cursor-not-allowed group ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
         {...props}
       >
         {loading ? (
           <FontAwesome name="spinner" spin className="text-sm shrink-0" />
         ) : icon ? (
-          <span className="shrink-0">{icon}</span>
+          <span className="shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-3">{icon}</span>
         ) : null}
         {children}
       </button>

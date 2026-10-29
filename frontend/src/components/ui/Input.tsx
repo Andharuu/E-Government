@@ -20,7 +20,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold uppercase tracking-wider text-[#49769F]">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-[#6EA2B3]">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
@@ -28,7 +28,7 @@ export const FormField: React.FC<FormFieldProps> = ({
       {error ? (
         <p className="text-xs font-medium text-rose-600 mt-1">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-[#94A3B8] mt-1">{hint}</p>
+        <p className="text-xs text-slate-400 dark:text-[#94A3B8] mt-1">{hint}</p>
       ) : null}
     </div>
   );
@@ -43,10 +43,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         ref={ref}
-        className={`w-full px-4 py-2 h-11 text-sm bg-white border rounded-xl placeholder:text-[#94A3B8] text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
+        className={`w-full px-4 py-2 h-11 text-sm bg-white dark:bg-[#101828] border rounded-xl placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3] text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
+            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
         } ${className}`}
         {...props}
       />
@@ -64,10 +64,10 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         ref={ref}
-        className={`w-full p-4 text-sm bg-white border rounded-xl placeholder:text-[#94A3B8] text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
+        className={`w-full p-4 text-sm bg-white dark:bg-[#101828] border rounded-xl placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3] text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
+            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
         } ${className}`}
         {...props}
       />
@@ -85,10 +85,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <select
         ref={ref}
-        className={`w-full px-4 py-2 h-11 text-sm bg-white border rounded-xl text-[#001D39] focus:outline-none focus:ring-4 transition-all duration-150 ${
+        className={`w-full px-4 py-2 h-11 text-sm bg-white dark:bg-[#101828] border rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
           error
-            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-[#BDD8E9] hover:border-[#49769F] focus:ring-[#7BBDE8]/20 focus:border-[#0A4174]'
+            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
         } ${className}`}
         {...props}
       >
