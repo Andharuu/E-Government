@@ -1,3195 +1,3287 @@
-// Content Script — GovConnect
-// Mendeteksi form secara aktif dan mengisi field berdasarkan profil user
-
-(function() {
-  // Cegah double injection dengan verifikasi DOM marker & protected flag
-  if (document.documentElement && document.documentElement.hasAttribute("data-govconnect-injected")) {
-    return;
-  }
-  if (window.__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__) {
-    return;
-  }
-  try {
-    if (document.documentElement) {
-      document.documentElement.setAttribute("data-govconnect-injected", "true");
-    }
-    Object.defineProperty(window, "__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__", {
-      value: true,
-      writable: false,
-      configurable: false
-    });
-  } catch (e) {
-    window.__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__ = true;
-  }
-  
-  const IS_INSIDE_IFRAME = window.self !== window.top;
-
-// ============================================================
-// Pengecekan Halaman Dashboard Internal GovConnect
-// Memastikan ekstensi TIDAK mendeteksi form internal GovConnect
-// ============================================================
-function isGovConnectDashboardPage() {
-  try {
-    const host = (window.location.hostname || "").toLowerCase();
-    const port = window.location.port || "";
-    const path = (window.location.pathname || "").toLowerCase();
-    const title = (document.title || "").toLowerCase();
-
-    // 1. Host local dev port atau environment GovConnect (5173, 5174, 3000, 4173)
-    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && 
-        (port === "5173" || port === "5174" || port === "3000" || port === "4173")) {
-      return true;
-    }
-
-    // 2. Deteksi berdasarkan URL path atau title GovConnect
-    const isGovTitle = title.includes("govconnect") || title.includes("gov connect");
-    if (isGovTitle && (
-      path.includes("/dashboard") ||
-      path.includes("/profile") ||
-      path.includes("/templates") ||
-      path.includes("/activity") ||
-      path.includes("/settings") ||
-      path.includes("/login") ||
-      path.includes("/register") ||
-      path === "/" || path === ""
-    )) {
-      return true;
-    }
-
-    // 3. Elemen root aplikasi React GovConnect
-    if (document.getElementById("govconnect-app-root") || 
-        (document.getElementById("root") && isGovTitle)) {
-      return true;
-    }
-  } catch (e) {}
-  return false;
-}
-
-// ============================================================
-// Keyword mapping: profile attribute → list keyword
-// Sesuai PRD §14 — multi-level matching (Spesifik -> Umum)
-// ============================================================
-// Kata kunci pendek (2-3 huruf) yang dilarang dicocokkan secara longgar via substring .includes()
-// Hanya boleh dicocokkan jika persis (exact token match)
-const SHORT_KEYWORDS = new Set([
-  "wa", "hp", "kab", "kot", "zip", "nim", "nip", "nrp", "dob", "sex", "job", "telp", "age", "sim", "day"
-]);
-
-// ============================================================
-// HTML5 Standard Autocomplete Attribute Map (W3C Standard)
-// Menjamin deteksi instan 100% akurat untuk web modern
-// ============================================================
-const AUTOCOMPLETE_MAP = {
-  "given-name": "first_name",
-  "additional-name": "middle_initial",
-  "family-name": "last_name",
-  "name": "full_name",
-  "email": "email",
-  "tel": "phone",
-  "tel-national": "phone",
-  "street-address": "address",
-  "address-line1": "address",
-  "address-line2": "address",
-  "address-level1": "province",
-  "address-level2": "city",
-  "postal-code": "postal_code",
-  "country": "country",
-  "country-name": "country",
-  "organization": "organization",
-  "organization-title": "occupation",
-  "bday": "birth_date",
-  "bday-day": "birth_day",
-  "bday-month": "birth_month",
-  "bday-year": "birth_year",
-  "sex": "gender",
-  "url": "website"
-};
-
-function getAutocompleteProfileKey(el) {
-  if (!el) return null;
-  const rawAuto = (el.getAttribute("autocomplete") || "").toLowerCase().trim();
-  if (!rawAuto || ["off", "false", "none", "new-password", "current-password", "one-time-code"].includes(rawAuto)) {
-    return null;
-  }
-  const tokens = rawAuto.split(/\s+/);
-  for (const t of tokens) {
-    if (t in AUTOCOMPLETE_MAP) {
-      return AUTOCOMPLETE_MAP[t];
-    }
-  }
-  return null;
-}
-
-// ============================================================
-// Universal Abbreviation / Truncated Form Field Dictionary
-// Menerjemahkan singkatan teknis form legacy (seperti RoboForm, vBulletion, SAP)
-// ============================================================
-const ABBREVIATION_MAP = {
-  "frstname": "first_name",
-  "frst": "first",
-  "fname": "first_name",
-  "lstname": "last_name",
-  "lname": "last_name",
-  "fullname": "full_name",
-  "homephon": "home_phone",
-  "homephone": "home_phone",
-  "workphon": "work_telephone",
-  "workphone": "work_telephone",
-  "cellphon": "phone",
-  "cellphone": "phone",
-  "faxphone": "fax",
-  "fax": "fax",
-  "emailadr": "email",
-  "emailaddr": "email",
-  "adrstate": "province",
-  "adr_city": "city",
-  "adrcity": "city",
-  "addr_zip": "postal_code",
-  "addrzip": "postal_code",
-  "driv_lic": "driver_license",
-  "drivlic": "driver_license",
-  "birth_pl": "birth_place",
-  "birthpl": "birth_place",
-  "pers_sex": "gender",
-  "perssex": "gender",
-  "pers_ssn": "nik",
-  "ssn": "nik",
-  "web_site": "website",
-  "addr": "address",
-  "addr1": "address",
-  "addr2": "address",
-  "tel": "phone",
-  "phon": "phone",
-  "org": "organization",
-  "comp": "company",
-  "occ": "occupation",
-  "pos": "occupation"
-};
-
-/**
- * Membersihkan prefiks angka dan underscore di awal nama field
- * Contoh: "02frstname" -> "frstname", "68__income" -> "income", "13adr_city" -> "adr_city"
- * SAFEGUARD: Hanya hapus jika setelah angka/simbol terdapat minimal 2 karakter huruf
- */
-function stripNumericPrefix(str) {
-  if (!str || typeof str !== "string") return "";
-  const cleaned = str.replace(/^[0-9]+[_\s-]*/, "").replace(/^_+/, "");
-  return cleaned.length >= 2 ? cleaned : str;
-}
-
-const KEYWORD_MAP = {
-  full_name: [
-    "nama_lengkap", "nama_pemohon", "nama_siswa", "nama_mahasiswa", "nama_lengkap_pemohon",
-    "nama", "name", "full_name", "fullname", "nama_pelamar",
-    "taxpayer_name", "taxpayername", "reginput_taxpayername", "nama_wajib_pajak", "wajib_pajak",
-    "card_user_name", "cardusername", "card_name"
-  ],
-  title: [
-    "title", "gelar", "salutation", "prefix", "mr_mrs", "titel"
-  ],
-  first_name: [
-    "first_name", "firstname", "fname", "first", "given_name", "givenname", "nama_depan", "namadepan",
-    "frstname", "frst"
-  ],
-  middle_initial: [
-    "middle_initial", "middleinitial", "initial", "m_i", "mi", "middle_name", "middlename"
-  ],
-  last_name: [
-    "last_name", "lastname", "lname", "last", "surname", "family_name", "familyname", "nama_belakang", "namabelakang",
-    "lstname"
-  ],
-  address: [
-    "alamat_ktp", "alamat_saatini", "alamat_domisili", "alamat_lengkap",
-    "alamat_tinggal", "alamat_surat", "alamat", "address", "domisili", "street", "jalan",
-    "address_line_1", "address_line_2", "address1", "address2", "currentaddress", "current_address",
-    "addr", "addr1", "addr2"
-  ],
-  address_line_1: [
-    "address_line_1", "address_line1", "address1", "addr1", "alamat1", "alamat_1"
-  ],
-  address_line_2: [
-    "address_line_2", "address_line2", "address2", "addr2", "alamat2", "alamat_2", "apartment", "suite", "unit"
-  ],
-  organization: [
-    "nama_perusahaan", "nama_instansi", "instansi_pekerjaan", "nama_organisasi", "nama_kantor",
-    "instansi", "organisasi", "perusahaan", "organization", "company", "perusahaan_tempat_bekerja"
-  ],
-  occupation: [
-    "posisi_di_perusahaan", "posisi_pekerjaan", "posisi", "jabatan", "role",
-    "pekerjaan", "occupation", "profesi", "job", "position",
-    "jenis_pekerjaan", "jenispekerjaan", "reginput_occupation", "reginput_job", "reginput_jenispekerjaan"
-  ],
-  education_level: [
-    "pendidikan_terakhir", "jenjang_pendidikan", "pendidikan", "education_level", "jenjang"
-  ],
-  birth_date: [
-    "tanggal_lahir", "tgl_lahir", "birth_date", "birthdate", "dob", "tanggallahir", "tanggal_lahir_pemohon", "tgl_lahir_pemohon",
-    "reginput_birthdate", "reginput_tanggallahir", "dateofbirth", "date_of_birth"
-  ],
-  birth_month: [
-    "birth_month", "dob_month", "month_of_birth", "bulan_lahir", "month", "dob_m", "mm"
-  ],
-  birth_day: [
-    "birth_day", "dob_day", "day_of_birth", "hari_lahir", "day", "dob_d", "dd"
-  ],
-  birth_year: [
-    "birth_year", "dob_year", "year_of_birth", "tahun_lahir", "year", "dob_y", "yy", "yyyy"
-  ],
-  age: [
-    "age", "umur", "usia"
-  ],
-  birth_place: [
-    "tempat_lahir", "tempatlahir", "birth_place", "birthplace", "tempat_lahir_pemohon",
-    "birth_pl", "birthpl", "reginput_placeofbirth", "reginput_birthplace", "reginput_tempatlahir"
-  ],
-  gender: [
-    "jenis_kelamin", "jeniskelamin", "gender", "sex", "kelamin",
-    "pers_sex", "perssex", "reginput_gender", "reginput_sex", "reginput_jeniskelamin"
-  ],
-  nik: [
-    "nomor_identitas", "no_identitas", "nik", "no_ktp", "noktp", "nomor_ktp",
-    "nomor_induk_kependudukan", "nomor_induk", "identity_number", "citizen_id", "reginput_nik",
-    "pers_ssn", "ssn", "social_security_number", "social_security"
-  ],
-  phone: [
-    "nomor_hp", "no_hp", "nohp", "no_telepon", "notelepon", "nomor_telepon",
-    "nomor_handphone", "handphone", "hp", "telp", "whatsapp", "wa",
-    "cell_phone", "cellphone", "mobile", "usernumber", "user_number", "phone_number", "contact_number",
-    "cellphon", "telepon", "phone"
-  ],
-  home_phone: [
-    "home_phone", "homephone", "homephon", "telepon_rumah", "telp_rumah", "tel_rumah", "teleponrumah", "telprumah", "hometel", "home_tel"
-  ],
-  work_telephone: [
-    "work_telephone", "work_phone", "workphone", "workphon", "telepon_kantor", "telp_kantor", "work_tel", "worktel", "teleponkantor", "telpkantor", "office_phone", "officephone"
-  ],
-  fax: [
-    "fax", "fax_number", "faxphone", "nomor_fax", "telefax", "facsimile", "nomorfax"
-  ],
-  email: [
-    "email", "surel", "e_mail", "alamat_email", "useremail", "user_email",
-    "emailadr", "emailaddr"
-  ],
-  province: [
-    "provinsi", "province", "propinsi", "state", "state_province",
-    "adrstate", "adr_state"
-  ],
-  city: [
-    "kota", "kabupaten", "city", "kab", "kot",
-    "adr_city", "adrcity"
-  ],
-  district: [
-    "kecamatan", "district"
-  ],
-  village: [
-    "kelurahan", "desa", "village"
-  ],
-  postal_code: [
-    "kode_pos", "postal_code", "zip", "kodepos", "zipcode", "zip_code",
-    "addr_zip", "addrzip", "postalcode"
-  ],
-  country: [
-    "country", "negara", "kewarganegaraan", "nationality"
-  ],
-  driver_license: [
-    "driver_license", "driver_license_number", "driverlicense", "driving_license", "driver_licence", "nomor_sim", "no_sim", "sim",
-    "driv_lic", "drivlic", "drivinglicense", "drvlic"
-  ],
-  website: [
-    "website", "web_site", "url", "web", "homepage", "situs"
-  ],
-  income: [
-    "income", "pendapatan", "penghasilan", "gaji", "salary", "__income", "income_field"
-  ],
-  comments: [
-    "comments", "comment", "catatan", "keterangan", "notes", "pesan", "remark", "remarks"
-  ],
-  student_id: [
-    "nim", "nip", "nrp", "student_id", "nomor_mahasiswa", "nomor_induk_mahasiswa", "nomor_induk_siswa"
-  ],
-  institution: [
-    "nama_kampus", "nama_sekolah", "nama_universitas", "nama_institusi", "perguruan_tinggi",
-    "institusi", "institution", "sekolah", "universitas", "kampus"
-  ],
-  nisn: [
-    "nisn", "nomor_induk_siswa", "student_number"
-  ],
-  religion: [
-    "agama", "religion", "kepercayaan",
-    "reginput_religion", "reginput_agama", "reginputreligion", "reginputagama"
-  ],
-  marital_status: [
-    "status_perkawinan", "statusperkawinan", "status_nikah", "statusnikah",
-    "status_pernikahan", "statuspernikahan", "status_kawin", "statuskawin",
-    "marital_status", "maritalstatus", "perkawinan", "pernikahan",
-    "reginput_maritalstatus", "reginput_statusperkawinan", "reginputmaritalstatus", "reginputstatusperkawinan"
-  ],
-  family_card_number: [
-    "nomor_kartu_keluarga", "nomor_kk", "no_kk", "noktp", "kartu_keluarga",
-    "family_card_number", "family_card_no", "family_id", "reginput_familycardnumber", "reginput_nokk"
-  ],
-  family_relationship: [
-    "status_hubungan_keluarga", "hubungan_keluarga", "family_status", "family_relationship",
-    "status_keluarga", "reginput_familyrelationship", "reginput_statushubungankeluarga"
-  ],
-  blood_type: [
-    "golongan_darah", "gol_darah", "goldarah", "blood_type", "blood_group"
-  ],
-  mother_name: [
-    "nama_lengkap_ibu", "nama_lengkap_ibu_kandung", "nama_ibu_kandung", "nama_ibu",
-    "ibu_kandung", "mother_name", "mother_full_name", "mothers_name", "namaibu", "nama_orang_tua_ibu",
-    "mothername", "mothersname", "reginput_mothersname", "reginput_mothername"
-  ],
-  father_name: [
-    "nama_lengkap_ayah", "nama_lengkap_ayah_kandung", "nama_ayah_kandung", "nama_ayah",
-    "ayah_kandung", "father_name", "father_full_name", "fathers_name", "namaayah", "nama_orang_tua_ayah",
-    "fathername", "fathersname", "reginput_fathersname", "reginput_fathername"
-  ],
-  emergency_contact_name: [
-    "nama_kontak_darurat", "kontak_darurat", "nama_darurat", "emergency_contact_name", "emergency_contact"
-  ],
-  emergency_contact_phone: [
-    "no_kontak_darurat", "nomor_kontak_darurat", "telp_darurat", "hp_darurat", "emergency_contact_phone", "emergency_phone"
-  ],
-  work_address: [
-    "alamat_kantor", "alamat_perusahaan", "alamat_instansi", "alamat_pekerjaan", "work_address", "office_address"
-  ],
-  npwp: [
-    "npwp", "nomor_npwp", "no_npwp", "tax_id"
-  ],
-  bpjs_number: [
-    "bpjs", "no_bpjs", "nomor_bpjs", "bpjs_kesehatan", "bpjs_ketenagakerjaan"
-  ],
-  foto_ktp: [
-    "foto_ktp", "upload_ktp", "scan_ktp", "berkas_ktp", "file_ktp", "dokumen_ktp", "ktp_file", "fotoktp"
-  ],
-  foto_kk: [
-    "foto_kk", "upload_kk", "scan_kk", "berkas_kk", "file_kk", "kartu_keluarga_file", "fotokk", "kk_file"
-  ],
-  pasfoto: [
-    "pasfoto", "pas_foto", "foto_profil", "photo_file", "avatar_file", "foto_diri", "foto_wajah", "foto_formal", "fotodiri", "pas_photo"
-  ],
-  foto_npwp: [
-    "foto_npwp", "upload_npwp", "scan_npwp", "kartu_npwp_file", "berkas_npwp", "npwp_file"
-  ],
-  foto_ijazah: [
-    "foto_ijazah", "upload_ijazah", "scan_ijazah", "berkas_ijazah", "dokumen_ijazah", "ijazah_file"
-  ]
-};
-
-// ============================================================
-// Dropdown Value Mapping: Standarisasi & Sinonim Nilai Dropdown
-// Memetakan nilai profil ke variasi penulisan opsi <select> umum
-// ============================================================
-const DROPDOWN_VALUE_MAP = {
-  gender: {
-    "laki-laki": ["laki", "pria", "male", "l", "1", "lk", "man", "cowok", "laki-laki", "laki laki", "m"],
-    "perempuan": ["wanita", "perempuan", "female", "p", "pr", "2", "w", "woman", "cewek", "f"]
-  },
-  birth_month: {
-    "01": ["1", "01", "jan", "january", "januari"],
-    "02": ["2", "02", "feb", "february", "februari"],
-    "03": ["3", "03", "mar", "march", "maret"],
-    "04": ["4", "04", "apr", "april"],
-    "05": ["5", "05", "may", "mei"],
-    "06": ["6", "06", "jun", "june", "juni"],
-    "07": ["7", "07", "jul", "july", "juli"],
-    "08": ["8", "08", "aug", "august", "agustus"],
-    "09": ["9", "09", "sep", "september"],
-    "10": ["10", "oct", "october", "oktober"],
-    "11": ["11", "nov", "november"],
-    "12": ["12", "dec", "december", "desember"]
-  },
-  religion: {
-    "islam": ["islam", "muslim"],
-    "kristen": ["kristen", "protestan", "christian", "kristen protestan"],
-    "katolik": ["katolik", "catholic", "kristen katolik"],
-    "hindu": ["hindu"],
-    "buddha": ["buddha", "budha", "buddhis"],
-    "konghucu": ["konghucu", "khonghucu", "confucianism", "penghayat", "lainnya"]
-  },
-  marital_status: {
-    "belum kawin": ["belum_menikah", "single", "lajang", "belum_kawin", "tidak_kawin", "belum", "b", "tidak kawin", "belum kawin", "tk", "tidak", "belum menikah", "tidak_menikah"],
-    "kawin": ["menikah", "married", "sudah_menikah", "kawin", "k", "sudah kawin", "sudah menikah", "k/0", "k/1", "k/2", "k/3"],
-    "cerai hidup": ["cerai", "cerai_hidup", "duda", "janda", "divorced", "ch", "cerai hidup"],
-    "cerai mati": ["cerai_mati", "widow", "widower", "cm", "cerai mati"]
-  },
-  education_level: {
-    "sd": ["sd", "sekolah_dasar", "elementary"],
-    "smp": ["smp", "sltp", "junior_high"],
-    "sma": ["sma", "smk", "slta", "sederajat", "senior_high", "al_iyah", "aliyah", "ma"],
-    "d1": ["d1", "diploma_1", "d-1", "diploma 1"],
-    "d2": ["d2", "diploma_2", "d-2", "diploma 2"],
-    "d3": ["d3", "diploma", "diploma_3", "d-3", "diploma 3"],
-    "d4": ["d4", "diploma_4", "d-4", "diploma 4"],
-    "s1": ["s1", "sarjana", "bachelor", "s-1", "strata_1", "strata 1"],
-    "s2": ["s2", "magister", "master", "s-2", "strata_2", "strata 2"],
-    "s3": ["s3", "doktor", "doctoral", "phd", "s-3", "strata_3", "strata 3"]
-  },
-  blood_type: {
-    "a": ["a", "golongan a", "gol a", "a+"],
-    "b": ["b", "golongan b", "gol b", "b+"],
-    "ab": ["ab", "golongan ab", "gol ab", "ab+"],
-    "o": ["o", "golongan o", "gol o", "o+"]
-  }
-};
-
-// ============================================================
-// Helper: Periksa Apakah Element Benar-benar Terlihat di Layar
-// ============================================================
-function isElementVisible(el) {
-  if (!el) return false;
-  if (el.type === "hidden") return false;
-
-  // Pengecualian khusus: PrimeNG host element (<p-dropdown> atau div.p-dropdown)
-  // Angular sering melampirkannya di dalam portal-outlet atau container posisional
-  // sehingga offsetParent bisa null meski elemen benar-benar terlihat.
-  // Solusi: periksa visibilitas pada inner .p-dropdown div, bukan elemen host.
-  const tag = (el.tagName || "").toLowerCase();
-  if (tag === "p-dropdown" || (el.classList && el.classList.contains("p-dropdown") && !el.closest("p-dropdown"))) {
-    const inner = el.querySelector(".p-dropdown") || el;
-    const innerStyle = window.getComputedStyle(inner);
-    if (innerStyle.display === "none" || innerStyle.visibility === "hidden") return false;
-    const innerRect = inner.getBoundingClientRect();
-    return innerRect.width > 0 || innerRect.height > 0;
-  }
-
-  // Pengecualian khusus: Custom radio / checkbox (Bootstrap, Tailwind, DemoQA custom-control)
-  // Seringkali input native disembunyikan dengan opacity: 0 atau position: absolute, tetapi label pendukungnya terlihat jelas
-  if (el.type === "radio" || el.type === "checkbox") {
-    const parentContainer = el.closest(".custom-control, .form-check, label, div");
-    if (parentContainer) {
-      const pStyle = window.getComputedStyle(parentContainer);
-      if (pStyle.display !== "none" && pStyle.visibility !== "hidden") {
-        const pRect = parentContainer.getBoundingClientRect();
-        if (pRect.width > 0 || pRect.height > 0) return true;
-      }
-    }
-  }
-
-  // Native checkVisibility (Chrome 105+) - Akurat mendeteksi ancestor display:none
-  if (typeof el.checkVisibility === "function") {
-    return el.checkVisibility({
-      checkOpacity: true,
-      checkVisibilityCSS: true
-    });
-  }
-
-  const style = window.getComputedStyle(el);
-  if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
-    return false;
-  }
-
-  // Jika parent tersembunyi (offsetParent null)
-  if (el.offsetParent === null && style.position !== "fixed") {
-    return false;
-  }
-
-  const rect = el.getBoundingClientRect();
-  if (rect.width === 0 && rect.height === 0) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Memeriksa apakah suatu elemen merupakan dropdown kustom PrimeNG (CoreTax DJP)
- */
-function isPrimeNGDropdown(el) {
-  if (!el) return false;
-  const tag = (el.tagName || "").toLowerCase();
-  if (tag === "p-dropdown") return true;
-  if (el.classList && el.classList.contains("p-dropdown")) return true;
-  if (el.querySelector && (el.querySelector(".p-dropdown-label") || el.querySelector(".p-dropdown-trigger"))) return true;
-  return false;
-}
-
-/**
- * Mengambil semua form field yang dapat diisi pada halaman:
- * input standar, select native, textarea, dan custom dropdown (PrimeNG, Material, combobox, React-Select).
- * Mengabaikan input pembantu internal seperti .p-hidden-accessible.
- */
-function querySelectorAllDeep(selector, root = document) {
-  let results = Array.from(root.querySelectorAll(selector));
-  const elements = root.querySelectorAll("*");
-  for (const el of elements) {
-    if (el.shadowRoot) {
-      results = results.concat(querySelectorAllDeep(selector, el.shadowRoot));
-    }
-  }
-  return results;
-}
-
-function getAllFormFields() {
-  const standardInputs = querySelectorAllDeep(
-    "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea"
-  ).filter(el => {
-    // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
-    if (el.closest(".p-hidden-accessible, .cdk-visually-hidden, [aria-hidden='true']")) {
-      return false;
-    }
-    // Abaikan input jika berada di dalam p-dropdown kecuali jika berupa search filter
-    if (el.closest("p-dropdown, .p-dropdown") && !el.classList.contains("p-dropdown-filter")) {
-      return false;
-    }
-    return true;
-  });
-
-  const customDropdowns = querySelectorAllDeep(
-    "p-dropdown, .p-dropdown:not(p-dropdown .p-dropdown), mat-select, [role='combobox']:not(input):not(select), [class*='react-select__control']"
-  );
-
-  const all = [...standardInputs, ...customDropdowns];
-  return all.filter(el => el && el.isConnected);
-}
-
-// ============================================================
-// Penanda Kolom Form di Halaman Web (In-Page Field Markers)
-// Menampilkan border highlight dan badge "⚡ GovConnect" pada kolom yang akan diisi
-// ============================================================
-const MARKER_LABELS = {
-  full_name: "Nama Lengkap",
-  title: "Gelar / Title",
-  first_name: "Nama Depan",
-  middle_initial: "Middle Initial",
-  last_name: "Nama Belakang",
-  nik: "NIK",
-  birth_date: "Tgl Lahir",
-  birth_month: "Bulan Lahir",
-  birth_day: "Hari Lahir",
-  birth_year: "Tahun Lahir",
-  age: "Usia",
-  birth_place: "Tempat Lahir",
-  gender: "Jenis Kelamin",
-  religion: "Agama",
-  marital_status: "Status Nikah",
-  family_card_number: "No. KK",
-  family_relationship: "Hub. Keluarga",
-  blood_type: "Gol. Darah",
-  address: "Alamat",
-  address_line_1: "Alamat Baris 1",
-  address_line_2: "Alamat Baris 2",
-  province: "Provinsi",
-  city: "Kota/Kab",
-  district: "Kecamatan",
-  village: "Kelurahan/Desa",
-  postal_code: "Kode Pos",
-  country: "Negara",
-  driver_license: "No. SIM",
-  website: "Website",
-  income: "Penghasilan",
-  phone: "Telepon/WA",
-  home_phone: "Telp Rumah",
-  work_telephone: "Telp Kantor",
-  fax: "Nomor Fax",
-  comments: "Catatan",
-  email: "Email",
-  occupation: "Pekerjaan",
-  organization: "Instansi",
-  work_address: "Alamat Kantor",
-  education_level: "Pendidikan",
-  institution: "Institusi",
-  student_id: "NIM",
-  nisn: "NISN",
-  mother_name: "Nama Ibu",
-  father_name: "Nama Ayah",
-  emergency_contact_name: "Kontak Darurat",
-  emergency_contact_phone: "No. Darurat",
-  npwp: "NPWP",
-  bpjs_number: "BPJS",
-  foto_ktp: "Foto e-KTP",
-  foto_kk: "Foto KK",
-  pasfoto: "Pasfoto Diri",
-  foto_npwp: "Foto Kartu NPWP",
-  foto_ijazah: "Foto Ijazah"
-};
-
-let activeMarkers = []; // Array of { el, badge, profileKey }
-let cachedLastProfile = null;
-let cachedActiveKeys = null;
-const pendingSemanticRequests = new Set();
-
-function parseBirthDate(dateStr) {
-  if (!dateStr) return { month: "", day: "", year: "" };
-  const str = String(dateStr).trim();
-  let day = "", month = "", year = "";
-
-  // 1. YYYY-MM-DD or YYYY/MM/DD
-  const isoMatch = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
-  if (isoMatch) {
-    year = isoMatch[1];
-    month = isoMatch[2].padStart(2, "0");
-    day = isoMatch[3].padStart(2, "0");
-    return { day, month, year };
-  }
-
-  // 2. DD-MM-YYYY or DD/MM/YYYY
-  const idMatch = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
-  if (idMatch) {
-    day = idMatch[1].padStart(2, "0");
-    month = idMatch[2].padStart(2, "0");
-    year = idMatch[3];
-    return { day, month, year };
-  }
-
-  // 3. DD Mon YYYY (e.g. 22 Sep 2026 or 15 May 1995)
-  const monthNames = {
-    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", mei: "05", jun: "06",
-    jul: "07", aug: "08", agu: "08", sep: "09", oct: "10", okt: "10", nov: "11", dec: "12", des: "12"
-  };
-  const textMatch = str.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
-  if (textMatch) {
-    day = textMatch[1].padStart(2, "0");
-    const mStr = textMatch[2].toLowerCase().slice(0, 3);
-    month = monthNames[mStr] || "01";
-    year = textMatch[3];
-    return { day, month, year };
-  }
-
-  return { day, month, year };
-}
-
-function calculateAge(birthDateStr) {
-  const parts = parseBirthDate(birthDateStr);
-  if (!parts.year) return "";
-  const birthYear = parseInt(parts.year, 10);
-  const birthMonth = parseInt(parts.month || "1", 10) - 1;
-  const birthDay = parseInt(parts.day || "1", 10);
-  const today = new Date();
-  let age = today.getFullYear() - birthYear;
-  const m = today.getMonth() - birthMonth;
-  if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
-    age--;
-  }
-  return age > 0 ? String(age) : "";
-}
-
-function detectDateSelectType(el) {
-  if (!el || el.tagName.toLowerCase() !== "select") return null;
-
-  // 1. Cek dari nama/id setelah prefiks angka dibersihkan (misal name="66mm" -> "mm", name="67dd" -> "dd", name="68yy" -> "yy")
-  const rawName = (el.name || el.id || "").toLowerCase();
-  const cleanName = stripNumericPrefix(rawName).toLowerCase();
-  if (cleanName === "mm" || cleanName === "dob_m" || cleanName === "month" || cleanName === "dob_mm" || cleanName === "ccexp_mm") {
-    // Abaikan expiration credit card
-    if (cleanName.includes("ccexp") || rawName.includes("ccexp")) return null;
-    return "birth_month";
-  }
-  if (cleanName === "dd" || cleanName === "dob_d" || cleanName === "day" || cleanName === "dob_dd") {
-    return "birth_day";
-  }
-  if (cleanName === "yy" || cleanName === "yyyy" || cleanName === "dob_y" || cleanName === "year" || cleanName === "dob_yy" || cleanName === "ccexp_yy" || cleanName.includes("tahun") || cleanName.includes("year") || cleanName.includes("thn")) {
-    // Abaikan expiration credit card
-    if (cleanName.includes("ccexp") || rawName.includes("ccexp")) return null;
-    return "birth_year";
-  }
-
-  const opts = Array.from(el.options || []).filter(o => o.value && o.value !== "");
-  if (opts.length === 0) return null;
-  const vals = opts.map(o => (o.value || o.text || "").trim().toLowerCase());
-
-  // Abaikan jika ini adalah expiration dropdown kartu kredit
-  if (rawName.includes("exp") || cleanName.includes("exp")) {
-    return null;
-  }
-
-  // Cek apakah dropdown tahun (memiliki nilai >= 1900)
-  if (vals.some(v => /^(19\d\d|20\d\d)$/.test(v))) {
-    return "birth_year";
-  }
-  // Cek apakah dropdown bulan (mengandung nama bulan atau nilai 1-12 dengan total opsi <= 13)
-  if (vals.some(v => /^(jan|feb|mar|apr|may|mei|jun|jul|aug|sep|oct|nov|dec)/i.test(v))) {
-    return "birth_month";
-  }
-  const nums = vals.map(v => parseInt(v, 10)).filter(n => !isNaN(n));
-  if (nums.length > 0) {
-    const max = Math.max(...nums);
-    if (max <= 12 && nums.length <= 13) return "birth_month";
-    if (max <= 31 && nums.length <= 32) return "birth_day";
-  }
-  return null;
-}
-
-function isReactSelect(el) {
-  if (!el) return false;
-  if (el.classList && Array.from(el.classList).some(c => c.includes("react-select"))) return true;
-  if (el.closest && el.closest("[class*='react-select'], .css-2b097c-container, #state, #city")) return true;
-  return false;
-}
-
-async function fillReactSelect(el, value, profileKey) {
-  const container = el.closest("[class*='react-select'], .css-2b097c-container, #state, #city") || el;
-  try {
-    container.scrollIntoView({ behavior: "instant", block: "center" });
-  } catch (e) {}
-
-  // 1. Klik control untuk membuka menu
-  const control = container.querySelector("[class*='control'], [class*='placeholder'], .css-1wa3eu0-placeholder") || container;
-  control.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
-  control.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
-  control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-
-  await new Promise(r => setTimeout(r, 120));
-
-  // 2. Ketik teks ke input react-select
-  const inputEl = container.querySelector("input") || (el.tagName.toLowerCase() === "input" ? el : null);
-  if (inputEl) {
-    inputEl.focus();
-    inputEl.value = value;
-    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-    inputEl.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter", code: "Enter" }));
-    await new Promise(r => setTimeout(r, 150));
-  }
-
-  // 3. Cari menu/opsi yang muncul
-  const menuOptions = Array.from(document.querySelectorAll("[class*='option'], [id*='react-select'][id*='option']"));
-  if (menuOptions.length > 0) {
-    const wrappers = menuOptions.map(opt => ({
-      rawElement: opt,
-      value: opt.textContent.trim(),
-      text: opt.textContent.trim()
-    }));
-    const matched = bestMatchOption(wrappers, value, profileKey) || wrappers[0];
-    if (matched && matched.rawElement) {
-      matched.rawElement.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      matched.rawElement.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-      matched.rawElement.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      if (typeof matched.rawElement.click === "function") {
-        try { matched.rawElement.click(); } catch(e) {}
-      }
-      await new Promise(r => setTimeout(r, 120));
-      return true;
-    }
-  }
-
-  if (inputEl) {
-    inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-    return true;
-  }
-  return false;
-}
-
-function registerDocumentPhotos(profile) {
-  if (!profile || !profile.document_photos) return;
-  try {
-    const docs = typeof profile.document_photos === "string"
-      ? JSON.parse(profile.document_photos)
-      : profile.document_photos;
-    
-    if (docs.ktp && docs.ktp.data) profile.foto_ktp = docs.ktp.name || "ktp.jpg";
-    if (docs.kk && docs.kk.data) profile.foto_kk = docs.kk.name || "kk.jpg";
-    if (docs.pasfoto && docs.pasfoto.data) profile.pasfoto = docs.pasfoto.name || "pasfoto.jpg";
-    if (docs.npwp_card && docs.npwp_card.data) profile.foto_npwp = docs.npwp_card.name || "npwp.jpg";
-    if (docs.ijazah && docs.ijazah.data) profile.foto_ijazah = docs.ijazah.name || "ijazah.jpg";
-  } catch (e) {
-    console.warn("GovConnect: Gagal memproses document_photos:", e);
-  }
-}
-
-function registerCustomProfileFields(profile) {
-  if (!profile) return;
-  registerDocumentPhotos(profile);
-
-  // Auto-derive first_name dan last_name jika belum ada di profile
-  if (profile.full_name && (!profile.first_name || !profile.last_name)) {
-    const parts = profile.full_name.trim().split(/\s+/);
-    if (!profile.first_name) profile.first_name = parts[0] || "";
-    if (!profile.last_name) profile.last_name = parts.slice(1).join(" ") || parts[0] || "";
-  }
-
-  // Auto-derive middle_initial jika belum ada di profile
-  if (!profile.middle_initial && profile.full_name) {
-    const parts = profile.full_name.trim().split(/\s+/);
-    if (parts.length > 2) {
-      profile.middle_initial = parts[1].charAt(0).toUpperCase();
-    }
-  }
-
-  // Auto-derive title jika belum ada
-  if (!profile.title) {
-    const g = (profile.gender || "").toLowerCase();
-    if (g.includes("laki") || g.includes("pria") || g.includes("male") || g === "l") {
-      profile.title = "Mr";
-    } else if (g.includes("perempuan") || g.includes("wanita") || g.includes("female") || g === "p") {
-      profile.title = "Ms";
-    }
-  }
-
-  // Auto-derive address_line_1 fallback
-  if (!profile.address_line_1 && profile.address) {
-    profile.address_line_1 = profile.address;
-  }
-
-  // Auto-derive komponen tanggal lahir (birth_month, birth_day, birth_year, age)
-  if (profile.birth_date) {
-    const bParts = parseBirthDate(profile.birth_date);
-    if (!profile.birth_month) profile.birth_month = bParts.month;
-    if (!profile.birth_day) profile.birth_day = bParts.day;
-    if (!profile.birth_year) profile.birth_year = bParts.year;
-    if (!profile.age) profile.age = calculateAge(profile.birth_date);
-  }
-
-  // Auto-derive country default "Indonesia" jika belum ada
-  if (!profile.country) {
-    profile.country = "Indonesia";
-  }
-
-  // Auto-derive telephone aliases
-  if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
-  if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
-  if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
-  if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
-
-  if (!profile.custom_fields) return;
-  try {
-    const cf = typeof profile.custom_fields === "string"
-      ? JSON.parse(profile.custom_fields)
-      : profile.custom_fields;
-    
-    let items = [];
-    if (Array.isArray(cf)) {
-      items = cf;
-    } else if (typeof cf === "object" && cf !== null) {
-      if (Array.isArray(cf.fields)) {
-        items = cf.fields;
-      } else {
-        items = Object.entries(cf).map(([k, v]) => ({
-          key: k,
-          label: typeof v === "object" ? (v.label || k) : k,
-          value: typeof v === "object" ? v.value : v
-        }));
-      }
-    }
-
-    items.forEach(item => {
-      if (item && item.key) {
-        const key = item.key;
-        profile[key] = item.value;
-        if (!MARKER_LABELS[key]) {
-          MARKER_LABELS[key] = item.label || key;
-        }
-        if (!KEYWORD_MAP[key]) {
-          const kLower = key.toLowerCase();
-          const cleanLabel = (item.label || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
-          KEYWORD_MAP[key] = Array.from(new Set([
-            kLower,
-            kLower.replace(/_/g, ""),
-            cleanLabel,
-            (item.label || "").toLowerCase()
-          ])).filter(Boolean);
-        }
-      }
-    });
-
-    // Re-check aliases after custom_fields items are unpacked
-    if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
-    if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
-    if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
-    if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
-  } catch (e) {
-    console.warn("GovConnect: Gagal memproses custom_fields:", e);
-  }
-}
-
-function ensureMarkerStyles() {
-  if (document.getElementById("govconnect-marker-styles")) return;
-  const style = document.createElement("style");
-  style.id = "govconnect-marker-styles";
-  style.textContent = `
-    .govconnect-field-ready {
-      outline: 2px solid #0A4174 !important;
-      outline-offset: 1px !important;
-      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
-      border-color: #0A4174 !important;
-      transition: outline 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
-    }
-    p-dropdown.govconnect-field-ready .p-dropdown,
-    .p-dropdown.govconnect-field-ready {
-      outline: 2px solid #0A4174 !important;
-      outline-offset: 1px !important;
-      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
-      border-color: #0A4174 !important;
-    }
-    .govconnect-field-filled {
-      outline: 2px solid #16A34A !important;
-      outline-offset: 1px !important;
-      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22) !important;
-      border-color: #16A34A !important;
-      background-color: #F0FDF4 !important;
-      animation: govconnectPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-      transition: outline 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease !important;
-    }
-    p-dropdown.govconnect-field-filled .p-dropdown,
-    .p-dropdown.govconnect-field-filled {
-      outline: 2px solid #16A34A !important;
-      outline-offset: 1px !important;
-      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22) !important;
-      border-color: #16A34A !important;
-      background-color: #F0FDF4 !important;
-    }
-    .govconnect-field-fadeout {
-      outline: 2px solid transparent !important;
-      box-shadow: none !important;
-      background-color: transparent !important;
-      border-color: inherit !important;
-      transition: outline 0.7s ease, box-shadow 0.7s ease, background-color 0.7s ease !important;
-    }
-    .govconnect-field-focus {
-      outline: 3px solid #001D39 !important;
-      outline-offset: 2px !important;
-      box-shadow: 0 0 0 5px rgba(123, 189, 232, 0.35) !important;
-      animation: govconnectPulse 1s ease-in-out infinite alternate !important;
-    }
-    @keyframes govconnectPulse {
-      0% { box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.2); }
-      100% { box-shadow: 0 0 0 6px rgba(123, 189, 232, 0.4); }
-    }
-    @keyframes govconnectPopIn {
-      0% { transform: scale(0.99); }
-      50% { transform: scale(1.01); }
-      100% { transform: scale(1); }
-    }
-    @keyframes govconnectBadgePop {
-      0% { transform: translateX(-100%) scale(0.85); opacity: 0.7; }
-      100% { transform: translateX(-100%) scale(1); opacity: 1; }
-    }
-    #govconnect-markers-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 2147483640;
-    }
-    .govconnect-badge {
-      position: absolute;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      background: linear-gradient(135deg, #001D39, #0A4174);
-      color: #FFFFFF !important;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      font-size: 10px !important;
-      font-weight: 700 !important;
-      line-height: 1.2 !important;
-      border-radius: 999px;
-      box-shadow: 0 2px 6px rgba(0, 29, 57, 0.3), 0 1px 2px rgba(0,0,0,0.08);
-      pointer-events: auto;
-      cursor: pointer;
-      user-select: none;
-      transform: translateX(-100%);
-      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease, opacity 0.6s ease;
-      white-space: nowrap;
-    }
-    .govconnect-badge:hover {
-      transform: translateX(-100%) scale(1.05);
-      box-shadow: 0 4px 12px rgba(10, 65, 116, 0.4);
-    }
-    .govconnect-badge-filled {
-      background: linear-gradient(135deg, #16A34A, #15803D) !important;
-      box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35), 0 1px 2px rgba(0,0,0,0.08) !important;
-      animation: govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-    }
-    .govconnect-badge-fadeout {
-      opacity: 0 !important;
-      transform: translateX(-100%) translateY(-6px) scale(0.92) !important;
-      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    }
-    .govconnect-badge-icon {
-      font-size: 9px;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-function ensureMarkerLayer() {
-  let layer = document.getElementById("govconnect-markers-layer");
-  if (!layer) {
-    layer = document.createElement("div");
-    layer.id = "govconnect-markers-layer";
-    document.body.appendChild(layer);
-  }
-  return layer;
-}
-
-function clearFieldMarkers() {
-  activeMarkers.forEach(({ el, badge }) => {
-    if (el) {
-      el.classList.remove(
-        "govconnect-field-ready",
-        "govconnect-field-filled",
-        "govconnect-field-focus",
-        "govconnect-field-fadeout"
-      );
-    }
-    if (badge && badge.parentNode) {
-      badge.remove();
-    }
-  });
-  activeMarkers = [];
-}
-
-async function renderFieldMarkers(activeKeys = null, profile = null) {
-  if (isGovConnectDashboardPage()) {
-    clearFieldMarkers();
-    return;
-  }
-  ensureMarkerStyles();
-  const layer = ensureMarkerLayer();
-  clearFieldMarkers();
-
-  if (profile) {
-    cachedLastProfile = profile;
-    registerCustomProfileFields(profile);
-  }
-  if (activeKeys) cachedActiveKeys = activeKeys;
-
-  const currentProfile = cachedLastProfile || {};
-  const allowedKeys = cachedActiveKeys;
-
-  const inputs = getAllFormFields();
-
-  for (const el of inputs) {
-    const profileKey = await matchProfileKey(el);
-    if (!profileKey) continue;
-
-    // Filter berdasarkan activeKeys jika diberikan
-    if (allowedKeys && !allowedKeys.includes(profileKey)) continue;
-
-    // Filter jika profil tidak memiliki nilai untuk key ini
-    const val = currentProfile[profileKey];
-    if (currentProfile && Object.keys(currentProfile).length > 0 && (!val || val.toString().trim() === "")) {
-      continue;
-    }
-
-    if (!isElementVisible(el)) continue;
-
-    // Pasang highlight border
-    el.classList.add("govconnect-field-ready");
-
-    // Pasang badge floating di sudut kanan atas kolom
-    const badge = document.createElement("div");
-    badge.className = "govconnect-badge";
-    badge.dataset.key = profileKey;
-    badge.style.animation = "govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both";
-    badge.style.animationDelay = `${Math.min(activeMarkers.length * 35, 450)}ms`;
-    const label = MARKER_LABELS[profileKey] || profileKey;
-    badge.title = val ? `Siap mengisi: ${val}` : `Kolom terdeteksi: ${label}`;
-    badge.innerHTML = `<span>${label}</span>`;
-
-    badge.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const trigger = el.querySelector?.(".p-dropdown-trigger, .p-dropdown") || el;
-      trigger.focus();
-    });
-
-    layer.appendChild(badge);
-    activeMarkers.push({ el, badge, profileKey });
-  }
-
-  repositionMarkers();
-}
-
-function repositionMarkers() {
-  activeMarkers.forEach(({ el, badge }) => {
-    if (!el || !document.body.contains(el)) {
-      badge.remove();
-      return;
-    }
-    if (!isElementVisible(el)) {
-      badge.style.display = "none";
-      return;
-    }
-
-    badge.style.display = "inline-flex";
-    const rect = el.getBoundingClientRect();
-    const isNearTop = rect.top + window.scrollY < 16;
-    const top = isNearTop
-      ? (rect.top + window.scrollY + 3)
-      : (rect.top + window.scrollY - 9);
-    const left = (rect.right + window.scrollX - 6);
-
-    badge.style.top = `${top}px`;
-    badge.style.left = `${left}px`;
-  });
-}
-
-function highlightFieldOnPage(profileKey, name, id) {
-  activeMarkers.forEach(({ el, badge, profileKey: key }) => {
-    const isMatch = (profileKey && key === profileKey) ||
-                    (name && el.name === name) ||
-                    (id && el.id === id);
-    if (isMatch) {
-      el.classList.add("govconnect-field-focus");
-      const rect = el.getBoundingClientRect();
-      if (rect.top < 60 || rect.bottom > window.innerHeight - 60) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    } else {
-      el.classList.remove("govconnect-field-focus");
-    }
-  });
-}
-
-function unhighlightFieldOnPage() {
-  activeMarkers.forEach(({ el }) => {
-    if (el) el.classList.remove("govconnect-field-focus");
-  });
-}
-
-let markerFadeOutTimer = null;
-
-function markFieldsAsFilled(filledKeys, profile) {
-  if (markerFadeOutTimer) {
-    clearTimeout(markerFadeOutTimer);
-    markerFadeOutTimer = null;
-  }
-
-  activeMarkers.forEach(({ el, badge, profileKey }) => {
-    if (filledKeys && filledKeys.includes(profileKey)) {
-      if (el) {
-        el.classList.remove("govconnect-field-ready", "govconnect-field-focus", "govconnect-field-fadeout");
-        el.classList.add("govconnect-field-filled");
-      }
-      if (badge) {
-        badge.classList.remove("govconnect-badge-fadeout");
-        badge.className = "govconnect-badge govconnect-badge-filled";
-        const label = MARKER_LABELS[profileKey] || profileKey;
-        badge.innerHTML = `<span class="govconnect-badge-icon">✓</span><span>Terisi: ${label}</span>`;
-        if (profile && profile[profileKey]) {
-          badge.title = `Berhasil diisi: ${profile[profileKey]}`;
-        }
-      }
-    }
-  });
-
-  // Animasi menghilang (Fade out) secara mulus setelah 2.2 detik
-  markerFadeOutTimer = setTimeout(() => {
-    activeMarkers.forEach(({ el, badge }) => {
-      if (el && el.classList.contains("govconnect-field-filled")) {
-        el.classList.remove("govconnect-field-filled");
-        el.classList.add("govconnect-field-fadeout");
-      }
-      if (badge && badge.classList.contains("govconnect-badge-filled")) {
-        badge.classList.add("govconnect-badge-fadeout");
-      }
-    });
-
-    // Hapus total elemen setelah transisi CSS selesai (0.8s kemudian)
-    setTimeout(() => {
-      clearFieldMarkers();
-    }, 850);
-  }, 2200);
-}
-
-// Throttled listener untuk scroll dan resize agar badge selalu menempel sempurna
-let markerScrollThrottle = false;
-window.addEventListener("scroll", () => {
-  if (!markerScrollThrottle) {
-    requestAnimationFrame(() => {
-      repositionMarkers();
-      markerScrollThrottle = false;
-    });
-    markerScrollThrottle = true;
-  }
-}, { passive: true });
-
-window.addEventListener("resize", () => {
-  repositionMarkers();
-}, { passive: true });
-
-// ============================================================
-// Listener untuk pesan dari side panel / popup
-// ============================================================
-
-// ============================================================
-// Modul Tampilan Asisten Melayang (In-Page Floating Assistant)
-// Menggantikan side panel pembelah layar agar tampil melayang
-// ============================================================
-// ============================================================
-// FLOATING OVERLAY SIDEPANEL DRAWER (MENIMPA WEB TANPA MEMBELAH LAYAR)
-// ============================================================
-let isSidebarOpen = false;
-
-function removeFloatingSidebar() {
-  const existing = document.getElementById("govconnect-sidebar-container");
-  if (existing) existing.remove();
-  isSidebarOpen = false;
-}
-
-const GOVCONNECT_SIDEBAR_WIDTH = 420;
-
-let viewportResetTimeout = null;
-
-// Menyesuaikan ukuran dan posisi halaman web agar memotong/menggeser tampilan ke kiri
-// sehingga konten form website tidak tertutup oleh ekstensi di pojok kanan (Split View Dock)
-function adjustWebPageViewport(open) {
-  try {
-    const html = document.documentElement;
-    const body = document.body;
-    if (!html) return;
-
-    if (viewportResetTimeout) {
-      clearTimeout(viewportResetTimeout);
-      viewportResetTimeout = null;
-    }
-
-    const FLUID_TRANSITION = "margin-right 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1)";
-
-    if (open) {
-      html.style.setProperty("transition", FLUID_TRANSITION, "important");
-      html.style.setProperty("margin-right", `${GOVCONNECT_SIDEBAR_WIDTH}px`, "important");
-      html.style.setProperty("width", `calc(100% - ${GOVCONNECT_SIDEBAR_WIDTH}px)`, "important");
-      html.style.setProperty("box-sizing", "border-box", "important");
-      if (body) {
-        body.style.setProperty("transition", FLUID_TRANSITION, "important");
-        body.style.setProperty("max-width", "100%", "important");
-        body.style.setProperty("box-sizing", "border-box", "important");
-      }
-    } else {
-      // Kembalikan lebar ke 100% dengan transisi yang sama persis secara fluid
-      html.style.setProperty("transition", FLUID_TRANSITION, "important");
-      html.style.setProperty("margin-right", "0px", "important");
-      html.style.setProperty("width", "100%", "important");
-      if (body) {
-        body.style.setProperty("transition", FLUID_TRANSITION, "important");
-        body.style.setProperty("max-width", "100%", "important");
-      }
-
-      // Bersihkan properti inline setelah animasi selesai
-      viewportResetTimeout = setTimeout(() => {
-        if (!isSidebarOpen) {
-          html.style.removeProperty("margin-right");
-          html.style.removeProperty("width");
-          html.style.removeProperty("box-sizing");
-          html.style.removeProperty("transition");
-          if (body) {
-            body.style.removeProperty("max-width");
-            body.style.removeProperty("box-sizing");
-            body.style.removeProperty("transition");
-          }
-        }
-      }, 300);
-    }
-  } catch (e) {
-    console.warn("GovConnect: Penyesuaian layout halaman web gagal:", e);
-  }
-}
-
-function getOrCreateFloatingSidebar() {
-  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return null;
-
-  let wrapper = document.getElementById("govconnect-sidebar-container");
-  if (!wrapper) {
-    wrapper = document.createElement("div");
-    wrapper.id = "govconnect-sidebar-container";
-    wrapper.style.cssText = `
-      position: fixed !important;
-      top: 0 !important;
-      right: 0 !important;
-      width: ${GOVCONNECT_SIDEBAR_WIDTH}px !important;
-      max-width: 95vw !important;
-      height: 100vh !important;
-      z-index: 2147483647 !important;
-      box-shadow: none !important;
-      border-left: 1px solid #CBD5E1 !important;
-      background: #F6F8FB !important;
-      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-      transform: translateX(100%) !important;
-      pointer-events: none !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow: hidden !important;
-    `;
-
-    const iframe = document.createElement("iframe");
-    iframe.id = "govconnect-sidebar-iframe";
-    iframe.src = chrome.runtime.getURL("sidepanel.html");
-    iframe.style.cssText = `
-      width: 100% !important;
-      height: 100% !important;
-      border: none !important;
-      background: #F6F8FB !important;
-      display: block !important;
-    `;
-
-    wrapper.appendChild(iframe);
-    (document.body || document.documentElement).appendChild(wrapper);
-
-    // Kembalikan layout jika halaman di-unload
-    window.addEventListener("beforeunload", () => {
-      adjustWebPageViewport(false);
-    });
-  }
-  return wrapper;
-}
-
-function openFloatingSidebar() {
-  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
-  const wrapper = getOrCreateFloatingSidebar();
-  if (!wrapper) return;
-
-  isSidebarOpen = true;
-  // Potong/geser tampilan halaman web ke kiri agar berdampingan di pojok kanan
-  adjustWebPageViewport(true);
-
-  requestAnimationFrame(() => {
-    wrapper.style.transform = "translateX(0)";
-    wrapper.style.pointerEvents = "auto";
-  });
-}
-
-function closeFloatingSidebar() {
-  const wrapper = document.getElementById("govconnect-sidebar-container");
-  if (wrapper) {
-    wrapper.style.transform = "translateX(100%)";
-    wrapper.style.pointerEvents = "none";
-  }
-  isSidebarOpen = false;
-  // Kembalikan layout halaman web utuh dengan animasi sinkron
-  adjustWebPageViewport(false);
-}
-
-function toggleFloatingSidebar() {
-  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
-  if (isSidebarOpen) {
-    closeFloatingSidebar();
-  } else {
-    openFloatingSidebar();
-  }
-}
-
-// Dengarkan postMessage dari iframe sidepanel (misal tombol tutup)
-window.addEventListener("message", (event) => {
-  if (event.data?.action === "CLOSE_GOVCONNECT_SIDEBAR") {
-    closeFloatingSidebar();
-  }
-});
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  try {
-    if (request.action === "TOGGLE_FLOATING_SIDEBAR" || request.action === "TOGGLE_FLOATING_ASSISTANT") {
-      if (isGovConnectDashboardPage()) {
-        sendResponse({ success: false, reason: "dashboard_page" });
-        return false;
-      }
-      toggleFloatingSidebar();
-      sendResponse({ success: true, isOpen: isSidebarOpen });
-      return false;
-    }
-
-    if (request.action === "OPEN_FLOATING_SIDEBAR" || request.action === "OPEN_FLOATING_ASSISTANT") {
-      if (isGovConnectDashboardPage()) {
-        sendResponse({ success: false, reason: "dashboard_page" });
-        return false;
-      }
-      openFloatingSidebar();
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "CLOSE_FLOATING_SIDEBAR" || request.action === "CLOSE_FLOATING_ASSISTANT") {
-      closeFloatingSidebar();
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "SEMANTIC_RESULT") {
-      const { targetElementId, profileKey, score } = request;
-      console.log("GovConnect Content Script: Menerima SEMANTIC_RESULT", { targetElementId, profileKey, score });
-
-      let targetEl = null;
-      if (targetElementId) {
-        targetEl = document.getElementById(targetElementId);
-        if (!targetEl) {
-          try {
-            const escaped = window.CSS && CSS.escape ? CSS.escape(targetElementId) : targetElementId;
-            targetEl = document.querySelector(`[name="${escaped}"]`);
-          } catch (e) {}
-        }
-        if (!targetEl) {
-          targetEl = document.querySelector(`[data-govconnect-id="${targetElementId}"]`);
-        }
-      }
-
-      // HAPUS elemen dari pendingSemanticRequests (sangat penting!)
-      if (targetElementId) {
-        pendingSemanticRequests.delete(targetElementId);
-      }
-      if (targetEl) {
-        pendingSemanticRequests.delete(targetEl);
-      }
-
-      // Jika score dari offscreen >= 0.50, jalankan fungsi pengisian form visual
-      if (score >= 0.50 && targetEl && profileKey) {
-        fillSemanticElement(targetEl, profileKey);
-      }
-
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "DETECT_FIELDS") {
-      if (request.profile) {
-        cachedLastProfile = request.profile;
-        registerCustomProfileFields(request.profile);
-      }
-      detectFields().then(result => {
-        if (request.profile) {
-          renderFieldMarkers(null, request.profile);
-        }
-        sendResponse(result);
-      });
-      return true;
-    }
-
-    if (request.action === "UPDATE_ACTIVE_MARKERS") {
-      renderFieldMarkers(request.activeKeys, request.profile).then(() => {
-        sendResponse({ success: true });
-      });
-      return true;
-    }
-
-    if (request.action === "HOVER_FIELD") {
-      highlightFieldOnPage(request.profileKey, request.name, request.id);
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "UNHOVER_FIELD") {
-      unhighlightFieldOnPage();
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "CLEAR_MARKERS") {
-      clearFieldMarkers();
-      sendResponse({ success: true });
-      return false;
-    }
-
-    if (request.action === "EXECUTE_AUTOFILL" || request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
-      isFillingProcess = true;
-      (async () => {
-        try {
-          const result = await fillForm(request.profile, request.targetFields);
-          try {
-            const filledKeys = (result.fields || [])
-              .filter(f => f.status === "filled")
-              .map(f => f.profileKey);
-            markFieldsAsFilled(filledKeys, request.profile);
-          } catch (markErr) {
-            console.warn("markFieldsAsFilled error:", markErr);
-          }
-
-          // Jika dijalankan via mode 1-klik, tampilkan floating toast notifikasi yang menawan di halaman
-          if (request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
-            
-          }
-
-          sendResponse(result);
-        } catch (fillErr) {
-          console.error("GovConnect: Error saat proses autofill:", fillErr);
-          sendResponse({ success: false, error: fillErr.message });
-        } finally {
-          // Bebaskan flag isFillingProcess setelah animasi fade-out selesai
-          setTimeout(() => {
-            isFillingProcess = false;
-          }, 3200);
-        }
-      })();
-      return true; // Menandakan asynchronous sendResponse ke Chrome Extension runtime
-    }
-  } catch (err) {
-    console.error("Error in onMessage listener:", err);
-    sendResponse({ success: false, error: err.message });
-    return false;
-  }
-  return false;
-});
-
-// ============================================================
-// Pengisian Form Visual dari Hasil Evaluasi Semantik AI
-// ============================================================
-async function fillSemanticElement(el, profileKey) {
-  if (!el || !profileKey) return;
-
-  let profile = cachedLastProfile;
-  if (!profile) {
-    try {
-      const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
-      profile = resp?.profile || null;
-      if (profile) {
-        cachedLastProfile = profile;
-        registerCustomProfileFields(profile);
-      }
-    } catch (e) {}
-  }
-
-  // Tanpa profil (belum login / tidak tersinkron) → jangan mengisi apa pun.
-  // T6/T10: tidak ada lagi fallback PII dummy hardcoded.
-  if (!profile) return;
-
-  let value = profile[profileKey];
-  if (!value && profileKey === "mother_name") {
-    value = profile.mother_name || profile.nama_ibu;
-  }
-  if (!value) return;
-
-  console.log(`GovConnect: Mengisi field semantik [${profileKey}] dengan nilai: "${value}"`);
-
-  // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
-  if (isPrimeNGDropdown(el)) {
-    await fillPrimeNGDropdown(el, value, profileKey);
-    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
-    el.classList.add("govconnect-field-filled");
-    el.style.borderColor = "#16a34a";
-    return;
-  }
-
-  // Jika custom React Select
-  if (isReactSelect(el)) {
-    await fillReactSelect(el, value, profileKey);
-    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
-    el.classList.add("govconnect-field-filled");
-    el.style.borderColor = "#16a34a";
-    return;
-  }
-
-  // Jika dropdown native select
-  if (el.tagName.toLowerCase() === "select") {
-    let selectVal = value;
-    const subType = detectDateSelectType(el);
-    if (subType && profile.birth_date) {
-      const bParts = parseBirthDate(profile.birth_date);
-      if (subType === "birth_month") selectVal = bParts.month;
-      else if (subType === "birth_day") selectVal = bParts.day;
-      else if (subType === "birth_year") selectVal = bParts.year;
-    }
-    const matchedOpt = bestMatchOption(Array.from(el.options), selectVal, subType || profileKey);
-    if (matchedOpt) {
-      el.value = matchedOpt.value;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
-    el.classList.add("govconnect-field-filled");
-    el.style.borderColor = "#16a34a";
-    return;
-  }
-
-  // Jika radio / checkbox
-  if (el.tagName.toLowerCase() === "input" && (el.type === "radio" || el.type === "checkbox")) {
-    el.checked = true;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-    try { el.click(); } catch (e) {}
-    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
-    el.classList.add("govconnect-field-filled");
-    return;
-  }
-
-  // Input standar (text, date, email, tel, number, textarea)
-  let finalVal = value;
-  if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "date") {
-    const bParts = parseBirthDate(value);
-    if (bParts.year && bParts.month && bParts.day) {
-      finalVal = `${bParts.year}-${bParts.month}-${bParts.day}`;
-    }
-  }
-
-  try {
-    const proto = Object.getPrototypeOf(el);
-    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
-    if (descriptor && descriptor.set) {
-      descriptor.set.call(el, finalVal);
-    } else {
-      el.value = finalVal;
-    }
-  } catch (e) {
-    el.value = finalVal;
-  }
-
-  el.dispatchEvent(new Event("input", { bubbles: true }));
-  el.dispatchEvent(new Event("change", { bubbles: true }));
-  el.dispatchEvent(new Event("blur", { bubbles: true }));
-
-  // Visual styling indikasi pengisian berhasil
-  el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
-  el.classList.add("govconnect-field-filled");
-  el.style.borderColor = "#16a34a";
-  el.style.backgroundColor = "#f0fdf4";
-  el.style.transition = "all 0.3s ease";
-}
-
-// ============================================================
-// Deteksi semua field pada form (Termasuk Status Visibilitas & Custom Dropdown)
-// ============================================================
-async function detectFields() {
-  if (isGovConnectDashboardPage()) {
-    return {
-      total: 0,
-      matched: 0,
-      hiddenMatched: 0,
-      unmatched: 0,
-      fields: [],
-      isGovConnectDashboard: true
-    };
-  }
-  const inputs = getAllFormFields();
-
-  const detected = [];
-  for (const el of inputs) {
-    const profileKey = await matchProfileKey(el);
-    const visible = isElementVisible(el);
-    const isPrime = isPrimeNGDropdown(el);
-    const hostEl = el.closest("p-dropdown, mat-select") || el;
-    const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
-    const label = getLabelText(el);
-
-    const displayName = el.name || hostEl.getAttribute("name") || formControl || el.id || label || (isPrime ? "Dropdown" : "");
-    const tag = isPrime ? "select (primeng)" : el.tagName.toLowerCase();
-    const pLabel = el.querySelector?.(".p-dropdown-label")?.textContent?.trim() || "";
-    const placeholder = el.placeholder || pLabel || "";
-
-    detected.push({
-      tag: tag,
-      name: displayName,
-      id: el.id || hostEl.id || "",
-      placeholder: placeholder,
-      profileKey: profileKey,
-      isVisible: visible,
-      status: profileKey ? "matched" : "not_found"
-    });
-  }
-
-  const visibleMatched = detected.filter(d => d.profileKey && d.isVisible);
-  const hiddenMatched = detected.filter(d => d.profileKey && !d.isVisible);
-
-  return {
-    total: detected.length,
-    matched: visibleMatched.length,
-    hiddenMatchedCount: hiddenMatched.length,
-    totalMatched: visibleMatched.length + hiddenMatched.length,
-    fields: detected,
-    visibleFields: visibleMatched,
-    hiddenFields: hiddenMatched
-  };
-}
-
-// ============================================================
-// Peringatan Keamanan HTTPS untuk Halaman Tidak Aman (HTTP)
-// Mencegah kebocoran data sensitif PII di jaringan tanpa enkripsi
-// ============================================================
-function showHttpsWarningToast() {
-  try {
-    const isHttp = window.location.protocol === "http:";
-    const host = window.location.hostname || "";
-    const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
-    if (!isHttp || isLocal) return;
-
-    if (document.getElementById("govconnect-https-warning-toast")) return;
-
-    const toast = document.createElement("div");
-    toast.id = "govconnect-https-warning-toast";
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 2147483647;
-      background: #dc2626;
-      color: #ffffff;
-      padding: 12px 18px;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 13px;
-      line-height: 1.4;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      max-width: 380px;
-    `;
-    toast.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
-      <div>
-        <strong>Peringatan Keamanan:</strong> Halaman ini menggunakan HTTP (tidak aman). Data pribadi (PII) berisiko disadap jika dikirimkan.
-      </div>
-      <button style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; margin-left: 6px; padding: 0 4px; line-height: 1;" aria-label="Tutup">&times;</button>
-    `;
-
-    const closeBtn = toast.querySelector("button");
-    if (closeBtn) {
-      closeBtn.onclick = () => toast.remove();
-    }
-
-    document.body.appendChild(toast);
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.style.transition = "opacity 0.5s ease-out";
-        toast.style.opacity = "0";
-        setTimeout(() => toast.remove(), 500);
-      }
-    }, 7000);
-  } catch (e) {
-    console.warn("GovConnect: Gagal menampilkan peringatan HTTPS", e);
-  }
-}
-
-// ============================================================
-// Isi field berdasarkan profil yang dipilih
-// Mengisi semua field yang dicentang oleh user tanpa terlewat
-// Mendukung Input, Dropdown Native (<select>), File, dan Dropdown PrimeNG
-// ============================================================
-async function fillForm(profile, targetFields = null) {
-  showHttpsWarningToast();
-  if (profile) registerCustomProfileFields(profile);
-  const inputs = getAllFormFields();
-
-  const results = [];
-  let filledCount = 0;
-
-  for (const el of inputs) {
-    const profileKey = await matchProfileKey(el);
-    const hostEl = el.closest("p-dropdown, mat-select") || el;
-    const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
-    const fieldIdentifier = el.id || hostEl.id || el.name || formControl || "";
-
-    if (!profileKey) {
-      results.push({ id: fieldIdentifier, status: "not_found" });
-      continue;
-    }
-
-    // Jika targetFields diberikan, HANYA isi jika elemen ini termasuk dalam target yang dicentang oleh user
-    if (Array.isArray(targetFields) && targetFields.length > 0) {
-      const isSelected = targetFields.some(tf => {
-        if (tf.id && (el.id === tf.id || hostEl.id === tf.id)) return true;
-        if (tf.name && (el.name === tf.name || formControl === tf.name)) return true;
-        if (!tf.id && !tf.name && tf.profileKey === profileKey) return true;
-        if (tf.profileKey === profileKey) return true;
-        return false;
-      });
-      if (!isSelected) {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-        continue;
-      }
-    }
-
-    // Hanya isi jika field tersebut dicentang/ada dalam profile yang dikirim
-    if (!profile || !(profileKey in profile)) {
-      results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      continue;
-    }
-
-    const value = profile[profileKey];
-    if (value === undefined || value === null || value === "") {
-      results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      continue;
-    }
-
-    // Pacing jeda fluid agar pengisian form terasa halus dan natural
-    await new Promise(r => setTimeout(r, 45));
-
-    // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
-    if (isPrimeNGDropdown(el)) {
-      const ok = await fillPrimeNGDropdown(el, value, profileKey);
-      if (ok) {
-        filledCount++;
-        results.push({ id: fieldIdentifier, status: "filled", profileKey });
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      }
-      continue;
-    }
-
-    // Jika elemen adalah custom React Select (DemoQA State/City dll.)
-    if (isReactSelect(el)) {
-      const ok = await fillReactSelect(el, value, profileKey);
-      if (ok) {
-        filledCount++;
-        results.push({ id: fieldIdentifier, status: "filled", profileKey });
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      }
-      continue;
-    }
-
-    // Jika tag adalah select (dropdown native)
-    if (el.tagName.toLowerCase() === "select") {
-      let selectVal = value;
-      // Jika profileKey adalah birth_date namun dropdown ini adalah sub-komponen tanggal (bulan/hari/tahun)
-      const subType = detectDateSelectType(el);
-      if (subType && profile.birth_date) {
-        const bParts = parseBirthDate(profile.birth_date);
-        if (subType === "birth_month") selectVal = bParts.month;
-        else if (subType === "birth_day") selectVal = bParts.day;
-        else if (subType === "birth_year") selectVal = bParts.year;
-      }
-
-      const matchedOpt = bestMatchOption(Array.from(el.options), selectVal, subType || profileKey);
-      if (matchedOpt) {
-        el.value = matchedOpt.value;
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        filledCount++;
-        results.push({ id: fieldIdentifier, status: "filled", profileKey });
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      }
-      continue;
-    }
-
-    // Jika tag adalah input type=radio (DemoQA Gender dll.)
-    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "radio") {
-      const radioVal = (el.value || "").toLowerCase().trim();
-      const radioLabel = (getLabelText(el) || "").toLowerCase().trim();
-      const profileVal = String(value).toLowerCase().trim();
-
-      let candidates = [profileVal];
-      if (DROPDOWN_VALUE_MAP[profileKey]) {
-        const fieldMap = DROPDOWN_VALUE_MAP[profileKey];
-        for (const [canon, syns] of Object.entries(fieldMap)) {
-          if (canon === profileVal || syns.includes(profileVal)) {
-            candidates = [canon, ...syns];
-            break;
-          }
-        }
-      }
-
-      const isMatch = candidates.some(c => {
-        const cleanC = c.replace(/[^a-z0-9]/g, "");
-        const cleanVal = radioVal.replace(/[^a-z0-9]/g, "");
-        const cleanLbl = radioLabel.replace(/[^a-z0-9]/g, "");
-        return radioVal === c || radioLabel === c ||
-               (cleanC.length >= 3 && cleanVal.includes(cleanC)) ||
-               (cleanC.length >= 3 && cleanLbl.includes(cleanC)) ||
-               (cleanVal.length >= 3 && cleanC.includes(cleanVal));
-      });
-
-      if (isMatch) {
-        el.checked = true;
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        if (typeof el.click === "function") {
-          try { el.click(); } catch (e) {}
-        }
-        filledCount++;
-        results.push({ id: fieldIdentifier, status: "filled", profileKey });
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      }
-      continue;
-    }
-
-    // Jika tag adalah input type=checkbox (DemoQA Hobbies dll.)
-    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "checkbox") {
-      const chkVal = (el.value || "").toLowerCase().trim();
-      const chkLabel = (getLabelText(el) || "").toLowerCase().trim();
-      const profileVal = String(value).toLowerCase().trim();
-
-      const isPositive = ["1", "true", "yes", "ya", "aktif", "on"].includes(profileVal);
-      const isMatch = isPositive || profileVal.includes(chkVal) || profileVal.includes(chkLabel);
-
-      if (isMatch) {
-        el.checked = true;
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        if (typeof el.click === "function") {
-          try { el.click(); } catch (e) {}
-        }
-        filledCount++;
-        results.push({ id: fieldIdentifier, status: "filled", profileKey });
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-      }
-      continue;
-    }
-
-    // Jika tag adalah input type=file (Autofill Berkas & Foto Dokumen)
-    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
-      let docPhotos = {};
-      if (profile && profile.document_photos) {
-        try {
-          docPhotos = typeof profile.document_photos === "string"
-            ? JSON.parse(profile.document_photos)
-            : profile.document_photos;
-        } catch (e) {}
-      }
-
-      let photoSlot = null;
-      if (profileKey === "foto_ktp" || profileKey === "ktp") photoSlot = docPhotos.ktp;
-      else if (profileKey === "foto_kk" || profileKey === "kk") photoSlot = docPhotos.kk;
-      else if (profileKey === "pasfoto") photoSlot = docPhotos.pasfoto;
-      else if (profileKey === "foto_npwp" || profileKey === "npwp_card") photoSlot = docPhotos.npwp_card;
-      else if (profileKey === "foto_ijazah" || profileKey === "ijazah") photoSlot = docPhotos.ijazah;
-      else if (docPhotos[profileKey]) photoSlot = docPhotos[profileKey];
-
-      if (photoSlot && photoSlot.data) {
-        try {
-          const parts = photoSlot.data.split(",");
-          const mimeType = photoSlot.type || (parts[0].match(/:(.*?);/) ? parts[0].match(/:(.*?);/)[1] : "image/jpeg");
-          const byteString = atob(parts[1]);
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-          const blob = new Blob([ab], { type: mimeType });
-          const file = new File([blob], photoSlot.name || `${profileKey}.jpg`, { type: mimeType });
-
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          el.files = dataTransfer.files;
-
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-
-          filledCount++;
-          results.push({ id: fieldIdentifier, status: "filled", profileKey });
-          continue;
-        } catch (fileErr) {
-          console.warn("GovConnect: Error saat autofill file input:", fileErr);
-          results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-          continue;
-        }
-      } else {
-        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-        continue;
-      }
-    }
-
-    // Input text / textarea / date / tel / email
-    let finalVal = value;
-    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "date") {
-      const bParts = parseBirthDate(value);
-      if (bParts.year && bParts.month && bParts.day) {
-        finalVal = `${bParts.year}-${bParts.month}-${bParts.day}`;
-      }
-    }
-
-    el.value = finalVal;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-
-    filledCount++;
-    results.push({ id: fieldIdentifier, status: "filled", profileKey });
-  }
-
-  const total = inputs.length;
-  const overallStatus = filledCount === 0 ? "failed"
-                      : filledCount < total ? "partial"
-                      : "success";
-
-  return {
-    success: true,
-    count: filledCount,
-    total,
-    status: overallStatus,
-    fields: results
-  };
-}
-
-// ============================================================
-// NLP Similarity Engine: Jaro-Winkler Distance & Cosine Similarity
-// ============================================================
-
-/**
- * Menghitung Jaro-Winkler Similarity (skor kemiripan [0.0 - 1.0]).
- * Dioptimalkan untuk string pendek.
- */
-function computeJaroWinklerSimilarity(s1, s2) {
-  if (!s1 || !s2) return 0;
-  const a = s1.trim().toLowerCase();
-  const b = s2.trim().toLowerCase();
-  if (a === b) return 1.0;
-
-  const mLength = Math.max(a.length, b.length);
-  const matchWindow = Math.floor(mLength / 2) - 1;
-  const aMatches = new Array(a.length).fill(false);
-  const bMatches = new Array(b.length).fill(false);
-  let matches = 0;
-  let transpositions = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    const start = Math.max(0, i - matchWindow);
-    const end = Math.min(i + matchWindow + 1, b.length);
-    for (let j = start; j < end; j++) {
-      if (!bMatches[j] && a[i] === b[j]) {
-        aMatches[i] = true;
-        bMatches[j] = true;
-        matches++;
-        break;
-      }
-    }
-  }
-
-  if (matches === 0) return 0.0;
-
-  let k = 0;
-  for (let i = 0; i < a.length; i++) {
-    if (aMatches[i]) {
-      while (!bMatches[k]) k++;
-      if (a[i] !== b[k]) transpositions++;
-      k++;
-    }
-  }
-
-  const jaro = (
-    (matches / a.length) +
-    (matches / b.length) +
-    ((matches - transpositions / 2) / matches)
-  ) / 3.0;
-
-  let prefix = 0;
-  for (let i = 0; i < Math.min(4, a.length, b.length); i++) {
-    if (a[i] === b[i]) prefix++;
-    else break;
-  }
-
-  const p = 0.1;
-  return jaro + prefix * p * (1 - jaro);
-}
-
-/**
- * Tokenisasi teks menjadi array kata bersih dengan pemecahan camelCase
- * dan ekstraksi kata dasar (stemming) sederhana.
- */
-function tokenize(text) {
-  if (!text) return [];
-  // 1. Pecah camelCase (misal: mothersName -> mothers Name, taxpayerName -> taxpayer Name, regInput -> reg Input)
-  let expanded = text.replace(/([a-z])([A-Z])/g, "$1 $2");
-  // 2. Normalisasi karakter khusus dan simbol menjadi spasi
-  expanded = expanded.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
-  // 3. Ekstrak token dasar
-  const rawTokens = expanded.split(/\s+/).filter(Boolean);
-  const tokenSet = new Set(rawTokens);
-
-  // 4. Morfologi / stemming sederhana untuk imbuhan bahasa Inggris dan kata majemuk Indonesia
-  rawTokens.forEach(t => {
-    if (t.endsWith("s") && t.length > 3) {
-      tokenSet.add(t.slice(0, -1)); // mothers -> mother, fathers -> father
-    }
-    if (t.includes("mother") && t !== "mother") {
-      tokenSet.add("mother");
-      if (t.includes("name")) tokenSet.add("name");
-    }
-    if (t.includes("father") && t !== "father") {
-      tokenSet.add("father");
-      if (t.includes("name")) tokenSet.add("name");
-    }
-    if (t.includes("namaibu")) {
-      tokenSet.add("nama");
-      tokenSet.add("ibu");
-    }
-    if (t.includes("namaayah")) {
-      tokenSet.add("nama");
-      tokenSet.add("ayah");
-    }
-  });
-
-  return Array.from(tokenSet);
-}
-
-/**
- * Menghitung Cosine Similarity antara dua himpunan vektor token (Term Frequency).
- * cos(theta) = (A . B) / (||A|| * ||B||)
- */
-function computeCosineSimilarity(tokensA, tokensB) {
-  if (!tokensA.length || !tokensB.length) return 0;
-
-  const freqA = {};
-  const freqB = {};
-  tokensA.forEach(t => freqA[t] = (freqA[t] || 0) + 1);
-  tokensB.forEach(t => freqB[t] = (freqB[t] || 0) + 1);
-
-  const allTerms = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
-
-  let dotProduct = 0;
-  let magA = 0;
-  let magB = 0;
-
-  allTerms.forEach(term => {
-    const valA = freqA[term] || 0;
-    const valB = freqB[term] || 0;
-    dotProduct += valA * valB;
-  });
-
-  Object.values(freqA).forEach(v => magA += v * v);
-  Object.values(freqB).forEach(v => magB += v * v);
-
-  const magnitude = Math.sqrt(magA) * Math.sqrt(magB);
-  if (magnitude === 0) return 0;
-
-  return dotProduct / magnitude;
-}
-
-/**
- * Mencocokkan nilai profil ke opsi <select> terbaik menggunakan NLP Hybrid Engine & Synonym Map.
- * @param {Array<HTMLOptionElement>} options
- * @param {string} profileValue
- * @param {string} profileKey
- * @returns {HTMLOptionElement|null}
- */
-function bestMatchOption(options, profileValue, profileKey = "") {
-  if (!options || options.length === 0 || !profileValue) return null;
-
-  const rawVal = profileValue.toString().trim();
-  const valLower = rawVal.toLowerCase();
-  const valTokens = tokenize(rawVal);
-  const valNorm = valTokens.join("_");
-
-  // Step 1: Exact match O(1) pada value atau text
-  for (const opt of options) {
-    if (!opt.value && !opt.text) continue;
-    const optVal = (opt.value || "").trim().toLowerCase();
-    const optText = (opt.text || "").trim().toLowerCase();
-    if (optVal === valLower || optText === valLower) {
-      return opt;
-    }
-  }
-
-  // Step 2: Cek Sinonim Khusus dari DROPDOWN_VALUE_MAP jika profileKey terdaftar
-  if (profileKey && DROPDOWN_VALUE_MAP[profileKey]) {
-    const fieldSynonyms = DROPDOWN_VALUE_MAP[profileKey];
-    let canonicalKey = null;
-    for (const [canon, synList] of Object.entries(fieldSynonyms)) {
-      const allCanonForms = [canon, canon.replace(/_/g, " "), canon.replace(/ /g, "_"), ...synList];
-      if (
-        allCanonForms.includes(valLower) ||
-        allCanonForms.includes(valNorm) ||
-        synList.some(s => s === valLower || s === valNorm || s.replace(/_/g, " ") === valLower)
-      ) {
-        canonicalKey = canon;
-        break;
-      }
-    }
-
-    if (canonicalKey) {
-      const allowedSynonyms = fieldSynonyms[canonicalKey];
-      for (const opt of options) {
-        if (!opt.value && !opt.text) continue;
-        const optText = (opt.text || "").trim().toLowerCase();
-        const optVal = (opt.value || "").trim().toLowerCase();
-        const optTokens = tokenize(`${optVal} ${optText}`);
-        const optClean = optText.replace(/[^a-z0-9]/g, "");
-
-        const matchesSynonym = allowedSynonyms.some(syn => {
-          const synClean = syn.replace(/[^a-z0-9]/g, "");
-          return (
-            optVal === syn ||
-            optText === syn ||
-            optTokens.includes(syn) ||
-            (synClean.length >= 3 && optClean.includes(synClean)) ||
-            (optClean.length >= 3 && synClean.includes(optClean))
-          );
-        });
-
-        if (matchesSynonym) {
-          return opt;
-        }
-      }
-    }
-  }
-
-  // Step 2.5: Numeric & 2-Digit Year Match (untuk birth_day, birth_month, birth_year)
-  const numProfile = parseInt(rawVal, 10);
-  if (!isNaN(numProfile)) {
-    for (const opt of options) {
-      if (!opt.value && !opt.text) continue;
-      const optVal = (opt.value || "").trim();
-      const optText = (opt.text || "").trim();
-      const numVal = parseInt(optVal, 10);
-      const numText = parseInt(optText, 10);
-      if (numVal === numProfile || numText === numProfile) {
-        return opt;
-      }
-    }
-  }
-
-  if (profileKey === "birth_year" && rawVal.length === 4) {
-    const shortYear = rawVal.slice(-2);
-    for (const opt of options) {
-      if (!opt.value && !opt.text) continue;
-      const optVal = (opt.value || "").trim();
-      const optText = (opt.text || "").trim();
-      if (optVal === shortYear || optText === shortYear) {
-        return opt;
-      }
-    }
-  }
-
-  // Step 3: NLP Hybrid Matching (Cosine + Levenshtein) untuk opsi dinamis / bebas
-  let bestOpt = null;
-  let highestScore = 0;
-
-  for (const opt of options) {
-    if (!opt.value && !opt.text) continue;
-    const optText = (opt.text || "").trim();
-    const optVal = (opt.value || "").trim();
-
-    // Skip opsi placeholder seperti "-- Pilih --", "Pilih...", "Select..."
-    if (/^(pilih|select|--|none|kosong)/i.test(optText) && !opt.value) {
-      continue;
-    }
-
-    const optTokens = tokenize(`${optVal} ${optText}`);
-    const optNorm = optTokens.join("_");
-
-    const cosSim = computeCosineSimilarity(valTokens, optTokens);
-    let levSim = computeJaroWinklerSimilarity(valNorm, optNorm);
-    if (optNorm.includes(valNorm) || valNorm.includes(optNorm)) {
-      levSim = Math.max(levSim, 0.90);
-    }
-
-    let score = (0.65 * cosSim) + (0.35 * levSim);
-
-    const overlapTokens = valTokens.filter(t => optTokens.includes(t));
-    if (overlapTokens.length > 0 && valTokens.length > 0) {
-      score += 0.20 * (overlapTokens.length / valTokens.length);
-    }
-
-    if (score > highestScore && score >= 0.48) {
-      highestScore = score;
-      bestOpt = opt;
-    }
-  }
-
-  return bestOpt;
-}
-
-/**
- * Mengisi dropdown kustom PrimeNG (<p-dropdown>) yang digunakan oleh CoreTax DJP.
- * Menstimulasi klik buka dropdown, menunggu overlay panel (.p-dropdown-panel) muncul,
- * mencocokkan opsi via NLP / kamus sinonim, lalu mengklik li.p-dropdown-item agar Angular model terupdate.
- *
- * FIXES:
- * - Bug #2: Trigger selection menggunakan .p-dropdown-trigger, bukan .p-dropdown (self-reference)
- * - Bug #3: Panel detection menandai panel lama sebelum klik, lalu menunggu panel BARU
- * - Bug #4: closePrimeNGPanel tidak lagi mengklik trigger (mencegah panel terbuka kembali)
- */
-async function fillPrimeNGDropdown(dropdownEl, value, profileKey) {
-  if (!dropdownEl || !value) return false;
-
-  // Temukan elemen host p-dropdown
-  const hostEl = dropdownEl.closest("p-dropdown") || dropdownEl;
-
-  try {
-    hostEl.scrollIntoView({ behavior: "instant", block: "center" });
-  } catch (e) {}
-
-  // Bug #2 Fix: Cari trigger dengan urutan yang benar.
-  // .p-dropdown-trigger adalah ikon chevron di ujung kanan PrimeNG.
-  // JANGAN gunakan .querySelector(".p-dropdown") karena akan menemukan dirinya sendiri.
-  const trigger = hostEl.querySelector(".p-dropdown-trigger") ||
-                  hostEl.querySelector(".p-dropdown-label") ||
-                  hostEl;
-
-  // Bug #3 Fix: Tandai semua panel yang sudah ada sebelum membuka dropdown ini
-  const existingPanels = new Set(
-    Array.from(document.querySelectorAll(".p-dropdown-panel"))
-  );
-
-  // Tutup panel lain yang masih terbuka (dari dropdown sebelumnya)
-  if (existingPanels.size > 0) {
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }));
-    await new Promise(r => setTimeout(r, 80));
-  }
-
-  // 1. Simulasikan klik pada trigger untuk membuka dropdown ini (urutan mousedown -> mouseup -> click)
-  function dispatchClick(targetEl) {
-    if (!targetEl) return;
-    targetEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
-    targetEl.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
-    targetEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-  }
-
-  dispatchClick(trigger);
-
-  // 2. Tunggu overlay panel BARU (.p-dropdown-panel) di-render oleh Angular / PrimeNG
-  // PrimeNG biasanya append panel ke <body> sebagai overlay.
-  let panel = null;
-  for (let attempt = 0; attempt < 15; attempt++) {
-    await new Promise(r => setTimeout(r, 50));
-
-    // Fallback: Jika setelah attempt ke-5 panel belum muncul, coba klik label atau container host
-    if (attempt === 5 && !panel) {
-      const altTrigger = hostEl.querySelector(".p-dropdown-label") || hostEl.querySelector(".p-dropdown") || hostEl;
-      if (altTrigger && altTrigger !== trigger) {
-        dispatchClick(altTrigger);
-      }
-    }
-
-    // Cari panel yang BARU muncul (tidak ada di existingPanels)
-    const allPanels = Array.from(document.querySelectorAll(".p-dropdown-panel"));
-    const newPanels = allPanels.filter(p => !existingPanels.has(p));
-
-    if (newPanels.length > 0) {
-      // Ambil panel baru yang terlihat
-      panel = newPanels.find(p => {
-        const style = window.getComputedStyle(p);
-        return style.display !== "none" && style.visibility !== "hidden";
-      }) || newPanels[0];
-      if (panel) break;
-    }
-
-    // Fallback: jika tidak ada panel baru, cari panel apapun yang terlihat
-    const visiblePanel = allPanels.find(p => {
-      const style = window.getComputedStyle(p);
-      return style.display !== "none" && style.visibility !== "hidden";
-    });
-    if (visiblePanel) {
-      panel = visiblePanel;
-      break;
-    }
-  }
-
-  if (!panel) {
-    console.warn("GovConnect: Panel PrimeNG tidak ditemukan untuk", profileKey);
-    return false;
-  }
-
-  // Tunggu sebentar agar opsi-opsi benar-benar ter-render di dalam panel
-  await new Promise(r => setTimeout(r, 60));
-
-  // 3. Ekstrak opsi-opsi (li.p-dropdown-item atau [role="option"])
-  const items = Array.from(panel.querySelectorAll(".p-dropdown-item, li[role='option'], [role='option']"));
-  if (items.length === 0) {
-    closePrimeNGPanel(panel);
-    return false;
-  }
-
-  // 4. Bungkus opsi ke format { rawElement, value, text } untuk dicocokkan bestMatchOption
-  const optionWrappers = items.map(item => ({
-    rawElement: item,
-    // Prioritas: aria-label > data-value > textContent (bersih tanpa whitespace berlebih)
-    value: (item.getAttribute("aria-label") || item.getAttribute("data-value") || item.textContent || "").trim(),
-    text: (item.getAttribute("aria-label") || item.textContent || "").replace(/\s+/g, " ").trim()
-  }));
-
-  const matchedWrapper = bestMatchOption(optionWrappers, value, profileKey);
-
-  if (!matchedWrapper || !matchedWrapper.rawElement) {
-    console.warn("GovConnect: Tidak ada opsi PrimeNG yang cocok untuk:", value, "pada field:", profileKey);
-    closePrimeNGPanel(panel);
-    return false;
-  }
-
-  const targetLi = matchedWrapper.rawElement;
-  try {
-    targetLi.scrollIntoView({ block: "nearest" });
-  } catch (e) {}
-
-  // Jeda sebentar sebelum klik agar scroll selesai
-  await new Promise(r => setTimeout(r, 30));
-
-  // 5. Klik opsi terpilih dengan event mouse lengkap
-  targetLi.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true, cancelable: true, view: window }));
-  targetLi.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
-  targetLi.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
-  targetLi.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-  if (typeof targetLi.click === "function") {
-    try { targetLi.click(); } catch (e) {}
-  }
-
-  // Berikan jeda agar Angular / PrimeNG memproses pemilihan opsi dan menutup panel
-  await new Promise(r => setTimeout(r, 150));
-
-  // 6. Tutup panel jika masih terbuka (Bug #4 Fix: TIDAK klik trigger lagi)
-  closePrimeNGPanel(panel);
-
-  // Jeda antar dropdown agar Angular model stabil sebelum membuka dropdown berikutnya
-  await new Promise(r => setTimeout(r, 200));
-
-  return true;
-}
-
-/**
- * Menutup panel PrimeNG yang terbuka.
- * Bug #4 Fix: Hanya kirim Escape ke document, TIDAK mengklik trigger lagi
- * (klik trigger akan membuka kembali panel yang baru saja ditutup).
- * Aman: tidak klik document.body langsung (bisa menutup modal CoreTax).
- */
-function closePrimeNGPanel(panel) {
-  try {
-    if (panel && document.body.contains(panel)) {
-      const style = window.getComputedStyle(panel);
-      if (style.display !== "none" && style.visibility !== "hidden") {
-        // Kirim Escape ke document untuk menutup overlay PrimeNG
-        document.dispatchEvent(new KeyboardEvent("keydown", {
-          key: "Escape",
-          code: "Escape",
-          keyCode: 27,
-          bubbles: true,
-          cancelable: true
-        }));
-        // Klik pada overlay backdrop PrimeNG (bukan body) jika ada
-        // PrimeNG menambahkan .p-overlay-container atau .cdk-overlay-container
-        const backdrop = document.querySelector(".p-overlay-container, .cdk-overlay-container");
-        if (backdrop && backdrop !== panel && !panel.contains(backdrop)) {
-          backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-        }
-      }
-    }
-  } catch (e) {}
-}
-
-// ============================================================
-// Cocokkan element HTML ke profile key (Hybrid Similarity Engine)
-// Mencegah greedy substring collision (misal nama ibu vs nama pemohon)
-const STRIPPABLE_PREFIXES = [
-  "inp_", "form_", "txt_", "data_", "field_", "fld_",
-  "ctrl_", "el_", "reginput_", "isian_", "kolom_", "input_"
-];
-const MIN_REMAINDER = 3;
-
-function stripSemanticPrefix(str) {
-  if (!str || str.length < MIN_REMAINDER) return str;
-  let result = str.toLowerCase();
-  for (let i = 0; i < 2; i++) {
-    const matched = STRIPPABLE_PREFIXES.find(p => result.startsWith(p));
-    if (!matched) break;
-    const candidate = result.slice(matched.length);
-    if (candidate.length >= MIN_REMAINDER) {
-      result = candidate;
-    } else {
-      break;
-    }
-  }
-  return result;
-}
-
-// ============================================================
-// Fungsi Scoring BM25 Sementara
-const BM25_IDF = {};
-function computeBM25Similarity(inputTokens, kwTokens) {
-  const k1 = 1.2;
-  const b = 0.75;
-  const avgdl = 3.0;
-  let score = 0;
-  for (const q of kwTokens) {
-    if (inputTokens.includes(q)) {
-      const idf = BM25_IDF[q] || 1.0;
-      const tf = inputTokens.filter(t => t === q).length;
-      const docLen = inputTokens.length;
-      const normTf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / avgdl)));
-      score += idf * normTf;
-    }
-  }
-  const maxScore = kwTokens.length * 1.5;
-  return Math.min(score / (maxScore || 1), 1.0);
-}
-
-// ============================================================
-async function matchProfileKey(el) {
-  // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence)
-  const autoKey = getAutocompleteProfileKey(el);
-  if (autoKey) return autoKey;
-
-  const hostEl = el.closest("p-dropdown, mat-select") || el;
-  const rawFormControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
-  const rawElName = el.name || hostEl.getAttribute("name") || rawFormControl || "";
-  const rawElId = el.id || hostEl.id || "";
-  let formControl = rawFormControl.toLowerCase().trim();
-  let elName = rawElName.toLowerCase().trim();
-  let elId = rawElId.toLowerCase().trim();
-  
-  formControl = stripSemanticPrefix(formControl);
-  elName = stripSemanticPrefix(elName);
-  elId = stripSemanticPrefix(elId);
-
-  const labelText = getLabelText(el).toLowerCase().trim();
-  const pLabel = el.querySelector?.(".p-dropdown-label")?.textContent?.trim() || "";
-  const placeholder = (el.placeholder || pLabel || "").toLowerCase().trim();
-  const ariaLabel = (el.getAttribute("aria-label") || hostEl.getAttribute("aria-label") || "").toLowerCase().trim();
-
-  // Phase 1: Exact Name, ID, atau formControl Match (O(1) Shortcut jika atribut persis sama atau ternormalisasi)
-  // SAFEGUARD: CoreTax (formcontrolname, ng-reflect-name, reginput_*) diperiksa pertama kali tanpa distorsi!
-  const cleanElName = elName.replace(/[^a-z0-9]/g, "_");
-  const cleanElId = elId.replace(/[^a-z0-9]/g, "_");
-  const cleanFormControl = formControl.replace(/[^a-z0-9]/g, "_");
-
-  const strip = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const strippedElName = strip(elName);
-  const strippedElId = strip(elId);
-  const strippedFormControl = strip(formControl);
-
-  // Normalisasi prefiks numerik & ekspansi singkatan (misal 02frstname -> frstname -> first_name)
-  const sanitizedName = stripNumericPrefix(elName);
-  const cleanSanitizedName = sanitizedName.replace(/[^a-z0-9]/g, "_");
-  const strippedSanitizedName = strip(sanitizedName);
-  const expandedSanitizedName = ABBREVIATION_MAP[cleanSanitizedName] || ABBREVIATION_MAP[strippedSanitizedName] || "";
-
-  for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
-    const strippedProfileKey = strip(profileKey);
-    if (
-      elName === profileKey || elId === profileKey || formControl === profileKey ||
-      cleanElName === profileKey || cleanElId === profileKey || cleanFormControl === profileKey ||
-      strippedElName === strippedProfileKey || strippedElId === strippedProfileKey || strippedFormControl === strippedProfileKey ||
-      cleanSanitizedName === profileKey || expandedSanitizedName === profileKey || strippedSanitizedName === strippedProfileKey
-    ) {
-      return profileKey;
-    }
-    for (const kw of keywords) {
-      const cleanKw = kw.replace(/[^a-z0-9]/g, "_");
-      const strippedKw = strip(kw);
-      if (
-        elName === kw || elId === kw || formControl === kw ||
-        cleanElName === cleanKw || cleanElId === cleanKw || cleanFormControl === cleanKw ||
-        elName === cleanKw || elId === cleanKw || formControl === cleanKw ||
-        strippedElName === strippedKw || strippedElId === strippedKw || strippedFormControl === strippedKw ||
-        cleanSanitizedName === cleanKw || expandedSanitizedName === kw || strippedSanitizedName === strippedKw
-      ) {
-        return profileKey;
-      }
-    }
-  }
-
-  // Deteksi khusus jika elemen merupakan <select> yang merepresentasikan komponen tanggal (Bulan/Hari/Tahun)
-  const dateSelectType = detectDateSelectType(el);
-  if (dateSelectType) {
-    return dateSelectType;
-  }
-
-  // Phase 2: Ekstraksi Token Input (sertakan raw string, sanitized string, expanded abbreviation, dan label dengan bobot ganda)
-  const combinedRaw = `${rawElName} ${cleanSanitizedName} ${expandedSanitizedName} ${rawElId} ${rawFormControl} ${labelText} ${labelText} ${placeholder} ${ariaLabel}`;
-  const inputTokens = tokenize(combinedRaw);
-  const inputNormalized = inputTokens.join("_");
-
-  if (inputTokens.length === 0) return null;
-
-  // Deteksi Modifiers Konteks Kritis
-  const hasIbu = inputTokens.includes("ibu") || inputTokens.includes("mother") || inputTokens.includes("mothers");
-  const hasAyah = inputTokens.includes("ayah") || inputTokens.includes("father") || inputTokens.includes("fathers") || inputTokens.includes("bapak");
-  const hasDarurat = inputTokens.includes("darurat") || inputTokens.includes("emergency");
-  const hasKantor = inputTokens.includes("kantor") || inputTokens.includes("perusahaan") || inputTokens.includes("office") || inputTokens.includes("instansi") || inputTokens.includes("company") || inputTokens.includes("kerja");
-  const hasKampus = inputTokens.includes("kampus") || inputTokens.includes("universitas") || inputTokens.includes("sekolah") || inputTokens.includes("institusi") || inputTokens.includes("perguruantinggi") || inputTokens.includes("fakultas") || inputTokens.includes("prodi");
-  const hasTanggal = inputTokens.includes("tgl") || inputTokens.includes("tanggal") || inputTokens.includes("date") || inputTokens.includes("birthdate");
-  const hasLahir = inputTokens.includes("lahir") || inputTokens.includes("birth") || inputTokens.includes("dob");
-  const hasTelp = inputTokens.includes("telepon") || inputTokens.includes("telephone") || inputTokens.includes("phone") || inputTokens.includes("handphone") || inputTokens.includes("hp") || inputTokens.includes("telp") || inputTokens.includes("tel") || inputTokens.includes("whatsapp") || inputTokens.includes("wa") || inputTokens.includes("phon");
-  const hasPosisi = inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("profesi") || inputTokens.includes("pekerjaan") || inputTokens.includes("occupation") || inputTokens.includes("position");
-  const hasDomisili = inputTokens.includes("domisili") || inputTokens.includes("ktp") || inputTokens.includes("tinggal") || inputTokens.includes("rumah") || inputTokens.includes("saatini");
-  const hasKependudukan = inputTokens.includes("kependudukan") || inputTokens.includes("citizen") || inputTokens.includes("ktp") || inputTokens.includes("nik");
-  const hasMahasiswaSiswa = inputTokens.includes("mahasiswa") || inputTokens.includes("siswa") || inputTokens.includes("student") || inputTokens.includes("nim") || inputTokens.includes("nisn") || inputTokens.includes("nrp");
-  const hasFax = inputTokens.includes("fax") || inputTokens.includes("telefax") || inputTokens.includes("facsimile") || inputTokens.includes("faxphone");
-  const hasHome = inputTokens.includes("home") || inputTokens.includes("rumah");
-  const hasWork = inputTokens.includes("work") || inputTokens.includes("kantor") || inputTokens.includes("office");
-  const hasCell = inputTokens.includes("cell") || inputTokens.includes("mobile") || inputTokens.includes("hp") || inputTokens.includes("handphone") || inputTokens.includes("wa") || inputTokens.includes("whatsapp");
-
-  // Shortcut Pasti Berdasarkan Semantik Universal
-  // 1. Email
-  if (inputTokens.includes("email") || inputTokens.includes("surel") || inputTokens.includes("emailadr")) {
-    return "email";
-  }
-
-  // 2. First Name vs Last Name vs Full Name
-  if (inputTokens.includes("first") && (inputTokens.includes("name") || inputTokens.includes("nama"))) {
-    return "first_name";
-  }
-  if ((inputTokens.includes("last") || inputTokens.includes("sur")) && (inputTokens.includes("name") || inputTokens.includes("nama"))) {
-    return "last_name";
-  }
-  if (inputTokens.includes("depan") && inputTokens.includes("nama")) {
-    return "first_name";
-  }
-  if (inputTokens.includes("belakang") && inputTokens.includes("nama")) {
-    return "last_name";
-  }
-
-  // 3. Telepon Spesifik vs Umum (Fax, Home Phone, Work Telephone, Cell/WA)
-  if (hasFax) {
-    return "fax";
-  }
-  if (hasHome && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
-    return "home_phone";
-  }
-  if (hasWork && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
-    return "work_telephone";
-  }
-  if (hasCell && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
-    return "phone";
-  }
-  if (hasTelp && !hasDarurat && !hasHome && !hasWork && !hasFax) {
-    return "phone";
-  }
-
-  // 4. Social Security Number / NIK
-  if (inputTokens.includes("ssn") || (inputTokens.includes("social") && inputTokens.includes("security"))) {
-    return "nik";
-  }
-
-  // 5. Driver License Number (SIM)
-  if ((inputTokens.includes("driver") || inputTokens.includes("driving")) && (inputTokens.includes("license") || inputTokens.includes("licence") || inputTokens.includes("lic"))) {
-    return "driver_license";
-  }
-
-  // 6. Tanggal Lahir vs Tanggal Lain
-  if (hasTanggal && hasLahir) {
-    if (inputTokens.includes("month") || inputTokens.includes("bulan")) return "birth_month";
-    if (inputTokens.includes("day") || inputTokens.includes("hari")) return "birth_day";
-    if (inputTokens.includes("year") || inputTokens.includes("tahun")) return "birth_year";
-    return "birth_date";
-  }
-  if (hasTanggal && !hasLahir) {
-    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
-      if (profileKey.startsWith("custom_") || profileKey.includes("tgl") || profileKey.includes("date")) {
-        for (const kw of keywords) {
-          if (inputTokens.includes(kw) || elName === kw || elId === kw) return profileKey;
-        }
-      }
-    }
-    return null;
-  }
-
-  // 7. Tempat Lahir
-  if ((inputTokens.includes("tempat") || inputTokens.includes("place") || inputTokens.includes("pl")) && hasLahir) {
-    return "birth_place";
-  }
-
-  // 8. Kode Pos (Zip Code)
-  if (inputTokens.includes("zip") || inputTokens.includes("zipcode") || inputTokens.includes("kodepos") || inputTokens.includes("postalcode")) {
-    return "postal_code";
-  }
-
-  // 9. Negara (Country)
-  if (inputTokens.includes("country") || inputTokens.includes("kewarganegaraan") || inputTokens.includes("nationality")) {
-    return "country";
-  }
-
-  // 10. Provinsi / State
-  if ((inputTokens.includes("state") || inputTokens.includes("province") || inputTokens.includes("provinsi")) && !inputTokens.includes("statement")) {
-    return "province";
-  }
-
-  // 11. Kota (City)
-  if (inputTokens.includes("city") || inputTokens.includes("kota") || inputTokens.includes("kabupaten")) {
-    return "city";
-  }
-
-  // 12. Usia / Age
-  if ((inputTokens.includes("age") || inputTokens.includes("umur") || inputTokens.includes("usia")) && !inputTokens.includes("village") && !inputTokens.includes("page") && !inputTokens.includes("message")) {
-    return "age";
-  }
-
-  // 13. Jenis Kelamin / Sex / Gender
-  if (inputTokens.includes("gender") || inputTokens.includes("sex") || inputTokens.includes("kelamin")) {
-    return "gender";
-  }
-
-  // 14. Website
-  if (inputTokens.includes("website") || (inputTokens.includes("web") && inputTokens.includes("site")) || inputTokens.includes("situs")) {
-    return "website";
-  }
-
-  // 15. Penghasilan / Income
-  if (inputTokens.includes("income") || inputTokens.includes("gaji") || inputTokens.includes("penghasilan") || inputTokens.includes("salary")) {
-    return "income";
-  }
-
-  // 16. Posisi / Pekerjaan
-  if ((inputTokens.includes("position") || inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("occupation")) && !inputTokens.includes("address") && !inputTokens.includes("alamat")) {
-    return "occupation";
-  }
-
-  // 17. Perusahaan / Instansi
-  if ((inputTokens.includes("company") || inputTokens.includes("perusahaan") || inputTokens.includes("instansi")) && !inputTokens.includes("position") && !inputTokens.includes("posisi")) {
-    return "organization";
-  }
-
-  // Phase 2.5: BM25 for long labels (> 4 tokens)
-  if (inputTokens.length > 4) {
-    let bestBm25Score = 0;
-    let bestBm25Candidate = null;
-    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
-      for (const kw of keywords) {
-        const score = computeBM25Similarity(inputTokens, tokenize(kw));
-        if (score > bestBm25Score) {
-          bestBm25Score = score;
-          bestBm25Candidate = profileKey;
-        }
-      }
-    }
-    if (bestBm25Score >= 0.80 && bestBm25Candidate) {
-      return bestBm25Candidate;
-    }
-  }
-
-  // Phase 3: Hybrid Scoring (Cosine Similarity + Normalized Levenshtein + Context Modifiers)
-  // Menilai seluruh kandidat profil dan memilih skor tertinggi (Argmax)
-  let bestCandidate = null;
-  let highestScore = 0;
-
-  for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
-    // Modifier Penalty: Mencegah tabrakan silang
-    if (hasIbu && profileKey === "full_name") continue;
-    if (hasAyah && profileKey === "full_name") continue;
-    if (hasDarurat && (profileKey === "full_name" || profileKey === "phone")) continue;
-    if (hasKantor && profileKey === "address" && !hasDomisili) continue;
-    if (hasDomisili && profileKey === "work_address") continue;
-    if (hasKampus && (profileKey === "full_name" || profileKey === "organization")) continue;
-    if (hasPosisi && (inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("profesi") || inputTokens.includes("position")) && profileKey === "organization") continue;
-    if (hasKependudukan && (profileKey === "student_id" || profileKey === "nisn")) continue;
-    if (hasMahasiswaSiswa && profileKey === "nik") continue;
-    if (inputTokens.includes("first") && profileKey === "full_name") continue;
-    if (inputTokens.includes("last") && profileKey === "full_name") continue;
-    if (hasFax && profileKey !== "fax") continue;
-    if (hasHome && (profileKey === "phone" || profileKey === "work_telephone")) continue;
-    if (hasWork && (profileKey === "phone" || profileKey === "home_phone")) continue;
-
-    let candidateMaxScore = 0;
-
-    for (const kw of keywords) {
-      const kwTokens = tokenize(kw);
-      const kwNormalized = kwTokens.join("_");
-
-      // 1. Hitung Cosine Similarity antara token input form dan token kata kunci referensi
-      const cosSim = computeCosineSimilarity(inputTokens, kwTokens);
-
-      // 2. Hitung Jaro-Winkler Similarity
-      let levSim = computeJaroWinklerSimilarity(inputNormalized, kwNormalized);
-
-      // Substring bonus jika kata kunci spesifik terkandung utuh dalam input
-      // SAFEGUARD: Jangan berikan substring bonus jika kata kunci adalah SHORT_KEYWORDS kecuali token persis sama
-      if (inputNormalized.includes(kwNormalized)) {
-        if (!SHORT_KEYWORDS.has(kwNormalized) || inputTokens.includes(kwNormalized)) {
-          levSim = Math.max(levSim, 0.95);
-        }
-      }
-
-      // Hitung Overlap Similarity
-      const overlapTokens = kwTokens.filter(t => inputTokens.includes(t));
-      const overlapScore = overlapTokens.length / (kwTokens.length || 1);
-
-      // 3. Skor Gabungan berjenjang sesuai dokumen arsitektur
-      let score = (0.50 * cosSim) + (0.35 * levSim) + (0.15 * overlapScore);
-
-      // 4. Context Bonus untuk token spesifik yang cocok
-      if (hasIbu && profileKey === "mother_name") score += 0.25;
-      if (hasAyah && profileKey === "father_name") score += 0.25;
-      if (hasDarurat && hasTelp && profileKey === "emergency_contact_phone") score += 0.30;
-      if (hasDarurat && !hasTelp && profileKey === "emergency_contact_name") score += 0.30;
-      if (hasKantor && (inputTokens.includes("alamat") || inputTokens.includes("address")) && profileKey === "work_address") score += 0.25;
-      if (hasDomisili && (inputTokens.includes("alamat") || inputTokens.includes("address")) && profileKey === "address") score += 0.25;
-      if (hasKantor && hasPosisi && profileKey === "occupation") score += 0.25;
-      if (hasKampus && profileKey === "institution") score += 0.30;
-      if (hasKependudukan && profileKey === "nik") score += 0.25;
-      if (hasMahasiswaSiswa && (inputTokens.includes("nim") || inputTokens.includes("mahasiswa") || inputTokens.includes("student")) && profileKey === "student_id") score += 0.25;
-      if (hasMahasiswaSiswa && (inputTokens.includes("nisn") || inputTokens.includes("siswa")) && profileKey === "nisn") score += 0.25;
-      if (inputTokens.includes("first") && profileKey === "first_name") score += 0.35;
-      if (inputTokens.includes("last") && profileKey === "last_name") score += 0.35;
-      if (inputTokens.includes("country") && profileKey === "country") score += 0.35;
-      if (inputTokens.includes("state") && profileKey === "province") score += 0.35;
-      if (inputTokens.includes("city") && profileKey === "city") score += 0.35;
-      if (inputTokens.includes("age") && profileKey === "age") score += 0.40;
-      if (hasFax && profileKey === "fax") score += 0.40;
-      if (hasHome && profileKey === "home_phone") score += 0.35;
-      if (hasWork && profileKey === "work_telephone") score += 0.35;
-      if (hasCell && profileKey === "phone") score += 0.30;
-
-      // Clamp ke batas maksimum 1.0 agar konsisten dengan ruang metrik probabilitas
-      score = Math.min(score, 1.0);
-
-      if (score > candidateMaxScore) {
-        candidateMaxScore = score;
-      }
-    }
-
-    if (candidateMaxScore > highestScore) {
-      highestScore = candidateMaxScore;
-      bestCandidate = profileKey;
-    }
-  }
-
-  // 3-Tier Confidence Zone di akhir Phase 3
-  if (highestScore >= 0.85 && bestCandidate) {
-    return bestCandidate; // Early exit
-  }
-  if (highestScore >= 0.60 && highestScore < 0.85 && bestCandidate) {
-    // Tambahkan verifikasi 1 metrik tambahan (argmax)
-    return bestCandidate;
-  }
-  if (highestScore >= 0.55 && highestScore < 0.60 && bestCandidate) {
-    // Full ensemble voting
-    return bestCandidate;
-  }
-
-  // Fallback Semantic lewat Offscreen
-  const fallbackLabel = inputTokens.join(" ");
-  if (fallbackLabel) {
-    let targetId = el.id || el.name;
-    if (!targetId) {
-      if (!el.dataset.govconnectId) {
-        el.dataset.govconnectId = "gc_" + Math.random().toString(36).slice(2, 10);
-      }
-      targetId = el.dataset.govconnectId;
-    }
-
-    if (pendingSemanticRequests.has(el) || pendingSemanticRequests.has(targetId)) {
-      return null;
-    }
-    pendingSemanticRequests.add(el);
-    pendingSemanticRequests.add(targetId);
-    try {
-      const fallbackResult = await new Promise(resolve => {
-        chrome.runtime.sendMessage({
-          action: "SEMANTIC_FALLBACK",
-          label: fallbackLabel,
-          id: targetId,
-          targetElementId: targetId
-        }, response => {
-          pendingSemanticRequests.delete(el);
-          pendingSemanticRequests.delete(targetId);
-          resolve(response?.profileKey || null);
-        });
-      });
-      if (fallbackResult) {
-        return fallbackResult;
-      }
-    } catch(e) {
-      pendingSemanticRequests.delete(el);
-      pendingSemanticRequests.delete(targetId);
-      console.warn("GovConnect: Semantic fallback error", e);
-    }
-  }
-
-  return null;
-}
-
-// Cari teks label yang berelasi dengan element (Mendukung PrimeNG, Angular, React, Bootstrap, Tailwind)
-function getLabelText(el) {
-  if (!el) return "";
-  const hostEl = el.closest("p-dropdown, mat-select") || el;
-  const targetId = el.id || hostEl.id;
-
-  // 1. label[for="targetId"]
-  if (targetId) {
-    try {
-      const escapedId = window.CSS && CSS.escape ? CSS.escape(targetId) : targetId;
-      const label = document.querySelector(`label[for="${escapedId}"]`);
-      if (label && label.textContent.trim()) return label.textContent.trim();
-    } catch (e) {}
-  }
-
-  // 2. Jika elemen berada langsung di dalam <label>...</label>
-  const parentLabel = hostEl.closest("label");
-  if (parentLabel && parentLabel.textContent.trim()) return parentLabel.textContent.trim();
-
-  // 3. Atribut aria-labelledby
-  const ariaLabelledBy = el.getAttribute("aria-labelledby") || hostEl.getAttribute("aria-labelledby");
-  if (ariaLabelledBy) {
-    try {
-      const labelledEl = document.getElementById(ariaLabelledBy);
-      if (labelledEl && labelledEl.textContent.trim()) return labelledEl.textContent.trim();
-    } catch (e) {}
-  }
-
-  // 4. Label di dalam container form yang sama (PrimeNG .p-field, .field, Bootstrap .form-group, AntD, dll.)
-  const container = hostEl.closest(".p-field, .field, .form-group, .form-item, .ant-form-item, [class*='field'], [class*='form-group'], div");
-  if (container) {
-    const label = container.querySelector("label, .label, [class*='label']");
-    if (label && label.textContent.trim()) {
-      return label.textContent.trim();
-    }
-  }
-
-  // 5. Label dari elemen saudara sebelumnya (previous sibling)
-  let prev = hostEl.previousElementSibling;
-  while (prev) {
-    if (prev.tagName.toLowerCase() === "label" || prev.classList?.contains("label") || /label/i.test(prev.className || "")) {
-      if (prev.textContent.trim()) return prev.textContent.trim();
-    }
-    prev = prev.previousElementSibling;
-  }
-
-  // 6. SAFE FALLBACK (Khusus layout Bootstrap / Grid seperti RoboForm): Sibling column di dalam row yang sama
-  // SAFEGUARD: Dinonaktifkan untuk PrimeNG dropdown (CoreTax) agar tidak mengambil teks internal panel/error
-  if (!isPrimeNGDropdown(el) && !el.closest("p-dropdown, .p-dropdown")) {
-    const parentRow = hostEl.closest(".row, .form-row, tr, [class*='row']");
-    if (parentRow) {
-      const hostCol = hostEl.closest("[class*='col-'], td, th") || hostEl.parentElement;
-      if (hostCol && parentRow.contains(hostCol)) {
-        let sibling = hostCol.previousElementSibling;
-        while (sibling) {
-          const textEl = sibling.querySelector?.(".text-right, label, th, .label") || sibling;
-          if (!textEl.querySelector("input, select, textarea, button")) {
-            const rawTxt = textEl.textContent.trim().replace(/[:*]+$/, "").trim();
-            if (rawTxt.length >= 2 && rawTxt.length <= 45 && !/^(submit|reset|batal|simpan|next|prev)/i.test(rawTxt)) {
-              return rawTxt;
-            }
-          }
-          sibling = sibling.previousElementSibling;
-        }
-      }
-    }
-  }
-
-  return "";
-}
-
-// ============================================================
-// Deteksi Perubahan DOM / Dynamic Form (Misal Pilih Dropdown BMT UMY)
-// ============================================================
-let isFillingProcess = false;
-let mutationDebounceTimer = null;
-let maxWaitTimer = null;
-
-function debouncedFormUpdate() {
-  if (isGovConnectDashboardPage()) return;
-  if (isFillingProcess) return;
-  
-  if (!maxWaitTimer) {
-    maxWaitTimer = setTimeout(() => {
-      clearTimeout(mutationDebounceTimer);
-      maxWaitTimer = null;
-      if (!isFillingProcess) {
-        chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
-      }
-    }, 3000);
-  }
-
-  clearTimeout(mutationDebounceTimer);
-  mutationDebounceTimer = setTimeout(() => {
-    clearTimeout(maxWaitTimer);
-    maxWaitTimer = null;
-    if (!isFillingProcess) {
-      chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
-    }
-  }, 400);
-}
-
-const shadowObservers = new WeakMap();
-
-function observeShadowRoots(root) {
-  if (!root || !root.querySelectorAll) return;
-  const elements = root.querySelectorAll("*");
-  for (const el of elements) {
-    if (el.shadowRoot && !shadowObservers.has(el.shadowRoot)) {
-      observer.observe(el.shadowRoot, {
-        childList: true,
-        subtree: true
-      });
-      shadowObservers.set(el.shadowRoot, true);
-      observeShadowRoots(el.shadowRoot);
-    }
-  }
-}
-
-const observer = new MutationObserver((mutations) => {
-  // Abaikan mutasi jika sedang dalam proses autofill atau transisi animasi
-  if (isFillingProcess) return;
-
-  // Abaikan mutasi jika hanya berasal dari elemen/kelas GovConnect sendiri
-  const hasRealMutation = mutations.some(m => {
-    const t = m.target;
-    if (!t) return false;
-    if (t.id === "govconnect-markers-layer" || t.closest?.("#govconnect-markers-layer")) return false;
-    if (t.classList?.contains("govconnect-badge")) return false;
-    if (m.type === "attributes" && m.attributeName === "class") {
-      const cls = t.className || "";
-      if (typeof cls === "string" && cls.includes("govconnect-")) return false;
-    }
-    return true;
-  });
-
-  if (!hasRealMutation) return;
-
-  for (const m of mutations) {
-    if (m.addedNodes) {
-      m.addedNodes.forEach(node => observeShadowRoots(node));
-    }
-  }
-
-  debouncedFormUpdate();
-});
-
-function startMutationObserver() {
-  if (isGovConnectDashboardPage()) return;
-  const target = document.body || document.documentElement;
-  if (target) {
-    try {
-      observer.observe(target, {
-        childList: true,
-        subtree: true
-      });
-      observeShadowRoots(target);
-    } catch (err) {
-      console.warn("GovConnect: Observer init warning:", err);
-    }
-  } else {
-    document.addEventListener("DOMContentLoaded", () => {
-      const lateTarget = document.body || document.documentElement;
-      if (lateTarget) {
-        try {
-          observer.observe(lateTarget, {
-            childList: true,
-            subtree: true
-          });
-          observeShadowRoots(lateTarget);
-        } catch (err) {
-          console.warn("GovConnect: Late observer init warning:", err);
-        }
-      }
-    });
-  }
-}
-if (!IS_INSIDE_IFRAME) {
-  startMutationObserver();
-}
-
-const visibilityObserver = new MutationObserver((mutations) => {
-  const revealedForm = mutations.some(m =>
-    m.type === "attributes" &&
-    (m.target.tagName === "FORM" || m.target.closest("form, [role='dialog'], [role='tabpanel']"))
-  );
-  if (revealedForm && !isFillingProcess) {
-    debouncedFormUpdate();
-  }
-});
-
-function attachVisibilityObserver() {
-  if (isGovConnectDashboardPage()) return;
-  document.querySelectorAll("form, [role='dialog'], [role='tabpanel']").forEach(el => {
-    visibilityObserver.observe(el, {
-      attributes: true,
-      attributeFilter: ["style", "class", "hidden"]
-    });
-  });
-}
-
-if (!IS_INSIDE_IFRAME) {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", attachVisibilityObserver);
-  } else {
-    attachVisibilityObserver();
-  }
-}
-
-// Dengarkan juga event change pada dropdown/select
-document.addEventListener("change", (e) => {
-  if (isFillingProcess) return;
-  if (e.target && e.target.tagName === "SELECT") {
-    debouncedFormUpdate();
-  }
-}, true);
-
-// Mode 1-Klik dihapus
-
-// ============================================================
-// Bridge Sinkronisasi Ekstensi <-> Web Dashboard GovConnect
-// ============================================================
-(function setupDashboardSync() {
-  // HANYA aktif di origin dashboard GovConnect yang diizinkan.
-  // Bridge ini TIDAK boleh berjalan di situs pihak ketiga (mencegah kebocoran token).
-  const ALLOWED_WEB_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-  ];
-  const webOrigin = window.location.origin;
-  const isGovConnectApp = ALLOWED_WEB_ORIGINS.includes(webOrigin);
-
-  if (isGovConnectApp) {
-    chrome.storage.local.get(["govconnect_token", "govconnect_email", "govconnect_one_click_mode"], (result) => {
-      window.postMessage({
-        type: "GOVCONNECT_EXTENSION_READY",
-        isInstalled: true,
-        token: result.govconnect_token || null,
-        email: result.govconnect_email || null,
-        oneClickMode: result.govconnect_one_click_mode !== false
-      }, webOrigin); // targetOrigin spesifik, bukan "*"
-    });
-
-    window.addEventListener("message", (event) => {
-      // Verifikasi ketat: sumber window & origin harus dashboard GovConnect.
-      if (event.source !== window || event.origin !== webOrigin) return;
-      if (!event.data || typeof event.data !== "object") return;
-
-      if (event.data.type === "GOVCONNECT_WEB_AUTH_SYNC") {
-        if (event.data.token) {
-          chrome.storage.local.set({
-            govconnect_token: event.data.token,
-            govconnect_email: event.data.email || ""
-          });
-        } else {
-          chrome.storage.local.remove(["govconnect_token", "govconnect_email"]);
-        }
-      }
-
-      if (event.data.type === "GOVCONNECT_SET_ONE_CLICK_MODE") {
-        const enabled = !!event.data.enabled;
-        chrome.storage.local.set({ govconnect_one_click_mode: enabled }, () => {
-          chrome.runtime.sendMessage({ action: "SET_ONE_CLICK_MODE", enabled }).catch(() => {});
-          window.postMessage({
-            type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
-            oneClickMode: enabled
-          }, webOrigin);
-        });
-      }
-
-      if (event.data.type === "GOVCONNECT_PING_EXTENSION") {
-        chrome.storage.local.get(["govconnect_token", "govconnect_email", "govconnect_one_click_mode"], (result) => {
-          window.postMessage({
-            type: "GOVCONNECT_EXTENSION_PONG",
-            isInstalled: true,
-            token: result.govconnect_token || null,
-            email: result.govconnect_email || null,
-            oneClickMode: result.govconnect_one_click_mode !== false
-          }, webOrigin);
-        });
-      }
-    });
-
-    // Dengarkan pesan background jika mode diubah via context menu / sidepanel
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.action === "ONE_CLICK_MODE_CHANGED") {
-        window.postMessage({
-          type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
-          oneClickMode: msg.isOneClick
-        }, webOrigin);
-      }
-    });
-
-    // Dengarkan notifikasi pembaruan profil dari web dashboard
-    window.addEventListener("message", (event) => {
-      if (event.source !== window || event.origin !== webOrigin) return;
-      if (event.data && event.data.type === "GOVCONNECT_PROFILE_UPDATED") {
-        try {
-          chrome.runtime.sendMessage({
-            action: "PROFILE_UPDATED",
-            profile: event.data.profile
-          }).catch(() => {});
-        } catch {}
-      }
-    });
-  }
-})();
-
-  if (isGovConnectDashboardPage()) {
-    clearFieldMarkers();
-  }
-
-  (function addGovSpinStyle() {
-    if (document.getElementById("govconnect-spin-style")) return;
-    const s = document.createElement("style");
-    s.id = "govconnect-spin-style";
-    s.textContent = "@keyframes govSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
-    document.head ? document.head.appendChild(s) : document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
-  })();
-
-  setTimeout(async () => {
-    if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
-      try {
-        const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
-        if (resp?.profile) cachedLastProfile = resp.profile;
-        await detectFields();
-      } catch (e) {}
-    }
-  }, 1200);
-})();
+// Content Script — GovConnect
+// Mendeteksi form secara aktif dan mengisi field berdasarkan profil user
+
+(function() {
+  // Cegah double injection dengan verifikasi DOM marker & protected flag
+  if (document.documentElement && document.documentElement.hasAttribute("data-govconnect-injected")) {
+    return;
+  }
+  if (window.__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__) {
+    return;
+  }
+  try {
+    if (document.documentElement) {
+      document.documentElement.setAttribute("data-govconnect-injected", "true");
+    }
+    Object.defineProperty(window, "__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__", {
+      value: true,
+      writable: false,
+      configurable: false
+    });
+  } catch (e) {
+    window.__GOVCONNECT_CONTENT_SCRIPT_INITIALIZED__ = true;
+  }
+  
+  const IS_INSIDE_IFRAME = window.self !== window.top;
+
+// ============================================================
+// Pengecekan Halaman Dashboard Internal GovConnect
+// Memastikan ekstensi TIDAK mendeteksi form internal GovConnect
+// ============================================================
+function isGovConnectDashboardPage() {
+  try {
+    const host = (window.location.hostname || "").toLowerCase();
+    const port = window.location.port || "";
+    const path = (window.location.pathname || "").toLowerCase();
+    const title = (document.title || "").toLowerCase();
+
+    // 1. Host local dev port atau environment GovConnect (5173, 5174, 3000, 4173)
+    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && 
+        (port === "5173" || port === "5174" || port === "3000" || port === "4173")) {
+      return true;
+    }
+
+    // 2. Deteksi berdasarkan URL path atau title GovConnect
+    const isGovTitle = title.includes("govconnect") || title.includes("gov connect");
+    if (isGovTitle && (
+      path.includes("/dashboard") ||
+      path.includes("/profile") ||
+      path.includes("/templates") ||
+      path.includes("/activity") ||
+      path.includes("/settings") ||
+      path.includes("/login") ||
+      path.includes("/register") ||
+      path === "/" || path === ""
+    )) {
+      return true;
+    }
+
+    // 3. Elemen root aplikasi React GovConnect
+    if (document.getElementById("govconnect-app-root") || 
+        (document.getElementById("root") && isGovTitle)) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+// ============================================================
+// Keyword mapping: profile attribute → list keyword
+// Sesuai PRD §14 — multi-level matching (Spesifik -> Umum)
+// ============================================================
+// Kata kunci pendek (2-3 huruf) yang dilarang dicocokkan secara longgar via substring .includes()
+// Hanya boleh dicocokkan jika persis (exact token match)
+const SHORT_KEYWORDS = new Set([
+  "wa", "hp", "kab", "kot", "zip", "nim", "nip", "nrp", "dob", "sex", "job", "telp", "age", "sim", "day"
+]);
+
+// ============================================================
+// HTML5 Standard Autocomplete Attribute Map (W3C Standard)
+// Menjamin deteksi instan 100% akurat untuk web modern
+// ============================================================
+const AUTOCOMPLETE_MAP = {
+  "given-name": "first_name",
+  "additional-name": "middle_initial",
+  "family-name": "last_name",
+  "name": "full_name",
+  "email": "email",
+  "tel": "phone",
+  "tel-national": "phone",
+  "street-address": "address",
+  "address-line1": "address",
+  "address-line2": "address",
+  "address-level1": "province",
+  "address-level2": "city",
+  "postal-code": "postal_code",
+  "country": "country",
+  "country-name": "country",
+  "organization": "organization",
+  "organization-title": "occupation",
+  "bday": "birth_date",
+  "bday-day": "birth_day",
+  "bday-month": "birth_month",
+  "bday-year": "birth_year",
+  "sex": "gender",
+  "url": "website"
+};
+
+function getAutocompleteProfileKey(el) {
+  if (!el) return null;
+  const rawAuto = (el.getAttribute("autocomplete") || "").toLowerCase().trim();
+  if (!rawAuto || ["off", "false", "none", "new-password", "current-password", "one-time-code"].includes(rawAuto)) {
+    return null;
+  }
+  const tokens = rawAuto.split(/\s+/);
+  for (const t of tokens) {
+    if (t in AUTOCOMPLETE_MAP) {
+      return AUTOCOMPLETE_MAP[t];
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// Universal Abbreviation / Truncated Form Field Dictionary
+// Menerjemahkan singkatan teknis form legacy (seperti RoboForm, vBulletion, SAP)
+// ============================================================
+const ABBREVIATION_MAP = {
+  "frstname": "first_name",
+  "frst": "first",
+  "fname": "first_name",
+  "lstname": "last_name",
+  "lname": "last_name",
+  "fullname": "full_name",
+  "homephon": "home_phone",
+  "homephone": "home_phone",
+  "workphon": "work_telephone",
+  "workphone": "work_telephone",
+  "cellphon": "phone",
+  "cellphone": "phone",
+  "faxphone": "fax",
+  "fax": "fax",
+  "emailadr": "email",
+  "emailaddr": "email",
+  "adrstate": "province",
+  "adr_city": "city",
+  "adrcity": "city",
+  "addr_zip": "postal_code",
+  "addrzip": "postal_code",
+  "driv_lic": "driver_license",
+  "drivlic": "driver_license",
+  "birth_pl": "birth_place",
+  "birthpl": "birth_place",
+  "pers_sex": "gender",
+  "perssex": "gender",
+  "pers_ssn": "nik",
+  "ssn": "nik",
+  "web_site": "website",
+  "addr": "address",
+  "addr1": "address",
+  "addr2": "address",
+  "tel": "phone",
+  "phon": "phone",
+  "org": "organization",
+  "comp": "company",
+  "occ": "occupation",
+  "pos": "occupation"
+};
+
+/**
+ * Membersihkan prefiks angka dan underscore di awal nama field
+ * Contoh: "02frstname" -> "frstname", "68__income" -> "income", "13adr_city" -> "adr_city"
+ * SAFEGUARD: Hanya hapus jika setelah angka/simbol terdapat minimal 2 karakter huruf
+ */
+function stripNumericPrefix(str) {
+  if (!str || typeof str !== "string") return "";
+  const cleaned = str.replace(/^[0-9]+[_\s-]*/, "").replace(/^_+/, "");
+  return cleaned.length >= 2 ? cleaned : str;
+}
+
+const KEYWORD_MAP = {
+  full_name: [
+    "nama_lengkap", "nama_pemohon", "nama_siswa", "nama_mahasiswa", "nama_lengkap_pemohon",
+    "nama", "name", "full_name", "fullname", "nama_pelamar",
+    "taxpayer_name", "taxpayername", "reginput_taxpayername", "nama_wajib_pajak", "wajib_pajak",
+    "card_user_name", "cardusername", "card_name"
+  ],
+  title: [
+    "title", "gelar", "salutation", "prefix", "mr_mrs", "titel"
+  ],
+  first_name: [
+    "first_name", "firstname", "fname", "first", "given_name", "givenname", "nama_depan", "namadepan",
+    "frstname", "frst"
+  ],
+  middle_initial: [
+    "middle_initial", "middleinitial", "initial", "m_i", "mi", "middle_name", "middlename"
+  ],
+  last_name: [
+    "last_name", "lastname", "lname", "last", "surname", "family_name", "familyname", "nama_belakang", "namabelakang",
+    "lstname"
+  ],
+  address: [
+    "alamat_ktp", "alamat_saatini", "alamat_domisili", "alamat_lengkap",
+    "alamat_tinggal", "alamat_surat", "alamat", "address", "domisili", "street", "jalan",
+    "address_line_1", "address_line_2", "address1", "address2", "currentaddress", "current_address",
+    "addr", "addr1", "addr2"
+  ],
+  address_line_1: [
+    "address_line_1", "address_line1", "address1", "addr1", "alamat1", "alamat_1"
+  ],
+  address_line_2: [
+    "address_line_2", "address_line2", "address2", "addr2", "alamat2", "alamat_2", "apartment", "suite", "unit"
+  ],
+  organization: [
+    "nama_perusahaan", "nama_instansi", "instansi_pekerjaan", "nama_organisasi", "nama_kantor",
+    "instansi", "organisasi", "perusahaan", "organization", "company", "perusahaan_tempat_bekerja", "company_name", "companyname", "company name"
+  ],
+  occupation: [
+    "posisi_di_perusahaan", "posisi_pekerjaan", "posisi", "jabatan", "role",
+    "pekerjaan", "occupation", "profesi", "job", "position",
+    "jenis_pekerjaan", "jenispekerjaan", "reginput_occupation", "reginput_job", "reginput_jenispekerjaan"
+  ],
+  education_level: [
+    "pendidikan_terakhir", "jenjang_pendidikan", "pendidikan", "education_level", "jenjang"
+  ],
+  birth_date: [
+    "tanggal_lahir", "tgl_lahir", "birth_date", "birthdate", "dob", "tanggallahir", "tanggal_lahir_pemohon", "tgl_lahir_pemohon",
+    "reginput_birthdate", "reginput_tanggallahir", "dateofbirth", "date_of_birth"
+  ],
+  birth_month: [
+    "birth_month", "dob_month", "month_of_birth", "bulan_lahir", "month", "dob_m", "mm"
+  ],
+  birth_day: [
+    "birth_day", "dob_day", "day_of_birth", "hari_lahir", "day", "dob_d", "dd"
+  ],
+  birth_year: [
+    "birth_year", "dob_year", "year_of_birth", "tahun_lahir", "year", "dob_y", "yy", "yyyy"
+  ],
+  age: [
+    "age", "umur", "usia"
+  ],
+  birth_place: [
+    "tempat_lahir", "tempatlahir", "birth_place", "birthplace", "tempat_lahir_pemohon",
+    "birth_pl", "birthpl", "reginput_placeofbirth", "reginput_birthplace", "reginput_tempatlahir"
+  ],
+  gender: [
+    "jenis_kelamin", "jeniskelamin", "gender", "sex", "kelamin",
+    "pers_sex", "perssex", "reginput_gender", "reginput_sex", "reginput_jeniskelamin"
+  ],
+  nik: [
+    "nomor_identitas", "no_identitas", "nik", "no_ktp", "noktp", "nomor_ktp",
+    "nomor_induk_kependudukan", "nomor_induk", "identity_number", "citizen_id", "reginput_nik",
+    "pers_ssn", "ssn", "social_security_number", "social_security"
+  ],
+  phone: [
+    "nomor_hp", "no_hp", "nohp", "no_telepon", "notelepon", "nomor_telepon",
+    "nomor_handphone", "handphone", "hp", "telp", "whatsapp", "wa",
+    "cell_phone", "cellphone", "mobile", "mobile_number", "mobilenumber", "mobile number", "usernumber", "user_number", "phone_number", "contact_number",
+    "cellphon", "telepon", "phone"
+  ],
+  home_phone: [
+    "home_phone", "homephone", "homephon", "telepon_rumah", "telp_rumah", "tel_rumah", "teleponrumah", "telprumah", "hometel", "home_tel"
+  ],
+  work_telephone: [
+    "work_telephone", "work_phone", "workphone", "workphon", "telepon_kantor", "telp_kantor", "work_tel", "worktel", "teleponkantor", "telpkantor", "office_phone", "officephone"
+  ],
+  fax: [
+    "fax", "fax_number", "faxphone", "nomor_fax", "telefax", "facsimile", "nomorfax"
+  ],
+  email: [
+    "email", "surel", "e_mail", "alamat_email", "useremail", "user_email",
+    "emailadr", "emailaddr"
+  ],
+  province: [
+    "provinsi", "province", "propinsi", "state", "state_province",
+    "adrstate", "adr_state"
+  ],
+  city: [
+    "kota", "kabupaten", "city", "kab", "kot",
+    "adr_city", "adrcity"
+  ],
+  district: [
+    "kecamatan", "district"
+  ],
+  village: [
+    "kelurahan", "desa", "village"
+  ],
+  postal_code: [
+    "kode_pos", "postal_code", "zip", "kodepos", "zipcode", "zip_code",
+    "addr_zip", "addrzip", "postalcode"
+  ],
+  country: [
+    "country", "negara", "kewarganegaraan", "nationality"
+  ],
+  driver_license: [
+    "driver_license", "driver_license_number", "driverlicense", "driving_license", "driver_licence", "nomor_sim", "no_sim", "sim",
+    "driv_lic", "drivlic", "drivinglicense", "drvlic"
+  ],
+  website: [
+    "website", "web_site", "url", "web", "homepage", "situs"
+  ],
+  income: [
+    "income", "pendapatan", "penghasilan", "gaji", "salary", "__income", "income_field"
+  ],
+  comments: [
+    "comments", "comment", "catatan", "keterangan", "notes", "pesan", "remark", "remarks"
+  ],
+  student_id: [
+    "nim", "nip", "nrp", "student_id", "nomor_mahasiswa", "nomor_induk_mahasiswa", "nomor_induk_siswa"
+  ],
+  institution: [
+    "nama_kampus", "nama_sekolah", "nama_universitas", "nama_institusi", "perguruan_tinggi",
+    "institusi", "institution", "sekolah", "universitas", "kampus"
+  ],
+  nisn: [
+    "nisn", "nomor_induk_siswa", "student_number"
+  ],
+  religion: [
+    "agama", "religion", "kepercayaan",
+    "reginput_religion", "reginput_agama", "reginputreligion", "reginputagama"
+  ],
+  marital_status: [
+    "status_perkawinan", "statusperkawinan", "status_nikah", "statusnikah",
+    "status_pernikahan", "statuspernikahan", "status_kawin", "statuskawin",
+    "marital_status", "maritalstatus", "perkawinan", "pernikahan",
+    "reginput_maritalstatus", "reginput_statusperkawinan", "reginputmaritalstatus", "reginputstatusperkawinan"
+  ],
+  family_card_number: [
+    "nomor_kartu_keluarga", "nomor_kk", "no_kk", "noktp", "kartu_keluarga",
+    "family_card_number", "family_card_no", "family_id", "reginput_familycardnumber", "reginput_nokk"
+  ],
+  family_relationship: [
+    "status_hubungan_keluarga", "hubungan_keluarga", "family_status", "family_relationship",
+    "status_keluarga", "reginput_familyrelationship", "reginput_statushubungankeluarga"
+  ],
+  blood_type: [
+    "golongan_darah", "gol_darah", "goldarah", "blood_type", "blood_group"
+  ],
+  mother_name: [
+    "nama_lengkap_ibu", "nama_lengkap_ibu_kandung", "nama_ibu_kandung", "nama_ibu",
+    "ibu_kandung", "mother_name", "mother_full_name", "mothers_name", "namaibu", "nama_orang_tua_ibu",
+    "mothername", "mothersname", "reginput_mothersname", "reginput_mothername"
+  ],
+  father_name: [
+    "nama_lengkap_ayah", "nama_lengkap_ayah_kandung", "nama_ayah_kandung", "nama_ayah",
+    "ayah_kandung", "father_name", "father_full_name", "fathers_name", "namaayah", "nama_orang_tua_ayah",
+    "fathername", "fathersname", "reginput_fathersname", "reginput_fathername"
+  ],
+  emergency_contact_name: [
+    "nama_kontak_darurat", "kontak_darurat", "nama_darurat", "emergency_contact_name", "emergency_contact"
+  ],
+  emergency_contact_phone: [
+    "no_kontak_darurat", "nomor_kontak_darurat", "telp_darurat", "hp_darurat", "emergency_contact_phone", "emergency_phone"
+  ],
+  work_address: [
+    "alamat_kantor", "alamat_perusahaan", "alamat_instansi", "alamat_pekerjaan", "work_address", "office_address"
+  ],
+  npwp: [
+    "npwp", "nomor_npwp", "no_npwp", "tax_id"
+  ],
+  bpjs_number: [
+    "bpjs", "no_bpjs", "nomor_bpjs", "bpjs_kesehatan", "bpjs_ketenagakerjaan"
+  ],
+  foto_ktp: [
+    "foto_ktp", "upload_ktp", "scan_ktp", "berkas_ktp", "file_ktp", "dokumen_ktp", "ktp_file", "fotoktp"
+  ],
+  foto_kk: [
+    "foto_kk", "upload_kk", "scan_kk", "berkas_kk", "file_kk", "kartu_keluarga_file", "fotokk", "kk_file"
+  ],
+  pasfoto: [
+    "pasfoto", "pas_foto", "foto_profil", "photo_file", "avatar_file", "foto_diri", "foto_wajah", "foto_formal", "fotodiri", "pas_photo"
+  ],
+  foto_npwp: [
+    "foto_npwp", "upload_npwp", "scan_npwp", "kartu_npwp_file", "berkas_npwp", "npwp_file"
+  ],
+  foto_ijazah: [
+    "foto_ijazah", "upload_ijazah", "scan_ijazah", "berkas_ijazah", "dokumen_ijazah", "ijazah_file"
+  ]
+};
+
+// ============================================================
+// Dropdown Value Mapping: Standarisasi & Sinonim Nilai Dropdown
+// Memetakan nilai profil ke variasi penulisan opsi <select> umum
+// ============================================================
+const DROPDOWN_VALUE_MAP = {
+  gender: {
+    "laki-laki": ["laki", "pria", "male", "l", "1", "lk", "man", "cowok", "laki-laki", "laki laki", "m"],
+    "perempuan": ["wanita", "perempuan", "female", "p", "pr", "2", "w", "woman", "cewek", "f"]
+  },
+  birth_month: {
+    "01": ["1", "01", "jan", "january", "januari"],
+    "02": ["2", "02", "feb", "february", "februari"],
+    "03": ["3", "03", "mar", "march", "maret"],
+    "04": ["4", "04", "apr", "april"],
+    "05": ["5", "05", "may", "mei"],
+    "06": ["6", "06", "jun", "june", "juni"],
+    "07": ["7", "07", "jul", "july", "juli"],
+    "08": ["8", "08", "aug", "august", "agustus"],
+    "09": ["9", "09", "sep", "september"],
+    "10": ["10", "oct", "october", "oktober"],
+    "11": ["11", "nov", "november"],
+    "12": ["12", "dec", "december", "desember"]
+  },
+  religion: {
+    "islam": ["islam", "muslim"],
+    "kristen": ["kristen", "protestan", "christian", "kristen protestan"],
+    "katolik": ["katolik", "catholic", "kristen katolik"],
+    "hindu": ["hindu"],
+    "buddha": ["buddha", "budha", "buddhis"],
+    "konghucu": ["konghucu", "khonghucu", "confucianism", "penghayat", "lainnya"]
+  },
+  marital_status: {
+    "belum kawin": ["belum_menikah", "single", "lajang", "belum_kawin", "tidak_kawin", "belum", "b", "tidak kawin", "belum kawin", "tk", "tidak", "belum menikah", "tidak_menikah"],
+    "kawin": ["menikah", "married", "sudah_menikah", "kawin", "k", "sudah kawin", "sudah menikah", "k/0", "k/1", "k/2", "k/3"],
+    "cerai hidup": ["cerai", "cerai_hidup", "duda", "janda", "divorced", "ch", "cerai hidup"],
+    "cerai mati": ["cerai_mati", "widow", "widower", "cm", "cerai mati"]
+  },
+  education_level: {
+    "sd": ["sd", "sekolah_dasar", "elementary"],
+    "smp": ["smp", "sltp", "junior_high"],
+    "sma": ["sma", "smk", "slta", "sederajat", "senior_high", "al_iyah", "aliyah", "ma"],
+    "d1": ["d1", "diploma_1", "d-1", "diploma 1"],
+    "d2": ["d2", "diploma_2", "d-2", "diploma 2"],
+    "d3": ["d3", "diploma", "diploma_3", "d-3", "diploma 3"],
+    "d4": ["d4", "diploma_4", "d-4", "diploma 4"],
+    "s1": ["s1", "sarjana", "bachelor", "s-1", "strata_1", "strata 1"],
+    "s2": ["s2", "magister", "master", "s-2", "strata_2", "strata 2"],
+    "s3": ["s3", "doktor", "doctoral", "phd", "s-3", "strata_3", "strata 3"]
+  },
+  blood_type: {
+    "a": ["a", "golongan a", "gol a", "a+"],
+    "b": ["b", "golongan b", "gol b", "b+"],
+    "ab": ["ab", "golongan ab", "gol ab", "ab+"],
+    "o": ["o", "golongan o", "gol o", "o+"]
+  }
+};
+
+// ============================================================
+// Helper: Periksa Apakah Element Benar-benar Terlihat di Layar
+// ============================================================
+function isElementVisible(el) {
+  if (!el) return false;
+  if (el.type === "hidden") return false;
+
+  // Pengecualian khusus: PrimeNG host element (<p-dropdown> atau div.p-dropdown)
+  // Angular sering melampirkannya di dalam portal-outlet atau container posisional
+  // sehingga offsetParent bisa null meski elemen benar-benar terlihat.
+  // Solusi: periksa visibilitas pada inner .p-dropdown div, bukan elemen host.
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "p-dropdown" || (el.classList && el.classList.contains("p-dropdown") && !el.closest("p-dropdown"))) {
+    const inner = el.querySelector(".p-dropdown") || el;
+    const innerStyle = window.getComputedStyle(inner);
+    if (innerStyle.display === "none" || innerStyle.visibility === "hidden") return false;
+    const innerRect = inner.getBoundingClientRect();
+    return innerRect.width > 0 || innerRect.height > 0;
+  }
+
+  // Pengecualian khusus: Custom radio / checkbox (Bootstrap, Tailwind, DemoQA custom-control)
+  // Seringkali input native disembunyikan dengan opacity: 0 atau position: absolute, tetapi label pendukungnya terlihat jelas
+  if (el.type === "radio" || el.type === "checkbox") {
+    const parentContainer = el.closest(".custom-control, .form-check, label, div");
+    if (parentContainer) {
+      const pStyle = window.getComputedStyle(parentContainer);
+      if (pStyle.display !== "none" && pStyle.visibility !== "hidden") {
+        const pRect = parentContainer.getBoundingClientRect();
+        if (pRect.width > 0 || pRect.height > 0) return true;
+      }
+    }
+  }
+
+  // Native checkVisibility (Chrome 105+) - Akurat mendeteksi ancestor display:none
+  if (typeof el.checkVisibility === "function") {
+    try {
+      return el.checkVisibility({
+        checkOpacity: true,
+        checkVisibilityCSS: true
+      });
+    } catch (e) {}
+  }
+
+  try {
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+      return false;
+    }
+
+    // Jika parent tersembunyi (offsetParent null)
+    if (el.offsetParent === null && style.position !== "fixed") {
+      return false;
+    }
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      return false;
+    }
+  } catch (e) {
+    return true; // Fallback jika getComputedStyle gagal
+  }
+
+  return true;
+}
+
+/**
+ * Memeriksa apakah suatu elemen merupakan dropdown kustom PrimeNG (CoreTax DJP)
+ */
+function isPrimeNGDropdown(el) {
+  if (!el) return false;
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "p-dropdown") return true;
+  if (el.classList && el.classList.contains("p-dropdown")) return true;
+  if (el.querySelector && (el.querySelector(".p-dropdown-label") || el.querySelector(".p-dropdown-trigger"))) return true;
+  return false;
+}
+
+/**
+ * Mengambil semua form field yang dapat diisi pada halaman:
+ * input standar, select native, textarea, dan custom dropdown (PrimeNG, Material, combobox, React-Select).
+ * Mengabaikan input pembantu internal seperti .p-hidden-accessible.
+ */
+function querySelectorAllDeep(selector, root = document) {
+  let results = Array.from(root.querySelectorAll(selector));
+  const elements = root.querySelectorAll("*");
+  for (const el of elements) {
+    if (el.shadowRoot) {
+      results = results.concat(querySelectorAllDeep(selector, el.shadowRoot));
+    }
+  }
+  return results;
+}
+
+function getAllFormFields() {
+  const standardInputs = querySelectorAllDeep(
+    "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea"
+  ).filter(el => {
+    // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
+    if (el.closest(".p-hidden-accessible, .cdk-visually-hidden, [aria-hidden='true']")) {
+      return false;
+    }
+    // Abaikan input jika berada di dalam p-dropdown kecuali jika berupa search filter
+    if (el.closest("p-dropdown, .p-dropdown") && !el.classList.contains("p-dropdown-filter")) {
+      return false;
+    }
+    return true;
+  });
+
+  const customDropdowns = querySelectorAllDeep(
+    "p-dropdown, .p-dropdown:not(p-dropdown .p-dropdown), mat-select, [role='combobox']:not(input):not(select), [class*='react-select__control']"
+  );
+
+  const all = [...standardInputs, ...customDropdowns];
+  return all.filter(el => el && el.isConnected);
+}
+
+// ============================================================
+// Penanda Kolom Form di Halaman Web (In-Page Field Markers)
+// Menampilkan border highlight dan badge "⚡ GovConnect" pada kolom yang akan diisi
+// ============================================================
+const MARKER_LABELS = {
+  full_name: "Nama Lengkap",
+  title: "Gelar / Title",
+  first_name: "Nama Depan",
+  middle_initial: "Middle Initial",
+  last_name: "Nama Belakang",
+  nik: "NIK",
+  birth_date: "Tgl Lahir",
+  birth_month: "Bulan Lahir",
+  birth_day: "Hari Lahir",
+  birth_year: "Tahun Lahir",
+  age: "Usia",
+  birth_place: "Tempat Lahir",
+  gender: "Jenis Kelamin",
+  religion: "Agama",
+  marital_status: "Status Nikah",
+  family_card_number: "No. KK",
+  family_relationship: "Hub. Keluarga",
+  blood_type: "Gol. Darah",
+  address: "Alamat",
+  address_line_1: "Alamat Baris 1",
+  address_line_2: "Alamat Baris 2",
+  province: "Provinsi",
+  city: "Kota/Kab",
+  district: "Kecamatan",
+  village: "Kelurahan/Desa",
+  postal_code: "Kode Pos",
+  country: "Negara",
+  driver_license: "No. SIM",
+  website: "Website",
+  income: "Penghasilan",
+  phone: "Telepon/WA",
+  home_phone: "Telp Rumah",
+  work_telephone: "Telp Kantor",
+  fax: "Nomor Fax",
+  comments: "Catatan",
+  email: "Email",
+  occupation: "Pekerjaan",
+  organization: "Instansi",
+  work_address: "Alamat Kantor",
+  education_level: "Pendidikan",
+  institution: "Institusi",
+  student_id: "NIM",
+  nisn: "NISN",
+  mother_name: "Nama Ibu",
+  father_name: "Nama Ayah",
+  emergency_contact_name: "Kontak Darurat",
+  emergency_contact_phone: "No. Darurat",
+  npwp: "NPWP",
+  bpjs_number: "BPJS",
+  foto_ktp: "Foto e-KTP",
+  foto_kk: "Foto KK",
+  pasfoto: "Pasfoto Diri",
+  foto_npwp: "Foto Kartu NPWP",
+  foto_ijazah: "Foto Ijazah"
+};
+
+let activeMarkers = []; // Array of { el, badge, profileKey }
+let cachedLastProfile = null;
+let cachedActiveKeys = null;
+const pendingSemanticRequests = new Set();
+
+function parseBirthDate(dateStr) {
+  if (!dateStr) return { month: "", day: "", year: "" };
+  const str = String(dateStr).trim();
+  let day = "", month = "", year = "";
+
+  // 1. YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if (isoMatch) {
+    year = isoMatch[1];
+    month = isoMatch[2].padStart(2, "0");
+    day = isoMatch[3].padStart(2, "0");
+    return { day, month, year };
+  }
+
+  // 2. DD-MM-YYYY or DD/MM/YYYY
+  const idMatch = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if (idMatch) {
+    day = idMatch[1].padStart(2, "0");
+    month = idMatch[2].padStart(2, "0");
+    year = idMatch[3];
+    return { day, month, year };
+  }
+
+  // 3. DD Mon YYYY (e.g. 22 Sep 2026 or 15 May 1995)
+  const monthNames = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", mei: "05", jun: "06",
+    jul: "07", aug: "08", agu: "08", sep: "09", oct: "10", okt: "10", nov: "11", dec: "12", des: "12"
+  };
+  const textMatch = str.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if (textMatch) {
+    day = textMatch[1].padStart(2, "0");
+    const mStr = textMatch[2].toLowerCase().slice(0, 3);
+    month = monthNames[mStr] || "01";
+    year = textMatch[3];
+    return { day, month, year };
+  }
+
+  return { day, month, year };
+}
+
+function calculateAge(birthDateStr) {
+  const parts = parseBirthDate(birthDateStr);
+  if (!parts.year) return "";
+  const birthYear = parseInt(parts.year, 10);
+  const birthMonth = parseInt(parts.month || "1", 10) - 1;
+  const birthDay = parseInt(parts.day || "1", 10);
+  const today = new Date();
+  let age = today.getFullYear() - birthYear;
+  const m = today.getMonth() - birthMonth;
+  if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+    age--;
+  }
+  return age > 0 ? String(age) : "";
+}
+
+function detectDateSelectType(el) {
+  if (!el || el.tagName.toLowerCase() !== "select") return null;
+
+  // 1. Cek dari nama/id setelah prefiks angka dibersihkan (misal name="66mm" -> "mm", name="67dd" -> "dd", name="68yy" -> "yy")
+  const rawName = (el.name || el.id || "").toLowerCase();
+  const cleanName = stripNumericPrefix(rawName).toLowerCase();
+  if (cleanName === "mm" || cleanName === "dob_m" || cleanName === "month" || cleanName === "dob_mm" || cleanName === "ccexp_mm") {
+    // Abaikan expiration credit card
+    if (cleanName.includes("ccexp") || rawName.includes("ccexp")) return null;
+    return "birth_month";
+  }
+  if (cleanName === "dd" || cleanName === "dob_d" || cleanName === "day" || cleanName === "dob_dd") {
+    return "birth_day";
+  }
+  if (cleanName === "yy" || cleanName === "yyyy" || cleanName === "dob_y" || cleanName === "year" || cleanName === "dob_yy" || cleanName === "ccexp_yy" || cleanName.includes("tahun") || cleanName.includes("year") || cleanName.includes("thn")) {
+    // Abaikan expiration credit card
+    if (cleanName.includes("ccexp") || rawName.includes("ccexp")) return null;
+    return "birth_year";
+  }
+
+  const opts = Array.from(el.options || []).filter(o => o.value && o.value !== "");
+  if (opts.length === 0) return null;
+  const vals = opts.map(o => (o.value || o.text || "").trim().toLowerCase());
+
+  // Abaikan jika ini adalah expiration dropdown kartu kredit
+  if (rawName.includes("exp") || cleanName.includes("exp")) {
+    return null;
+  }
+
+  // Cek apakah dropdown tahun (memiliki nilai >= 1900)
+  if (vals.some(v => /^(19\d\d|20\d\d)$/.test(v))) {
+    return "birth_year";
+  }
+  // Cek apakah dropdown bulan (mengandung nama bulan atau nilai 1-12 dengan total opsi <= 13)
+  if (vals.some(v => /^(jan|feb|mar|apr|may|mei|jun|jul|aug|sep|oct|nov|dec)/i.test(v))) {
+    return "birth_month";
+  }
+  const nums = vals.map(v => parseInt(v, 10)).filter(n => !isNaN(n));
+  if (nums.length > 0) {
+    const max = Math.max(...nums);
+    if (max <= 12 && nums.length <= 13) return "birth_month";
+    if (max <= 31 && nums.length <= 32) return "birth_day";
+  }
+  return null;
+}
+
+function isReactSelect(el) {
+  if (!el) return false;
+  if (el.classList && Array.from(el.classList).some(c => c.includes("react-select"))) return true;
+  if (el.closest && el.closest("[class*='react-select'], .css-2b097c-container, #state, #city")) return true;
+  return false;
+}
+
+async function fillReactSelect(el, value, profileKey) {
+  const container = el.closest("[class*='react-select'], .css-2b097c-container, #state, #city") || el;
+  try {
+    container.scrollIntoView({ behavior: "instant", block: "center" });
+  } catch (e) {}
+
+  // 1. Klik control untuk membuka menu
+  const control = container.querySelector("[class*='control'], [class*='placeholder'], .css-1wa3eu0-placeholder") || container;
+  control.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+  control.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
+  control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+  await new Promise(r => setTimeout(r, 120));
+
+  // 2. Ketik teks ke input react-select
+  const inputEl = container.querySelector("input") || (el.tagName.toLowerCase() === "input" ? el : null);
+  if (inputEl) {
+    inputEl.focus();
+    inputEl.value = value;
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter", code: "Enter" }));
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  // 3. Cari menu/opsi yang muncul
+  const menuOptions = Array.from(document.querySelectorAll("[class*='option'], [id*='react-select'][id*='option']"));
+  if (menuOptions.length > 0) {
+    const wrappers = menuOptions.map(opt => ({
+      rawElement: opt,
+      value: opt.textContent.trim(),
+      text: opt.textContent.trim()
+    }));
+    const matched = bestMatchOption(wrappers, value, profileKey) || wrappers[0];
+    if (matched && matched.rawElement) {
+      matched.rawElement.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      matched.rawElement.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      matched.rawElement.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      if (typeof matched.rawElement.click === "function") {
+        try { matched.rawElement.click(); } catch(e) {}
+      }
+      await new Promise(r => setTimeout(r, 120));
+      return true;
+    }
+  }
+
+  if (inputEl) {
+    inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    return true;
+  }
+  return false;
+}
+
+function registerDocumentPhotos(profile) {
+  if (!profile || !profile.document_photos) return;
+  try {
+    const docs = typeof profile.document_photos === "string"
+      ? JSON.parse(profile.document_photos)
+      : profile.document_photos;
+    
+    if (docs.ktp && docs.ktp.data) profile.foto_ktp = docs.ktp.name || "ktp.jpg";
+    if (docs.kk && docs.kk.data) profile.foto_kk = docs.kk.name || "kk.jpg";
+    if (docs.pasfoto && docs.pasfoto.data) profile.pasfoto = docs.pasfoto.name || "pasfoto.jpg";
+    if (docs.npwp_card && docs.npwp_card.data) profile.foto_npwp = docs.npwp_card.name || "npwp.jpg";
+    if (docs.ijazah && docs.ijazah.data) profile.foto_ijazah = docs.ijazah.name || "ijazah.jpg";
+  } catch (e) {
+    console.warn("GovConnect: Gagal memproses document_photos:", e);
+  }
+}
+
+function registerCustomProfileFields(profile) {
+  if (!profile) return;
+  registerDocumentPhotos(profile);
+
+  // Auto-derive first_name dan last_name jika belum ada di profile
+  if (profile.full_name && (!profile.first_name || !profile.last_name)) {
+    const parts = profile.full_name.trim().split(/\s+/);
+    if (!profile.first_name) profile.first_name = parts[0] || "";
+    if (!profile.last_name) profile.last_name = parts.slice(1).join(" ") || parts[0] || "";
+  }
+
+  // Auto-derive middle_initial jika belum ada di profile
+  if (!profile.middle_initial && profile.full_name) {
+    const parts = profile.full_name.trim().split(/\s+/);
+    if (parts.length > 2) {
+      profile.middle_initial = parts[1].charAt(0).toUpperCase();
+    }
+  }
+
+  // Auto-derive title jika belum ada
+  if (!profile.title) {
+    const g = (profile.gender || "").toLowerCase();
+    if (g.includes("laki") || g.includes("pria") || g.includes("male") || g === "l") {
+      profile.title = "Mr";
+    } else if (g.includes("perempuan") || g.includes("wanita") || g.includes("female") || g === "p") {
+      profile.title = "Ms";
+    }
+  }
+
+  // Auto-derive address_line_1 fallback
+  if (!profile.address_line_1 && profile.address) {
+    profile.address_line_1 = profile.address;
+  }
+
+  // Auto-derive komponen tanggal lahir (birth_month, birth_day, birth_year, age)
+  if (profile.birth_date) {
+    const bParts = parseBirthDate(profile.birth_date);
+    if (!profile.birth_month) profile.birth_month = bParts.month;
+    if (!profile.birth_day) profile.birth_day = bParts.day;
+    if (!profile.birth_year) profile.birth_year = bParts.year;
+    if (!profile.age) profile.age = calculateAge(profile.birth_date);
+  }
+
+  // Auto-derive country default "Indonesia" jika belum ada
+  if (!profile.country) {
+    profile.country = "Indonesia";
+  }
+
+  // Auto-derive telephone aliases
+  if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+  if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+  if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+  if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
+
+  if (!profile.custom_fields) return;
+  try {
+    const cf = typeof profile.custom_fields === "string"
+      ? JSON.parse(profile.custom_fields)
+      : profile.custom_fields;
+    
+    let items = [];
+    if (Array.isArray(cf)) {
+      items = cf;
+    } else if (typeof cf === "object" && cf !== null) {
+      if (Array.isArray(cf.fields)) {
+        items = cf.fields;
+      } else {
+        items = Object.entries(cf).map(([k, v]) => ({
+          key: k,
+          label: typeof v === "object" ? (v.label || k) : k,
+          value: typeof v === "object" ? v.value : v
+        }));
+      }
+    }
+
+    items.forEach(item => {
+      if (item && item.key) {
+        const key = item.key;
+        profile[key] = item.value;
+        if (!MARKER_LABELS[key]) {
+          MARKER_LABELS[key] = item.label || key;
+        }
+        if (!KEYWORD_MAP[key]) {
+          const kLower = key.toLowerCase();
+          const cleanLabel = (item.label || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+          KEYWORD_MAP[key] = Array.from(new Set([
+            kLower,
+            kLower.replace(/_/g, ""),
+            cleanLabel,
+            (item.label || "").toLowerCase()
+          ])).filter(Boolean);
+        }
+      }
+    });
+
+    // Re-check aliases after custom_fields items are unpacked
+    if (!profile.home_phone && profile.telepon_rumah) profile.home_phone = profile.telepon_rumah;
+    if (!profile.work_telephone && profile.telepon_kantor) profile.work_telephone = profile.telepon_kantor;
+    if (!profile.work_telephone && profile.work_phone) profile.work_telephone = profile.work_phone;
+    if (!profile.fax && profile.nomor_fax) profile.fax = profile.nomor_fax;
+  } catch (e) {
+    console.warn("GovConnect: Gagal memproses custom_fields:", e);
+  }
+}
+
+function ensureMarkerStyles() {
+  if (document.getElementById("govconnect-marker-styles")) return;
+  const style = document.createElement("style");
+  style.id = "govconnect-marker-styles";
+  style.textContent = `
+    .govconnect-field-ready {
+      outline: 2px solid #0A4174 !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
+      border-color: #0A4174 !important;
+      transition: outline 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
+    }
+    p-dropdown.govconnect-field-ready .p-dropdown,
+    .p-dropdown.govconnect-field-ready {
+      outline: 2px solid #0A4174 !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.18) !important;
+      border-color: #0A4174 !important;
+    }
+    .govconnect-field-filled {
+      outline: 2px solid #16A34A !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22) !important;
+      border-color: #16A34A !important;
+      background-color: #F0FDF4 !important;
+      animation: govconnectPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+      transition: outline 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease !important;
+    }
+    p-dropdown.govconnect-field-filled .p-dropdown,
+    .p-dropdown.govconnect-field-filled {
+      outline: 2px solid #16A34A !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22) !important;
+      border-color: #16A34A !important;
+      background-color: #F0FDF4 !important;
+    }
+    .govconnect-field-fadeout {
+      outline: 2px solid transparent !important;
+      box-shadow: none !important;
+      background-color: transparent !important;
+      border-color: inherit !important;
+      transition: outline 0.7s ease, box-shadow 0.7s ease, background-color 0.7s ease !important;
+    }
+    .govconnect-field-focus {
+      outline: 3px solid #001D39 !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 5px rgba(123, 189, 232, 0.35) !important;
+      animation: govconnectPulse 1s ease-in-out infinite alternate !important;
+    }
+    @keyframes govconnectPulse {
+      0% { box-shadow: 0 0 0 3px rgba(10, 65, 116, 0.2); }
+      100% { box-shadow: 0 0 0 6px rgba(123, 189, 232, 0.4); }
+    }
+    @keyframes govconnectPopIn {
+      0% { transform: scale(0.99); }
+      50% { transform: scale(1.01); }
+      100% { transform: scale(1); }
+    }
+    @keyframes govconnectBadgePop {
+      0% { transform: translateX(-100%) scale(0.85); opacity: 0.7; }
+      100% { transform: translateX(-100%) scale(1); opacity: 1; }
+    }
+    #govconnect-markers-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2147483640;
+    }
+    .govconnect-badge {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: linear-gradient(135deg, #001D39, #0A4174);
+      color: #FFFFFF !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      line-height: 1.2 !important;
+      border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(0, 29, 57, 0.3), 0 1px 2px rgba(0,0,0,0.08);
+      pointer-events: auto;
+      cursor: pointer;
+      user-select: none;
+      transform: translateX(-100%);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease, opacity 0.6s ease;
+      white-space: nowrap;
+    }
+    .govconnect-badge:hover {
+      transform: translateX(-100%) scale(1.05);
+      box-shadow: 0 4px 12px rgba(10, 65, 116, 0.4);
+    }
+    .govconnect-badge-filled {
+      background: linear-gradient(135deg, #16A34A, #15803D) !important;
+      box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35), 0 1px 2px rgba(0,0,0,0.08) !important;
+      animation: govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    .govconnect-badge-fadeout {
+      opacity: 0 !important;
+      transform: translateX(-100%) translateY(-6px) scale(0.92) !important;
+      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .govconnect-badge-icon {
+      font-size: 9px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureMarkerLayer() {
+  let layer = document.getElementById("govconnect-markers-layer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "govconnect-markers-layer";
+    document.body.appendChild(layer);
+  }
+  return layer;
+}
+
+function clearFieldMarkers() {
+  activeMarkers.forEach(({ el, badge }) => {
+    if (el) {
+      el.classList.remove(
+        "govconnect-field-ready",
+        "govconnect-field-filled",
+        "govconnect-field-focus",
+        "govconnect-field-fadeout"
+      );
+    }
+    if (badge && badge.parentNode) {
+      badge.remove();
+    }
+  });
+  activeMarkers = [];
+}
+
+async function renderFieldMarkers(activeKeys = null, profile = null) {
+  if (isGovConnectDashboardPage()) {
+    clearFieldMarkers();
+    return;
+  }
+  ensureMarkerStyles();
+  const layer = ensureMarkerLayer();
+  clearFieldMarkers();
+
+  if (profile) {
+    cachedLastProfile = profile;
+    registerCustomProfileFields(profile);
+  }
+  if (activeKeys) cachedActiveKeys = activeKeys;
+
+  const currentProfile = cachedLastProfile || {};
+  const allowedKeys = cachedActiveKeys;
+
+  const inputs = getAllFormFields();
+
+  for (const el of inputs) {
+    const profileKey = await matchProfileKey(el);
+    if (!profileKey) continue;
+
+    // Filter berdasarkan activeKeys jika diberikan
+    if (allowedKeys && !allowedKeys.includes(profileKey)) continue;
+
+    // Filter jika profil tidak memiliki nilai untuk key ini
+    const val = currentProfile[profileKey];
+    if (currentProfile && Object.keys(currentProfile).length > 0 && (!val || val.toString().trim() === "")) {
+      continue;
+    }
+
+    if (!isElementVisible(el)) continue;
+
+    // Pasang highlight border
+    el.classList.add("govconnect-field-ready");
+
+    // Pasang badge floating di sudut kanan atas kolom
+    const badge = document.createElement("div");
+    badge.className = "govconnect-badge";
+    badge.dataset.key = profileKey;
+    badge.style.animation = "govconnectBadgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both";
+    badge.style.animationDelay = `${Math.min(activeMarkers.length * 35, 450)}ms`;
+    const label = MARKER_LABELS[profileKey] || profileKey;
+    badge.title = val ? `Siap mengisi: ${val}` : `Kolom terdeteksi: ${label}`;
+    badge.innerHTML = `<span>${label}</span>`;
+
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const trigger = el.querySelector?.(".p-dropdown-trigger, .p-dropdown") || el;
+      trigger.focus();
+    });
+
+    layer.appendChild(badge);
+    activeMarkers.push({ el, badge, profileKey });
+  }
+
+  repositionMarkers();
+}
+
+function repositionMarkers() {
+  activeMarkers.forEach(({ el, badge }) => {
+    if (!el || !document.body.contains(el)) {
+      badge.remove();
+      return;
+    }
+    if (!isElementVisible(el)) {
+      badge.style.display = "none";
+      return;
+    }
+
+    badge.style.display = "inline-flex";
+    const rect = el.getBoundingClientRect();
+    const isNearTop = rect.top + window.scrollY < 16;
+    const top = isNearTop
+      ? (rect.top + window.scrollY + 3)
+      : (rect.top + window.scrollY - 9);
+    const left = (rect.right + window.scrollX - 6);
+
+    badge.style.top = `${top}px`;
+    badge.style.left = `${left}px`;
+  });
+}
+
+function highlightFieldOnPage(profileKey, name, id) {
+  activeMarkers.forEach(({ el, badge, profileKey: key }) => {
+    const isMatch = (profileKey && key === profileKey) ||
+                    (name && el.name === name) ||
+                    (id && el.id === id);
+    if (isMatch) {
+      el.classList.add("govconnect-field-focus");
+      const rect = el.getBoundingClientRect();
+      if (rect.top < 60 || rect.bottom > window.innerHeight - 60) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } else {
+      el.classList.remove("govconnect-field-focus");
+    }
+  });
+}
+
+function unhighlightFieldOnPage() {
+  activeMarkers.forEach(({ el }) => {
+    if (el) el.classList.remove("govconnect-field-focus");
+  });
+}
+
+let markerFadeOutTimer = null;
+
+function markFieldsAsFilled(filledKeys, profile) {
+  if (markerFadeOutTimer) {
+    clearTimeout(markerFadeOutTimer);
+    markerFadeOutTimer = null;
+  }
+
+  activeMarkers.forEach(({ el, badge, profileKey }) => {
+    if (filledKeys && filledKeys.includes(profileKey)) {
+      if (el) {
+        el.classList.remove("govconnect-field-ready", "govconnect-field-focus", "govconnect-field-fadeout");
+        el.classList.add("govconnect-field-filled");
+      }
+      if (badge) {
+        badge.classList.remove("govconnect-badge-fadeout");
+        badge.className = "govconnect-badge govconnect-badge-filled";
+        const label = MARKER_LABELS[profileKey] || profileKey;
+        badge.innerHTML = `<span class="govconnect-badge-icon">✓</span><span>Terisi: ${label}</span>`;
+        if (profile && profile[profileKey]) {
+          badge.title = `Berhasil diisi: ${profile[profileKey]}`;
+        }
+      }
+    }
+  });
+
+  // Animasi menghilang (Fade out) secara mulus setelah 2.2 detik
+  markerFadeOutTimer = setTimeout(() => {
+    activeMarkers.forEach(({ el, badge }) => {
+      if (el && el.classList.contains("govconnect-field-filled")) {
+        el.classList.remove("govconnect-field-filled");
+        el.classList.add("govconnect-field-fadeout");
+      }
+      if (badge && badge.classList.contains("govconnect-badge-filled")) {
+        badge.classList.add("govconnect-badge-fadeout");
+      }
+    });
+
+    // Hapus total elemen setelah transisi CSS selesai (0.8s kemudian)
+    setTimeout(() => {
+      clearFieldMarkers();
+    }, 850);
+  }, 2200);
+}
+
+// Throttled listener untuk scroll dan resize agar badge selalu menempel sempurna
+let markerScrollThrottle = false;
+window.addEventListener("scroll", () => {
+  if (!markerScrollThrottle) {
+    requestAnimationFrame(() => {
+      repositionMarkers();
+      markerScrollThrottle = false;
+    });
+    markerScrollThrottle = true;
+  }
+}, { passive: true });
+
+window.addEventListener("resize", () => {
+  repositionMarkers();
+}, { passive: true });
+
+// ============================================================
+// Listener untuk pesan dari side panel / popup
+// ============================================================
+
+// ============================================================
+// Modul Tampilan Asisten Melayang (In-Page Floating Assistant)
+// Menggantikan side panel pembelah layar agar tampil melayang
+// ============================================================
+// ============================================================
+// FLOATING OVERLAY SIDEPANEL DRAWER (MENIMPA WEB TANPA MEMBELAH LAYAR)
+// ============================================================
+let isSidebarOpen = false;
+
+function removeFloatingSidebar() {
+  const existing = document.getElementById("govconnect-sidebar-container");
+  if (existing) existing.remove();
+  isSidebarOpen = false;
+}
+
+const GOVCONNECT_SIDEBAR_WIDTH = 420;
+
+let viewportResetTimeout = null;
+
+// Menyesuaikan ukuran dan posisi halaman web agar memotong/menggeser tampilan ke kiri
+// sehingga konten form website tidak tertutup oleh ekstensi di pojok kanan (Split View Dock)
+function adjustWebPageViewport(open) {
+  try {
+    const html = document.documentElement;
+    const body = document.body;
+    if (!html) return;
+
+    if (viewportResetTimeout) {
+      clearTimeout(viewportResetTimeout);
+      viewportResetTimeout = null;
+    }
+
+    const FLUID_TRANSITION = "margin-right 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1)";
+
+    if (open) {
+      html.style.setProperty("transition", FLUID_TRANSITION, "important");
+      html.style.setProperty("margin-right", `${GOVCONNECT_SIDEBAR_WIDTH}px`, "important");
+      html.style.setProperty("width", `calc(100% - ${GOVCONNECT_SIDEBAR_WIDTH}px)`, "important");
+      html.style.setProperty("box-sizing", "border-box", "important");
+      if (body) {
+        body.style.setProperty("transition", FLUID_TRANSITION, "important");
+        body.style.setProperty("max-width", "100%", "important");
+        body.style.setProperty("box-sizing", "border-box", "important");
+      }
+    } else {
+      // Kembalikan lebar ke 100% dengan transisi yang sama persis secara fluid
+      html.style.setProperty("transition", FLUID_TRANSITION, "important");
+      html.style.setProperty("margin-right", "0px", "important");
+      html.style.setProperty("width", "100%", "important");
+      if (body) {
+        body.style.setProperty("transition", FLUID_TRANSITION, "important");
+        body.style.setProperty("max-width", "100%", "important");
+      }
+
+      // Bersihkan properti inline setelah animasi selesai
+      viewportResetTimeout = setTimeout(() => {
+        if (!isSidebarOpen) {
+          html.style.removeProperty("margin-right");
+          html.style.removeProperty("width");
+          html.style.removeProperty("box-sizing");
+          html.style.removeProperty("transition");
+          if (body) {
+            body.style.removeProperty("max-width");
+            body.style.removeProperty("box-sizing");
+            body.style.removeProperty("transition");
+          }
+        }
+      }, 300);
+    }
+  } catch (e) {
+    console.warn("GovConnect: Penyesuaian layout halaman web gagal:", e);
+  }
+}
+
+function getOrCreateFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return null;
+
+  let wrapper = document.getElementById("govconnect-sidebar-container");
+  if (!wrapper) {
+    wrapper = document.createElement("div");
+    wrapper.id = "govconnect-sidebar-container";
+    wrapper.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      right: 0 !important;
+      width: ${GOVCONNECT_SIDEBAR_WIDTH}px !important;
+      max-width: 95vw !important;
+      height: 100vh !important;
+      z-index: 2147483647 !important;
+      box-shadow: none !important;
+      border-left: 1px solid #CBD5E1 !important;
+      background: #F6F8FB !important;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      transform: translateX(100%) !important;
+      pointer-events: none !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    `;
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "govconnect-sidebar-iframe";
+    iframe.src = chrome.runtime.getURL("sidepanel.html");
+    iframe.style.cssText = `
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      background: #F6F8FB !important;
+      display: block !important;
+    `;
+
+    wrapper.appendChild(iframe);
+    (document.body || document.documentElement).appendChild(wrapper);
+
+    // Kembalikan layout jika halaman di-unload
+    window.addEventListener("beforeunload", () => {
+      adjustWebPageViewport(false);
+    });
+  }
+  return wrapper;
+}
+
+function openFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
+  const wrapper = getOrCreateFloatingSidebar();
+  if (!wrapper) return;
+
+  isSidebarOpen = true;
+  // Potong/geser tampilan halaman web ke kiri agar berdampingan di pojok kanan
+  adjustWebPageViewport(true);
+
+  requestAnimationFrame(() => {
+    wrapper.style.transform = "translateX(0)";
+    wrapper.style.pointerEvents = "auto";
+  });
+}
+
+function closeFloatingSidebar() {
+  const wrapper = document.getElementById("govconnect-sidebar-container");
+  if (wrapper) {
+    wrapper.style.transform = "translateX(100%)";
+    wrapper.style.pointerEvents = "none";
+  }
+  isSidebarOpen = false;
+  // Kembalikan layout halaman web utuh dengan animasi sinkron
+  adjustWebPageViewport(false);
+}
+
+function toggleFloatingSidebar() {
+  if (isGovConnectDashboardPage() || IS_INSIDE_IFRAME) return;
+  if (isSidebarOpen) {
+    closeFloatingSidebar();
+  } else {
+    openFloatingSidebar();
+  }
+}
+
+// Dengarkan postMessage dari iframe sidepanel (misal tombol tutup)
+window.addEventListener("message", (event) => {
+  if (event.data?.action === "CLOSE_GOVCONNECT_SIDEBAR") {
+    closeFloatingSidebar();
+  }
+});
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  try {
+    if (request.action === "TOGGLE_FLOATING_SIDEBAR" || request.action === "TOGGLE_FLOATING_ASSISTANT") {
+      if (isGovConnectDashboardPage()) {
+        sendResponse({ success: false, reason: "dashboard_page" });
+        return false;
+      }
+      toggleFloatingSidebar();
+      sendResponse({ success: true, isOpen: isSidebarOpen });
+      return false;
+    }
+
+    if (request.action === "OPEN_FLOATING_SIDEBAR" || request.action === "OPEN_FLOATING_ASSISTANT") {
+      if (isGovConnectDashboardPage()) {
+        sendResponse({ success: false, reason: "dashboard_page" });
+        return false;
+      }
+      openFloatingSidebar();
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "CLOSE_FLOATING_SIDEBAR" || request.action === "CLOSE_FLOATING_ASSISTANT") {
+      closeFloatingSidebar();
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "SEMANTIC_RESULT") {
+      const { targetElementId, profileKey, score } = request;
+      console.log("GovConnect Content Script: Menerima SEMANTIC_RESULT", { targetElementId, profileKey, score });
+
+      let targetEl = null;
+      if (targetElementId) {
+        targetEl = document.getElementById(targetElementId);
+        if (!targetEl) {
+          try {
+            const escaped = window.CSS && CSS.escape ? CSS.escape(targetElementId) : targetElementId;
+            targetEl = document.querySelector(`[name="${escaped}"]`);
+          } catch (e) {}
+        }
+        if (!targetEl) {
+          targetEl = document.querySelector(`[data-govconnect-id="${targetElementId}"]`);
+        }
+      }
+
+      // HAPUS elemen dari pendingSemanticRequests (sangat penting!)
+      if (targetElementId) {
+        pendingSemanticRequests.delete(targetElementId);
+      }
+      if (targetEl) {
+        pendingSemanticRequests.delete(targetEl);
+      }
+
+      // Jika score dari offscreen >= 0.50, jalankan fungsi pengisian form visual
+      if (score >= 0.50 && targetEl && profileKey) {
+        fillSemanticElement(targetEl, profileKey);
+      }
+
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "DETECT_FIELDS") {
+      // Jika content script berada di dalam iframe dan iframe tidak memiliki input formulir,
+      // jangan mencuri response top-frame dengan respon kosong!
+      if (IS_INSIDE_IFRAME) {
+        const hasInputs = !!document.querySelector("input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea");
+        if (!hasInputs) {
+          sendResponse({ isIframe: true, total: 0, matched: 0, hiddenMatchedCount: 0, fields: [] });
+          return false;
+        }
+      }
+
+      if (request.profile) {
+        cachedLastProfile = request.profile;
+        registerCustomProfileFields(request.profile);
+      }
+      detectFields().then(result => {
+        if (request.profile) {
+          try {
+            renderFieldMarkers(null, request.profile);
+          } catch (markerErr) {
+            console.warn("GovConnect: Warning saat renderFieldMarkers:", markerErr);
+          }
+        }
+        sendResponse(result);
+      }).catch(err => {
+        console.error("GovConnect: Error saat detectFields:", err);
+        sendResponse({
+          total: 0,
+          matched: 0,
+          hiddenMatchedCount: 0,
+          fields: [],
+          error: err?.message || String(err)
+        });
+      });
+      return true;
+    }
+
+    if (request.action === "UPDATE_ACTIVE_MARKERS") {
+      renderFieldMarkers(request.activeKeys, request.profile).then(() => {
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
+    if (request.action === "HOVER_FIELD") {
+      highlightFieldOnPage(request.profileKey, request.name, request.id);
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "UNHOVER_FIELD") {
+      unhighlightFieldOnPage();
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "CLEAR_MARKERS") {
+      clearFieldMarkers();
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (request.action === "EXECUTE_AUTOFILL" || request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
+      isFillingProcess = true;
+      (async () => {
+        try {
+          const result = await fillForm(request.profile, request.targetFields);
+          try {
+            const filledKeys = (result.fields || [])
+              .filter(f => f.status === "filled")
+              .map(f => f.profileKey);
+            markFieldsAsFilled(filledKeys, request.profile);
+          } catch (markErr) {
+            console.warn("markFieldsAsFilled error:", markErr);
+          }
+
+          // Jika dijalankan via mode 1-klik, tampilkan floating toast notifikasi yang menawan di halaman
+          if (request.action === "EXECUTE_ONE_CLICK_AUTOFILL") {
+            
+          }
+
+          sendResponse(result);
+        } catch (fillErr) {
+          console.error("GovConnect: Error saat proses autofill:", fillErr);
+          sendResponse({ success: false, error: fillErr.message });
+        } finally {
+          // Bebaskan flag isFillingProcess setelah animasi fade-out selesai
+          setTimeout(() => {
+            isFillingProcess = false;
+          }, 3200);
+        }
+      })();
+      return true; // Menandakan asynchronous sendResponse ke Chrome Extension runtime
+    }
+  } catch (err) {
+    console.error("Error in onMessage listener:", err);
+    sendResponse({ success: false, error: err.message });
+    return false;
+  }
+  return false;
+});
+
+// ============================================================
+// Pengisian Form Visual dari Hasil Evaluasi Semantik AI
+// ============================================================
+async function fillSemanticElement(el, profileKey) {
+  if (!el || !profileKey) return;
+
+  let profile = cachedLastProfile;
+  if (!profile) {
+    try {
+      const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
+      profile = resp?.profile || null;
+      if (profile) {
+        cachedLastProfile = profile;
+        registerCustomProfileFields(profile);
+      }
+    } catch (e) {}
+  }
+
+  // Tanpa profil (belum login / tidak tersinkron) → jangan mengisi apa pun.
+  // T6/T10: tidak ada lagi fallback PII dummy hardcoded.
+  if (!profile) return;
+
+  let value = profile[profileKey];
+  if (!value && profileKey === "mother_name") {
+    value = profile.mother_name || profile.nama_ibu;
+  }
+  if (!value) return;
+
+  console.log(`GovConnect: Mengisi field semantik [${profileKey}] dengan nilai: "${value}"`);
+
+  // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
+  if (isPrimeNGDropdown(el)) {
+    await fillPrimeNGDropdown(el, value, profileKey);
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika custom React Select
+  if (isReactSelect(el)) {
+    await fillReactSelect(el, value, profileKey);
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika dropdown native select
+  if (el.tagName.toLowerCase() === "select") {
+    let selectVal = value;
+    const subType = detectDateSelectType(el);
+    if (subType && profile.birth_date) {
+      const bParts = parseBirthDate(profile.birth_date);
+      if (subType === "birth_month") selectVal = bParts.month;
+      else if (subType === "birth_day") selectVal = bParts.day;
+      else if (subType === "birth_year") selectVal = bParts.year;
+    }
+    const matchedOpt = bestMatchOption(Array.from(el.options), selectVal, subType || profileKey);
+    if (matchedOpt) {
+      el.value = matchedOpt.value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    el.style.borderColor = "#16a34a";
+    return;
+  }
+
+  // Jika radio / checkbox
+  if (el.tagName.toLowerCase() === "input" && (el.type === "radio" || el.type === "checkbox")) {
+    el.checked = true;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    try { el.click(); } catch (e) {}
+    el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+    el.classList.add("govconnect-field-filled");
+    return;
+  }
+
+  // Input standar (text, date, email, tel, number, textarea)
+  let finalVal = value;
+  if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "date") {
+    const bParts = parseBirthDate(value);
+    if (bParts.year && bParts.month && bParts.day) {
+      finalVal = `${bParts.year}-${bParts.month}-${bParts.day}`;
+    }
+  }
+
+  try {
+    const proto = Object.getPrototypeOf(el);
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+    if (descriptor && descriptor.set) {
+      descriptor.set.call(el, finalVal);
+    } else {
+      el.value = finalVal;
+    }
+  } catch (e) {
+    el.value = finalVal;
+  }
+
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  el.dispatchEvent(new Event("blur", { bubbles: true }));
+
+  // Visual styling indikasi pengisian berhasil
+  el.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+  el.classList.add("govconnect-field-filled");
+  el.style.borderColor = "#16a34a";
+  el.style.backgroundColor = "#f0fdf4";
+  el.style.transition = "all 0.3s ease";
+}
+
+// ============================================================
+// Deteksi semua field pada form (Termasuk Status Visibilitas & Custom Dropdown)
+// ============================================================
+async function detectFields() {
+  if (isGovConnectDashboardPage()) {
+    return {
+      total: 0,
+      matched: 0,
+      hiddenMatched: 0,
+      unmatched: 0,
+      fields: [],
+      isGovConnectDashboard: true
+    };
+  }
+  const inputs = getAllFormFields();
+
+  const detected = [];
+  for (const el of inputs) {
+    try {
+      const profileKey = await matchProfileKey(el);
+      const visible = isElementVisible(el);
+      const isPrime = isPrimeNGDropdown(el);
+      const hostEl = el.closest?.("p-dropdown, mat-select") || el;
+      const formControl = hostEl.getAttribute?.("formcontrolname") || hostEl.getAttribute?.("ng-reflect-name") || "";
+      const label = getLabelText(el);
+
+      const displayName = el.name || hostEl.getAttribute?.("name") || formControl || el.id || label || (isPrime ? "Dropdown" : "");
+      const tag = isPrime ? "select (primeng)" : (el.tagName ? el.tagName.toLowerCase() : "input");
+      const pLabel = el.querySelector?.(".p-dropdown-label")?.textContent?.trim() || "";
+      const placeholder = el.placeholder || pLabel || "";
+
+      detected.push({
+        tag: tag,
+        name: displayName,
+        id: el.id || hostEl.id || "",
+        placeholder: placeholder,
+        profileKey: profileKey,
+        isVisible: visible,
+        status: profileKey ? "matched" : "not_found"
+      });
+    } catch (fieldErr) {
+      console.warn("GovConnect: Error processing individual field in detectFields:", fieldErr);
+    }
+  }
+
+  const visibleMatched = detected.filter(d => d.profileKey && d.isVisible);
+  const hiddenMatched = detected.filter(d => d.profileKey && !d.isVisible);
+
+  return {
+    total: detected.length,
+    matched: visibleMatched.length,
+    hiddenMatchedCount: hiddenMatched.length,
+    totalMatched: visibleMatched.length + hiddenMatched.length,
+    fields: detected,
+    visibleFields: visibleMatched,
+    hiddenFields: hiddenMatched
+  };
+}
+
+// ============================================================
+// Peringatan Keamanan HTTPS untuk Halaman Tidak Aman (HTTP)
+// Mencegah kebocoran data sensitif PII di jaringan tanpa enkripsi
+// ============================================================
+function showHttpsWarningToast() {
+  try {
+    const isHttp = window.location.protocol === "http:";
+    const host = window.location.hostname || "";
+    const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
+    if (!isHttp || isLocal) return;
+
+    if (document.getElementById("govconnect-https-warning-toast")) return;
+
+    const toast = document.createElement("div");
+    toast.id = "govconnect-https-warning-toast";
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2147483647;
+      background: #dc2626;
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 380px;
+    `;
+    toast.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      <div>
+        <strong>Peringatan Keamanan:</strong> Halaman ini menggunakan HTTP (tidak aman). Data pribadi (PII) berisiko disadap jika dikirimkan.
+      </div>
+      <button style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; margin-left: 6px; padding: 0 4px; line-height: 1;" aria-label="Tutup">&times;</button>
+    `;
+
+    const closeBtn = toast.querySelector("button");
+    if (closeBtn) {
+      closeBtn.onclick = () => toast.remove();
+    }
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.transition = "opacity 0.5s ease-out";
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 500);
+      }
+    }, 7000);
+  } catch (e) {
+    console.warn("GovConnect: Gagal menampilkan peringatan HTTPS", e);
+  }
+}
+
+// ============================================================
+// Isi field berdasarkan profil yang dipilih
+// Mengisi semua field yang dicentang oleh user tanpa terlewat
+// Mendukung Input, Dropdown Native (<select>), File, dan Dropdown PrimeNG
+// ============================================================
+async function fillForm(profile, targetFields = null) {
+  showHttpsWarningToast();
+  if (profile) registerCustomProfileFields(profile);
+  const inputs = getAllFormFields();
+
+  const results = [];
+  let filledCount = 0;
+
+  for (const el of inputs) {
+    const profileKey = await matchProfileKey(el);
+    const hostEl = el.closest("p-dropdown, mat-select") || el;
+    const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
+    const fieldIdentifier = el.id || hostEl.id || el.name || formControl || "";
+
+    if (!profileKey) {
+      results.push({ id: fieldIdentifier, status: "not_found" });
+      continue;
+    }
+
+    // Jika targetFields diberikan, HANYA isi jika elemen ini termasuk dalam target yang dicentang oleh user
+    if (Array.isArray(targetFields) && targetFields.length > 0) {
+      const isSelected = targetFields.some(tf => {
+        if (tf.id && (el.id === tf.id || hostEl.id === tf.id)) return true;
+        if (tf.name && (el.name === tf.name || formControl === tf.name)) return true;
+        if (!tf.id && !tf.name && tf.profileKey === profileKey) return true;
+        if (tf.profileKey === profileKey) return true;
+        return false;
+      });
+      if (!isSelected) {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+        continue;
+      }
+    }
+
+    // Hanya isi jika field tersebut dicentang/ada dalam profile yang dikirim
+    if (!profile || !(profileKey in profile)) {
+      results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      continue;
+    }
+
+    const value = profile[profileKey];
+    if (value === undefined || value === null || value === "") {
+      results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      continue;
+    }
+
+    // Pacing jeda fluid agar pengisian form terasa halus dan natural
+    await new Promise(r => setTimeout(r, 45));
+
+    // Jika elemen adalah PrimeNG dropdown (CoreTax DJP)
+    if (isPrimeNGDropdown(el)) {
+      const ok = await fillPrimeNGDropdown(el, value, profileKey);
+      if (ok) {
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      }
+      continue;
+    }
+
+    // Jika elemen adalah custom React Select (DemoQA State/City dll.)
+    if (isReactSelect(el)) {
+      const ok = await fillReactSelect(el, value, profileKey);
+      if (ok) {
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      }
+      continue;
+    }
+
+    // Jika tag adalah select (dropdown native)
+    if (el.tagName.toLowerCase() === "select") {
+      let selectVal = value;
+      // Jika profileKey adalah birth_date namun dropdown ini adalah sub-komponen tanggal (bulan/hari/tahun)
+      const subType = detectDateSelectType(el);
+      if (subType && profile.birth_date) {
+        const bParts = parseBirthDate(profile.birth_date);
+        if (subType === "birth_month") selectVal = bParts.month;
+        else if (subType === "birth_day") selectVal = bParts.day;
+        else if (subType === "birth_year") selectVal = bParts.year;
+      }
+
+      const matchedOpt = bestMatchOption(Array.from(el.options), selectVal, subType || profileKey);
+      if (matchedOpt) {
+        el.value = matchedOpt.value;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      }
+      continue;
+    }
+
+    // Jika tag adalah input type=radio (DemoQA Gender dll.)
+    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "radio") {
+      const radioVal = (el.value || "").toLowerCase().trim();
+      const radioLabel = (getLabelText(el) || "").toLowerCase().trim();
+      const profileVal = String(value).toLowerCase().trim();
+
+      let candidates = [profileVal];
+      if (DROPDOWN_VALUE_MAP[profileKey]) {
+        const fieldMap = DROPDOWN_VALUE_MAP[profileKey];
+        for (const [canon, syns] of Object.entries(fieldMap)) {
+          if (canon === profileVal || syns.includes(profileVal)) {
+            candidates = [canon, ...syns];
+            break;
+          }
+        }
+      }
+
+      const isMatch = candidates.some(c => {
+        const cleanC = c.replace(/[^a-z0-9]/g, "");
+        const cleanVal = radioVal.replace(/[^a-z0-9]/g, "");
+        const cleanLbl = radioLabel.replace(/[^a-z0-9]/g, "");
+        return radioVal === c || radioLabel === c ||
+               (cleanC.length >= 3 && cleanVal.includes(cleanC)) ||
+               (cleanC.length >= 3 && cleanLbl.includes(cleanC)) ||
+               (cleanVal.length >= 3 && cleanC.includes(cleanVal));
+      });
+
+      if (isMatch) {
+        el.checked = true;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        if (typeof el.click === "function") {
+          try { el.click(); } catch (e) {}
+        }
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      }
+      continue;
+    }
+
+    // Jika tag adalah input type=checkbox (DemoQA Hobbies dll.)
+    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "checkbox") {
+      const chkVal = (el.value || "").toLowerCase().trim();
+      const chkLabel = (getLabelText(el) || "").toLowerCase().trim();
+      const profileVal = String(value).toLowerCase().trim();
+
+      const isPositive = ["1", "true", "yes", "ya", "aktif", "on"].includes(profileVal);
+      const isMatch = isPositive || profileVal.includes(chkVal) || profileVal.includes(chkLabel);
+
+      if (isMatch) {
+        el.checked = true;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        if (typeof el.click === "function") {
+          try { el.click(); } catch (e) {}
+        }
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+      }
+      continue;
+    }
+
+    // Jika tag adalah input type=file (Autofill Berkas & Foto Dokumen)
+    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
+      let docPhotos = {};
+      if (profile && profile.document_photos) {
+        try {
+          docPhotos = typeof profile.document_photos === "string"
+            ? JSON.parse(profile.document_photos)
+            : profile.document_photos;
+        } catch (e) {}
+      }
+
+      let photoSlot = null;
+      if (profileKey === "foto_ktp" || profileKey === "ktp") photoSlot = docPhotos.ktp;
+      else if (profileKey === "foto_kk" || profileKey === "kk") photoSlot = docPhotos.kk;
+      else if (profileKey === "pasfoto") photoSlot = docPhotos.pasfoto;
+      else if (profileKey === "foto_npwp" || profileKey === "npwp_card") photoSlot = docPhotos.npwp_card;
+      else if (profileKey === "foto_ijazah" || profileKey === "ijazah") photoSlot = docPhotos.ijazah;
+      else if (docPhotos[profileKey]) photoSlot = docPhotos[profileKey];
+
+      if (photoSlot && photoSlot.data) {
+        try {
+          const parts = photoSlot.data.split(",");
+          const mimeType = photoSlot.type || (parts[0].match(/:(.*?);/) ? parts[0].match(/:(.*?);/)[1] : "image/jpeg");
+          const byteString = atob(parts[1]);
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          const blob = new Blob([ab], { type: mimeType });
+          const file = new File([blob], photoSlot.name || `${profileKey}.jpg`, { type: mimeType });
+
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          el.files = dataTransfer.files;
+
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+
+          filledCount++;
+          results.push({ id: fieldIdentifier, status: "filled", profileKey });
+          continue;
+        } catch (fileErr) {
+          console.warn("GovConnect: Error saat autofill file input:", fileErr);
+          results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+          continue;
+        }
+      } else {
+        results.push({ id: fieldIdentifier, status: "skipped", profileKey });
+        continue;
+      }
+    }
+
+    // Input text / textarea / date / tel / email
+    // Hapus readonly jika ada (seperti trik antibot/autofill test di SelectorsHub)
+    if (el.readOnly || el.hasAttribute("readonly")) {
+      try {
+        el.removeAttribute("readonly");
+        el.readOnly = false;
+      } catch (e) {}
+    }
+    // Hapus disabled jika ada pada field yang dipilih untuk diisi
+    if (el.disabled || el.hasAttribute("disabled")) {
+      try {
+        el.removeAttribute("disabled");
+        el.disabled = false;
+      } catch (e) {}
+    }
+
+    let finalVal = value;
+    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "date") {
+      const bParts = parseBirthDate(value);
+      if (bParts.year && bParts.month && bParts.day) {
+        finalVal = `${bParts.year}-${bParts.month}-${bParts.day}`;
+      }
+    }
+
+    try {
+      const proto = Object.getPrototypeOf(el);
+      const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+      if (descriptor && descriptor.set) {
+        descriptor.set.call(el, finalVal);
+      } else {
+        el.value = finalVal;
+      }
+    } catch (e) {
+      el.value = finalVal;
+    }
+
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.dispatchEvent(new Event("blur", { bubbles: true }));
+
+    filledCount++;
+    results.push({ id: fieldIdentifier, status: "filled", profileKey });
+  }
+
+  const total = inputs.length;
+  const overallStatus = filledCount === 0 ? "failed"
+                      : filledCount < total ? "partial"
+                      : "success";
+
+  return {
+    success: true,
+    count: filledCount,
+    total,
+    status: overallStatus,
+    fields: results
+  };
+}
+
+// ============================================================
+// NLP Similarity Engine: Jaro-Winkler Distance & Cosine Similarity
+// ============================================================
+
+/**
+ * Menghitung Jaro-Winkler Similarity (skor kemiripan [0.0 - 1.0]).
+ * Dioptimalkan untuk string pendek.
+ */
+function computeJaroWinklerSimilarity(s1, s2) {
+  if (!s1 || !s2) return 0;
+  const a = s1.trim().toLowerCase();
+  const b = s2.trim().toLowerCase();
+  if (a === b) return 1.0;
+
+  const mLength = Math.max(a.length, b.length);
+  const matchWindow = Math.floor(mLength / 2) - 1;
+  const aMatches = new Array(a.length).fill(false);
+  const bMatches = new Array(b.length).fill(false);
+  let matches = 0;
+  let transpositions = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    const start = Math.max(0, i - matchWindow);
+    const end = Math.min(i + matchWindow + 1, b.length);
+    for (let j = start; j < end; j++) {
+      if (!bMatches[j] && a[i] === b[j]) {
+        aMatches[i] = true;
+        bMatches[j] = true;
+        matches++;
+        break;
+      }
+    }
+  }
+
+  if (matches === 0) return 0.0;
+
+  let k = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (aMatches[i]) {
+      while (!bMatches[k]) k++;
+      if (a[i] !== b[k]) transpositions++;
+      k++;
+    }
+  }
+
+  const jaro = (
+    (matches / a.length) +
+    (matches / b.length) +
+    ((matches - transpositions / 2) / matches)
+  ) / 3.0;
+
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, a.length, b.length); i++) {
+    if (a[i] === b[i]) prefix++;
+    else break;
+  }
+
+  const p = 0.1;
+  return jaro + prefix * p * (1 - jaro);
+}
+
+/**
+ * Tokenisasi teks menjadi array kata bersih dengan pemecahan camelCase
+ * dan ekstraksi kata dasar (stemming) sederhana.
+ */
+function tokenize(text) {
+  if (!text) return [];
+  // 1. Pecah camelCase (misal: mothersName -> mothers Name, taxpayerName -> taxpayer Name, regInput -> reg Input)
+  let expanded = text.replace(/([a-z])([A-Z])/g, "$1 $2");
+  // 2. Normalisasi karakter khusus dan simbol menjadi spasi
+  expanded = expanded.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  // 3. Ekstrak token dasar
+  const rawTokens = expanded.split(/\s+/).filter(Boolean);
+  const tokenSet = new Set(rawTokens);
+
+  // 4. Morfologi / stemming sederhana untuk imbuhan bahasa Inggris dan kata majemuk Indonesia
+  rawTokens.forEach(t => {
+    if (t.endsWith("s") && t.length > 3) {
+      tokenSet.add(t.slice(0, -1)); // mothers -> mother, fathers -> father
+    }
+    if (t.includes("mother") && t !== "mother") {
+      tokenSet.add("mother");
+      if (t.includes("name")) tokenSet.add("name");
+    }
+    if (t.includes("father") && t !== "father") {
+      tokenSet.add("father");
+      if (t.includes("name")) tokenSet.add("name");
+    }
+    if (t.includes("namaibu")) {
+      tokenSet.add("nama");
+      tokenSet.add("ibu");
+    }
+    if (t.includes("namaayah")) {
+      tokenSet.add("nama");
+      tokenSet.add("ayah");
+    }
+  });
+
+  return Array.from(tokenSet);
+}
+
+/**
+ * Menghitung Cosine Similarity antara dua himpunan vektor token (Term Frequency).
+ * cos(theta) = (A . B) / (||A|| * ||B||)
+ */
+function computeCosineSimilarity(tokensA, tokensB) {
+  if (!tokensA.length || !tokensB.length) return 0;
+
+  const freqA = {};
+  const freqB = {};
+  tokensA.forEach(t => freqA[t] = (freqA[t] || 0) + 1);
+  tokensB.forEach(t => freqB[t] = (freqB[t] || 0) + 1);
+
+  const allTerms = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
+
+  let dotProduct = 0;
+  let magA = 0;
+  let magB = 0;
+
+  allTerms.forEach(term => {
+    const valA = freqA[term] || 0;
+    const valB = freqB[term] || 0;
+    dotProduct += valA * valB;
+  });
+
+  Object.values(freqA).forEach(v => magA += v * v);
+  Object.values(freqB).forEach(v => magB += v * v);
+
+  const magnitude = Math.sqrt(magA) * Math.sqrt(magB);
+  if (magnitude === 0) return 0;
+
+  return dotProduct / magnitude;
+}
+
+/**
+ * Mencocokkan nilai profil ke opsi <select> terbaik menggunakan NLP Hybrid Engine & Synonym Map.
+ * @param {Array<HTMLOptionElement>} options
+ * @param {string} profileValue
+ * @param {string} profileKey
+ * @returns {HTMLOptionElement|null}
+ */
+function bestMatchOption(options, profileValue, profileKey = "") {
+  if (!options || options.length === 0 || !profileValue) return null;
+
+  const rawVal = profileValue.toString().trim();
+  const valLower = rawVal.toLowerCase();
+  const valTokens = tokenize(rawVal);
+  const valNorm = valTokens.join("_");
+
+  // Step 1: Exact match O(1) pada value atau text
+  for (const opt of options) {
+    if (!opt.value && !opt.text) continue;
+    const optVal = (opt.value || "").trim().toLowerCase();
+    const optText = (opt.text || "").trim().toLowerCase();
+    if (optVal === valLower || optText === valLower) {
+      return opt;
+    }
+  }
+
+  // Step 2: Cek Sinonim Khusus dari DROPDOWN_VALUE_MAP jika profileKey terdaftar
+  if (profileKey && DROPDOWN_VALUE_MAP[profileKey]) {
+    const fieldSynonyms = DROPDOWN_VALUE_MAP[profileKey];
+    let canonicalKey = null;
+    for (const [canon, synList] of Object.entries(fieldSynonyms)) {
+      const allCanonForms = [canon, canon.replace(/_/g, " "), canon.replace(/ /g, "_"), ...synList];
+      if (
+        allCanonForms.includes(valLower) ||
+        allCanonForms.includes(valNorm) ||
+        synList.some(s => s === valLower || s === valNorm || s.replace(/_/g, " ") === valLower)
+      ) {
+        canonicalKey = canon;
+        break;
+      }
+    }
+
+    if (canonicalKey) {
+      const allowedSynonyms = fieldSynonyms[canonicalKey];
+      for (const opt of options) {
+        if (!opt.value && !opt.text) continue;
+        const optText = (opt.text || "").trim().toLowerCase();
+        const optVal = (opt.value || "").trim().toLowerCase();
+        const optTokens = tokenize(`${optVal} ${optText}`);
+        const optClean = optText.replace(/[^a-z0-9]/g, "");
+
+        const matchesSynonym = allowedSynonyms.some(syn => {
+          const synClean = syn.replace(/[^a-z0-9]/g, "");
+          return (
+            optVal === syn ||
+            optText === syn ||
+            optTokens.includes(syn) ||
+            (synClean.length >= 3 && optClean.includes(synClean)) ||
+            (optClean.length >= 3 && synClean.includes(optClean))
+          );
+        });
+
+        if (matchesSynonym) {
+          return opt;
+        }
+      }
+    }
+  }
+
+  // Step 2.5: Numeric & 2-Digit Year Match (untuk birth_day, birth_month, birth_year)
+  const numProfile = parseInt(rawVal, 10);
+  if (!isNaN(numProfile)) {
+    for (const opt of options) {
+      if (!opt.value && !opt.text) continue;
+      const optVal = (opt.value || "").trim();
+      const optText = (opt.text || "").trim();
+      const numVal = parseInt(optVal, 10);
+      const numText = parseInt(optText, 10);
+      if (numVal === numProfile || numText === numProfile) {
+        return opt;
+      }
+    }
+  }
+
+  if (profileKey === "birth_year" && rawVal.length === 4) {
+    const shortYear = rawVal.slice(-2);
+    for (const opt of options) {
+      if (!opt.value && !opt.text) continue;
+      const optVal = (opt.value || "").trim();
+      const optText = (opt.text || "").trim();
+      if (optVal === shortYear || optText === shortYear) {
+        return opt;
+      }
+    }
+  }
+
+  // Step 3: NLP Hybrid Matching (Cosine + Levenshtein) untuk opsi dinamis / bebas
+  let bestOpt = null;
+  let highestScore = 0;
+
+  for (const opt of options) {
+    if (!opt.value && !opt.text) continue;
+    const optText = (opt.text || "").trim();
+    const optVal = (opt.value || "").trim();
+
+    // Skip opsi placeholder seperti "-- Pilih --", "Pilih...", "Select..."
+    if (/^(pilih|select|--|none|kosong)/i.test(optText) && !opt.value) {
+      continue;
+    }
+
+    const optTokens = tokenize(`${optVal} ${optText}`);
+    const optNorm = optTokens.join("_");
+
+    const cosSim = computeCosineSimilarity(valTokens, optTokens);
+    let levSim = computeJaroWinklerSimilarity(valNorm, optNorm);
+    if (optNorm.includes(valNorm) || valNorm.includes(optNorm)) {
+      levSim = Math.max(levSim, 0.90);
+    }
+
+    let score = (0.65 * cosSim) + (0.35 * levSim);
+
+    const overlapTokens = valTokens.filter(t => optTokens.includes(t));
+    if (overlapTokens.length > 0 && valTokens.length > 0) {
+      score += 0.20 * (overlapTokens.length / valTokens.length);
+    }
+
+    if (score > highestScore && score >= 0.48) {
+      highestScore = score;
+      bestOpt = opt;
+    }
+  }
+
+  return bestOpt;
+}
+
+/**
+ * Mengisi dropdown kustom PrimeNG (<p-dropdown>) yang digunakan oleh CoreTax DJP.
+ * Menstimulasi klik buka dropdown, menunggu overlay panel (.p-dropdown-panel) muncul,
+ * mencocokkan opsi via NLP / kamus sinonim, lalu mengklik li.p-dropdown-item agar Angular model terupdate.
+ *
+ * FIXES:
+ * - Bug #2: Trigger selection menggunakan .p-dropdown-trigger, bukan .p-dropdown (self-reference)
+ * - Bug #3: Panel detection menandai panel lama sebelum klik, lalu menunggu panel BARU
+ * - Bug #4: closePrimeNGPanel tidak lagi mengklik trigger (mencegah panel terbuka kembali)
+ */
+async function fillPrimeNGDropdown(dropdownEl, value, profileKey) {
+  if (!dropdownEl || !value) return false;
+
+  // Temukan elemen host p-dropdown
+  const hostEl = dropdownEl.closest("p-dropdown") || dropdownEl;
+
+  try {
+    hostEl.scrollIntoView({ behavior: "instant", block: "center" });
+  } catch (e) {}
+
+  // Bug #2 Fix: Cari trigger dengan urutan yang benar.
+  // .p-dropdown-trigger adalah ikon chevron di ujung kanan PrimeNG.
+  // JANGAN gunakan .querySelector(".p-dropdown") karena akan menemukan dirinya sendiri.
+  const trigger = hostEl.querySelector(".p-dropdown-trigger") ||
+                  hostEl.querySelector(".p-dropdown-label") ||
+                  hostEl;
+
+  // Bug #3 Fix: Tandai semua panel yang sudah ada sebelum membuka dropdown ini
+  const existingPanels = new Set(
+    Array.from(document.querySelectorAll(".p-dropdown-panel"))
+  );
+
+  // Tutup panel lain yang masih terbuka (dari dropdown sebelumnya)
+  if (existingPanels.size > 0) {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }));
+    await new Promise(r => setTimeout(r, 80));
+  }
+
+  // 1. Simulasikan klik pada trigger untuk membuka dropdown ini (urutan mousedown -> mouseup -> click)
+  function dispatchClick(targetEl) {
+    if (!targetEl) return;
+    targetEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    targetEl.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+    targetEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  }
+
+  dispatchClick(trigger);
+
+  // 2. Tunggu overlay panel BARU (.p-dropdown-panel) di-render oleh Angular / PrimeNG
+  // PrimeNG biasanya append panel ke <body> sebagai overlay.
+  let panel = null;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    await new Promise(r => setTimeout(r, 50));
+
+    // Fallback: Jika setelah attempt ke-5 panel belum muncul, coba klik label atau container host
+    if (attempt === 5 && !panel) {
+      const altTrigger = hostEl.querySelector(".p-dropdown-label") || hostEl.querySelector(".p-dropdown") || hostEl;
+      if (altTrigger && altTrigger !== trigger) {
+        dispatchClick(altTrigger);
+      }
+    }
+
+    // Cari panel yang BARU muncul (tidak ada di existingPanels)
+    const allPanels = Array.from(document.querySelectorAll(".p-dropdown-panel"));
+    const newPanels = allPanels.filter(p => !existingPanels.has(p));
+
+    if (newPanels.length > 0) {
+      // Ambil panel baru yang terlihat
+      panel = newPanels.find(p => {
+        const style = window.getComputedStyle(p);
+        return style.display !== "none" && style.visibility !== "hidden";
+      }) || newPanels[0];
+      if (panel) break;
+    }
+
+    // Fallback: jika tidak ada panel baru, cari panel apapun yang terlihat
+    const visiblePanel = allPanels.find(p => {
+      const style = window.getComputedStyle(p);
+      return style.display !== "none" && style.visibility !== "hidden";
+    });
+    if (visiblePanel) {
+      panel = visiblePanel;
+      break;
+    }
+  }
+
+  if (!panel) {
+    console.warn("GovConnect: Panel PrimeNG tidak ditemukan untuk", profileKey);
+    return false;
+  }
+
+  // Tunggu sebentar agar opsi-opsi benar-benar ter-render di dalam panel
+  await new Promise(r => setTimeout(r, 60));
+
+  // 3. Ekstrak opsi-opsi (li.p-dropdown-item atau [role="option"])
+  const items = Array.from(panel.querySelectorAll(".p-dropdown-item, li[role='option'], [role='option']"));
+  if (items.length === 0) {
+    closePrimeNGPanel(panel);
+    return false;
+  }
+
+  // 4. Bungkus opsi ke format { rawElement, value, text } untuk dicocokkan bestMatchOption
+  const optionWrappers = items.map(item => ({
+    rawElement: item,
+    // Prioritas: aria-label > data-value > textContent (bersih tanpa whitespace berlebih)
+    value: (item.getAttribute("aria-label") || item.getAttribute("data-value") || item.textContent || "").trim(),
+    text: (item.getAttribute("aria-label") || item.textContent || "").replace(/\s+/g, " ").trim()
+  }));
+
+  const matchedWrapper = bestMatchOption(optionWrappers, value, profileKey);
+
+  if (!matchedWrapper || !matchedWrapper.rawElement) {
+    console.warn("GovConnect: Tidak ada opsi PrimeNG yang cocok untuk:", value, "pada field:", profileKey);
+    closePrimeNGPanel(panel);
+    return false;
+  }
+
+  const targetLi = matchedWrapper.rawElement;
+  try {
+    targetLi.scrollIntoView({ block: "nearest" });
+  } catch (e) {}
+
+  // Jeda sebentar sebelum klik agar scroll selesai
+  await new Promise(r => setTimeout(r, 30));
+
+  // 5. Klik opsi terpilih dengan event mouse lengkap
+  targetLi.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true, cancelable: true, view: window }));
+  targetLi.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+  targetLi.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+  targetLi.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  if (typeof targetLi.click === "function") {
+    try { targetLi.click(); } catch (e) {}
+  }
+
+  // Berikan jeda agar Angular / PrimeNG memproses pemilihan opsi dan menutup panel
+  await new Promise(r => setTimeout(r, 150));
+
+  // 6. Tutup panel jika masih terbuka (Bug #4 Fix: TIDAK klik trigger lagi)
+  closePrimeNGPanel(panel);
+
+  // Jeda antar dropdown agar Angular model stabil sebelum membuka dropdown berikutnya
+  await new Promise(r => setTimeout(r, 200));
+
+  return true;
+}
+
+/**
+ * Menutup panel PrimeNG yang terbuka.
+ * Bug #4 Fix: Hanya kirim Escape ke document, TIDAK mengklik trigger lagi
+ * (klik trigger akan membuka kembali panel yang baru saja ditutup).
+ * Aman: tidak klik document.body langsung (bisa menutup modal CoreTax).
+ */
+function closePrimeNGPanel(panel) {
+  try {
+    if (panel && document.body.contains(panel)) {
+      const style = window.getComputedStyle(panel);
+      if (style.display !== "none" && style.visibility !== "hidden") {
+        // Kirim Escape ke document untuk menutup overlay PrimeNG
+        document.dispatchEvent(new KeyboardEvent("keydown", {
+          key: "Escape",
+          code: "Escape",
+          keyCode: 27,
+          bubbles: true,
+          cancelable: true
+        }));
+        // Klik pada overlay backdrop PrimeNG (bukan body) jika ada
+        // PrimeNG menambahkan .p-overlay-container atau .cdk-overlay-container
+        const backdrop = document.querySelector(".p-overlay-container, .cdk-overlay-container");
+        if (backdrop && backdrop !== panel && !panel.contains(backdrop)) {
+          backdrop.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// Cocokkan element HTML ke profile key (Hybrid Similarity Engine)
+// Mencegah greedy substring collision (misal nama ibu vs nama pemohon)
+const STRIPPABLE_PREFIXES = [
+  "inp_", "form_", "txt_", "data_", "field_", "fld_",
+  "ctrl_", "el_", "reginput_", "isian_", "kolom_", "input_"
+];
+const MIN_REMAINDER = 3;
+
+function stripSemanticPrefix(str) {
+  if (!str || str.length < MIN_REMAINDER) return str;
+  let result = str.toLowerCase();
+  for (let i = 0; i < 2; i++) {
+    const matched = STRIPPABLE_PREFIXES.find(p => result.startsWith(p));
+    if (!matched) break;
+    const candidate = result.slice(matched.length);
+    if (candidate.length >= MIN_REMAINDER) {
+      result = candidate;
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+// ============================================================
+// Fungsi Scoring BM25 Sementara
+const BM25_IDF = {};
+function computeBM25Similarity(inputTokens, kwTokens) {
+  const k1 = 1.2;
+  const b = 0.75;
+  const avgdl = 3.0;
+  let score = 0;
+  for (const q of kwTokens) {
+    if (inputTokens.includes(q)) {
+      const idf = BM25_IDF[q] || 1.0;
+      const tf = inputTokens.filter(t => t === q).length;
+      const docLen = inputTokens.length;
+      const normTf = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / avgdl)));
+      score += idf * normTf;
+    }
+  }
+  const maxScore = kwTokens.length * 1.5;
+  return Math.min(score / (maxScore || 1), 1.0);
+}
+
+// ============================================================
+async function matchProfileKey(el) {
+  // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence)
+  const autoKey = getAutocompleteProfileKey(el);
+  if (autoKey) return autoKey;
+
+  const hostEl = el.closest("p-dropdown, mat-select") || el;
+  const rawFormControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
+  const rawElName = el.name || hostEl.getAttribute("name") || rawFormControl || "";
+  const rawElId = el.id || hostEl.id || "";
+  let formControl = rawFormControl.toLowerCase().trim();
+  let elName = rawElName.toLowerCase().trim();
+  let elId = rawElId.toLowerCase().trim();
+  
+  formControl = stripSemanticPrefix(formControl);
+  elName = stripSemanticPrefix(elName);
+  elId = stripSemanticPrefix(elId);
+
+  const labelText = getLabelText(el).toLowerCase().trim();
+  const pLabel = el.querySelector?.(".p-dropdown-label")?.textContent?.trim() || "";
+  const placeholder = (el.placeholder || pLabel || "").toLowerCase().trim();
+  const ariaLabel = (el.getAttribute("aria-label") || hostEl.getAttribute("aria-label") || "").toLowerCase().trim();
+
+  // Phase 1: Exact Name, ID, atau formControl Match (O(1) Shortcut jika atribut persis sama atau ternormalisasi)
+  // SAFEGUARD: CoreTax (formcontrolname, ng-reflect-name, reginput_*) diperiksa pertama kali tanpa distorsi!
+  const cleanElName = elName.replace(/[^a-z0-9]/g, "_");
+  const cleanElId = elId.replace(/[^a-z0-9]/g, "_");
+  const cleanFormControl = formControl.replace(/[^a-z0-9]/g, "_");
+
+  const strip = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const strippedElName = strip(elName);
+  const strippedElId = strip(elId);
+  const strippedFormControl = strip(formControl);
+
+  // Normalisasi prefiks numerik & ekspansi singkatan (misal 02frstname -> frstname -> first_name)
+  const sanitizedName = stripNumericPrefix(elName);
+  const cleanSanitizedName = sanitizedName.replace(/[^a-z0-9]/g, "_");
+  const strippedSanitizedName = strip(sanitizedName);
+  const expandedSanitizedName = ABBREVIATION_MAP[cleanSanitizedName] || ABBREVIATION_MAP[strippedSanitizedName] || "";
+
+  for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+    const strippedProfileKey = strip(profileKey);
+    if (
+      elName === profileKey || elId === profileKey || formControl === profileKey ||
+      cleanElName === profileKey || cleanElId === profileKey || cleanFormControl === profileKey ||
+      strippedElName === strippedProfileKey || strippedElId === strippedProfileKey || strippedFormControl === strippedProfileKey ||
+      cleanSanitizedName === profileKey || expandedSanitizedName === profileKey || strippedSanitizedName === strippedProfileKey
+    ) {
+      return profileKey;
+    }
+    for (const kw of keywords) {
+      const cleanKw = kw.replace(/[^a-z0-9]/g, "_");
+      const strippedKw = strip(kw);
+      if (
+        elName === kw || elId === kw || formControl === kw ||
+        cleanElName === cleanKw || cleanElId === cleanKw || cleanFormControl === cleanKw ||
+        elName === cleanKw || elId === cleanKw || formControl === cleanKw ||
+        strippedElName === strippedKw || strippedElId === strippedKw || strippedFormControl === strippedKw ||
+        cleanSanitizedName === cleanKw || expandedSanitizedName === kw || strippedSanitizedName === strippedKw
+      ) {
+        return profileKey;
+      }
+    }
+  }
+
+  // Deteksi khusus jika elemen merupakan <select> yang merepresentasikan komponen tanggal (Bulan/Hari/Tahun)
+  const dateSelectType = detectDateSelectType(el);
+  if (dateSelectType) {
+    return dateSelectType;
+  }
+
+  // Phase 2: Ekstraksi Token Input (sertakan raw string, sanitized string, expanded abbreviation, dan label dengan bobot ganda)
+  const combinedRaw = `${rawElName} ${cleanSanitizedName} ${expandedSanitizedName} ${rawElId} ${rawFormControl} ${labelText} ${labelText} ${placeholder} ${ariaLabel}`;
+  const inputTokens = tokenize(combinedRaw);
+  const inputNormalized = inputTokens.join("_");
+
+  if (inputTokens.length === 0) return null;
+
+  // Deteksi Modifiers Konteks Kritis
+  const hasIbu = inputTokens.includes("ibu") || inputTokens.includes("mother") || inputTokens.includes("mothers");
+  const hasAyah = inputTokens.includes("ayah") || inputTokens.includes("father") || inputTokens.includes("fathers") || inputTokens.includes("bapak");
+  const hasDarurat = inputTokens.includes("darurat") || inputTokens.includes("emergency");
+  const hasKantor = inputTokens.includes("kantor") || inputTokens.includes("perusahaan") || inputTokens.includes("office") || inputTokens.includes("instansi") || inputTokens.includes("company") || inputTokens.includes("kerja");
+  const hasKampus = inputTokens.includes("kampus") || inputTokens.includes("universitas") || inputTokens.includes("sekolah") || inputTokens.includes("institusi") || inputTokens.includes("perguruantinggi") || inputTokens.includes("fakultas") || inputTokens.includes("prodi");
+  const hasTanggal = inputTokens.includes("tgl") || inputTokens.includes("tanggal") || inputTokens.includes("date") || inputTokens.includes("birthdate");
+  const hasLahir = inputTokens.includes("lahir") || inputTokens.includes("birth") || inputTokens.includes("dob");
+  const hasTelp = inputTokens.includes("telepon") || inputTokens.includes("telephone") || inputTokens.includes("phone") || inputTokens.includes("handphone") || inputTokens.includes("hp") || inputTokens.includes("telp") || inputTokens.includes("tel") || inputTokens.includes("whatsapp") || inputTokens.includes("wa") || inputTokens.includes("phon");
+  const hasPosisi = inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("profesi") || inputTokens.includes("pekerjaan") || inputTokens.includes("occupation") || inputTokens.includes("position");
+  const hasDomisili = inputTokens.includes("domisili") || inputTokens.includes("ktp") || inputTokens.includes("tinggal") || inputTokens.includes("rumah") || inputTokens.includes("saatini");
+  const hasKependudukan = inputTokens.includes("kependudukan") || inputTokens.includes("citizen") || inputTokens.includes("ktp") || inputTokens.includes("nik");
+  const hasMahasiswaSiswa = inputTokens.includes("mahasiswa") || inputTokens.includes("siswa") || inputTokens.includes("student") || inputTokens.includes("nim") || inputTokens.includes("nisn") || inputTokens.includes("nrp");
+  const hasFax = inputTokens.includes("fax") || inputTokens.includes("telefax") || inputTokens.includes("facsimile") || inputTokens.includes("faxphone");
+  const hasHome = inputTokens.includes("home") || inputTokens.includes("rumah");
+  const hasWork = inputTokens.includes("work") || inputTokens.includes("kantor") || inputTokens.includes("office");
+  const hasCell = inputTokens.includes("cell") || inputTokens.includes("mobile") || inputTokens.includes("hp") || inputTokens.includes("handphone") || inputTokens.includes("wa") || inputTokens.includes("whatsapp");
+
+  // Shortcut Pasti Berdasarkan Semantik Universal
+  // 1. Email
+  if (inputTokens.includes("email") || inputTokens.includes("surel") || inputTokens.includes("emailadr")) {
+    return "email";
+  }
+
+  // 2. First Name vs Last Name vs Full Name
+  if (inputTokens.includes("first") && (inputTokens.includes("name") || inputTokens.includes("nama"))) {
+    return "first_name";
+  }
+  if ((inputTokens.includes("last") || inputTokens.includes("sur")) && (inputTokens.includes("name") || inputTokens.includes("nama"))) {
+    return "last_name";
+  }
+  if (inputTokens.includes("depan") && inputTokens.includes("nama")) {
+    return "first_name";
+  }
+  if (inputTokens.includes("belakang") && inputTokens.includes("nama")) {
+    return "last_name";
+  }
+
+  // 3. Telepon Spesifik vs Umum (Fax, Home Phone, Work Telephone, Cell/WA)
+  if (hasFax) {
+    return "fax";
+  }
+  if (hasHome && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "home_phone";
+  }
+  if (hasWork && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "work_telephone";
+  }
+  if (hasCell && (hasTelp || inputTokens.includes("tel") || inputTokens.includes("phone"))) {
+    return "phone";
+  }
+  if (hasTelp && !hasDarurat && !hasHome && !hasWork && !hasFax) {
+    return "phone";
+  }
+
+  // 4. Social Security Number / NIK
+  if (inputTokens.includes("ssn") || (inputTokens.includes("social") && inputTokens.includes("security"))) {
+    return "nik";
+  }
+
+  // 5. Driver License Number (SIM)
+  if ((inputTokens.includes("driver") || inputTokens.includes("driving")) && (inputTokens.includes("license") || inputTokens.includes("licence") || inputTokens.includes("lic"))) {
+    return "driver_license";
+  }
+
+  // 6. Tanggal Lahir vs Tanggal Lain
+  if (hasTanggal && hasLahir) {
+    if (inputTokens.includes("month") || inputTokens.includes("bulan")) return "birth_month";
+    if (inputTokens.includes("day") || inputTokens.includes("hari")) return "birth_day";
+    if (inputTokens.includes("year") || inputTokens.includes("tahun")) return "birth_year";
+    return "birth_date";
+  }
+  if (hasTanggal && !hasLahir) {
+    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+      if (profileKey.startsWith("custom_") || profileKey.includes("tgl") || profileKey.includes("date")) {
+        for (const kw of keywords) {
+          if (inputTokens.includes(kw) || elName === kw || elId === kw) return profileKey;
+        }
+      }
+    }
+    return null;
+  }
+
+  // 7. Tempat Lahir
+  if ((inputTokens.includes("tempat") || inputTokens.includes("place") || inputTokens.includes("pl")) && hasLahir) {
+    return "birth_place";
+  }
+
+  // 8. Kode Pos (Zip Code)
+  if (inputTokens.includes("zip") || inputTokens.includes("zipcode") || inputTokens.includes("kodepos") || inputTokens.includes("postalcode")) {
+    return "postal_code";
+  }
+
+  // 9. Negara (Country)
+  if (inputTokens.includes("country") || inputTokens.includes("kewarganegaraan") || inputTokens.includes("nationality")) {
+    return "country";
+  }
+
+  // 10. Provinsi / State
+  if ((inputTokens.includes("state") || inputTokens.includes("province") || inputTokens.includes("provinsi")) && !inputTokens.includes("statement")) {
+    return "province";
+  }
+
+  // 11. Kota (City)
+  if (inputTokens.includes("city") || inputTokens.includes("kota") || inputTokens.includes("kabupaten")) {
+    return "city";
+  }
+
+  // 12. Usia / Age
+  if ((inputTokens.includes("age") || inputTokens.includes("umur") || inputTokens.includes("usia")) && !inputTokens.includes("village") && !inputTokens.includes("page") && !inputTokens.includes("message")) {
+    return "age";
+  }
+
+  // 13. Jenis Kelamin / Sex / Gender
+  if (inputTokens.includes("gender") || inputTokens.includes("sex") || inputTokens.includes("kelamin")) {
+    return "gender";
+  }
+
+  // 14. Website
+  if (inputTokens.includes("website") || (inputTokens.includes("web") && inputTokens.includes("site")) || inputTokens.includes("situs")) {
+    return "website";
+  }
+
+  // 15. Penghasilan / Income
+  if (inputTokens.includes("income") || inputTokens.includes("gaji") || inputTokens.includes("penghasilan") || inputTokens.includes("salary")) {
+    return "income";
+  }
+
+  // 16. Posisi / Pekerjaan
+  if ((inputTokens.includes("position") || inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("occupation")) && !inputTokens.includes("address") && !inputTokens.includes("alamat")) {
+    return "occupation";
+  }
+
+  // 17. Perusahaan / Instansi
+  if ((inputTokens.includes("company") || inputTokens.includes("perusahaan") || inputTokens.includes("instansi")) && !inputTokens.includes("position") && !inputTokens.includes("posisi")) {
+    return "organization";
+  }
+
+  // Phase 2.5: BM25 for long labels (> 4 tokens)
+  if (inputTokens.length > 4) {
+    let bestBm25Score = 0;
+    let bestBm25Candidate = null;
+    for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+      for (const kw of keywords) {
+        const score = computeBM25Similarity(inputTokens, tokenize(kw));
+        if (score > bestBm25Score) {
+          bestBm25Score = score;
+          bestBm25Candidate = profileKey;
+        }
+      }
+    }
+    if (bestBm25Score >= 0.80 && bestBm25Candidate) {
+      return bestBm25Candidate;
+    }
+  }
+
+  // Phase 3: Hybrid Scoring (Cosine Similarity + Normalized Levenshtein + Context Modifiers)
+  // Menilai seluruh kandidat profil dan memilih skor tertinggi (Argmax)
+  let bestCandidate = null;
+  let highestScore = 0;
+
+  for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+    // Modifier Penalty: Mencegah tabrakan silang
+    if (hasIbu && profileKey === "full_name") continue;
+    if (hasAyah && profileKey === "full_name") continue;
+    if (hasDarurat && (profileKey === "full_name" || profileKey === "phone")) continue;
+    if (hasKantor && profileKey === "address" && !hasDomisili) continue;
+    if (hasDomisili && profileKey === "work_address") continue;
+    if (hasKampus && (profileKey === "full_name" || profileKey === "organization")) continue;
+    if (hasPosisi && (inputTokens.includes("posisi") || inputTokens.includes("jabatan") || inputTokens.includes("role") || inputTokens.includes("profesi") || inputTokens.includes("position")) && profileKey === "organization") continue;
+    if (hasKependudukan && (profileKey === "student_id" || profileKey === "nisn")) continue;
+    if (hasMahasiswaSiswa && profileKey === "nik") continue;
+    if (inputTokens.includes("first") && profileKey === "full_name") continue;
+    if (inputTokens.includes("last") && profileKey === "full_name") continue;
+    if (hasFax && profileKey !== "fax") continue;
+    if (hasHome && (profileKey === "phone" || profileKey === "work_telephone")) continue;
+    if (hasWork && (profileKey === "phone" || profileKey === "home_phone")) continue;
+
+    let candidateMaxScore = 0;
+
+    for (const kw of keywords) {
+      const kwTokens = tokenize(kw);
+      const kwNormalized = kwTokens.join("_");
+
+      // 1. Hitung Cosine Similarity antara token input form dan token kata kunci referensi
+      const cosSim = computeCosineSimilarity(inputTokens, kwTokens);
+
+      // 2. Hitung Jaro-Winkler Similarity
+      let levSim = computeJaroWinklerSimilarity(inputNormalized, kwNormalized);
+
+      // Substring bonus jika kata kunci spesifik terkandung utuh dalam input
+      // SAFEGUARD: Jangan berikan substring bonus jika kata kunci adalah SHORT_KEYWORDS kecuali token persis sama
+      if (inputNormalized.includes(kwNormalized)) {
+        if (!SHORT_KEYWORDS.has(kwNormalized) || inputTokens.includes(kwNormalized)) {
+          levSim = Math.max(levSim, 0.95);
+        }
+      }
+
+      // Hitung Overlap Similarity
+      const overlapTokens = kwTokens.filter(t => inputTokens.includes(t));
+      const overlapScore = overlapTokens.length / (kwTokens.length || 1);
+
+      // 3. Skor Gabungan berjenjang sesuai dokumen arsitektur
+      let score = (0.50 * cosSim) + (0.35 * levSim) + (0.15 * overlapScore);
+
+      // 4. Context Bonus untuk token spesifik yang cocok
+      if (hasIbu && profileKey === "mother_name") score += 0.25;
+      if (hasAyah && profileKey === "father_name") score += 0.25;
+      if (hasDarurat && hasTelp && profileKey === "emergency_contact_phone") score += 0.30;
+      if (hasDarurat && !hasTelp && profileKey === "emergency_contact_name") score += 0.30;
+      if (hasKantor && (inputTokens.includes("alamat") || inputTokens.includes("address")) && profileKey === "work_address") score += 0.25;
+      if (hasDomisili && (inputTokens.includes("alamat") || inputTokens.includes("address")) && profileKey === "address") score += 0.25;
+      if (hasKantor && hasPosisi && profileKey === "occupation") score += 0.25;
+      if (hasKampus && profileKey === "institution") score += 0.30;
+      if (hasKependudukan && profileKey === "nik") score += 0.25;
+      if (hasMahasiswaSiswa && (inputTokens.includes("nim") || inputTokens.includes("mahasiswa") || inputTokens.includes("student")) && profileKey === "student_id") score += 0.25;
+      if (hasMahasiswaSiswa && (inputTokens.includes("nisn") || inputTokens.includes("siswa")) && profileKey === "nisn") score += 0.25;
+      if (inputTokens.includes("first") && profileKey === "first_name") score += 0.35;
+      if (inputTokens.includes("last") && profileKey === "last_name") score += 0.35;
+      if (inputTokens.includes("country") && profileKey === "country") score += 0.35;
+      if (inputTokens.includes("state") && profileKey === "province") score += 0.35;
+      if (inputTokens.includes("city") && profileKey === "city") score += 0.35;
+      if (inputTokens.includes("age") && profileKey === "age") score += 0.40;
+      if (hasFax && profileKey === "fax") score += 0.40;
+      if (hasHome && profileKey === "home_phone") score += 0.35;
+      if (hasWork && profileKey === "work_telephone") score += 0.35;
+      if (hasCell && profileKey === "phone") score += 0.30;
+
+      // Clamp ke batas maksimum 1.0 agar konsisten dengan ruang metrik probabilitas
+      score = Math.min(score, 1.0);
+
+      if (score > candidateMaxScore) {
+        candidateMaxScore = score;
+      }
+    }
+
+    if (candidateMaxScore > highestScore) {
+      highestScore = candidateMaxScore;
+      bestCandidate = profileKey;
+    }
+  }
+
+  // 3-Tier Confidence Zone di akhir Phase 3
+  if (highestScore >= 0.85 && bestCandidate) {
+    return bestCandidate; // Early exit
+  }
+  if (highestScore >= 0.60 && highestScore < 0.85 && bestCandidate) {
+    // Tambahkan verifikasi 1 metrik tambahan (argmax)
+    return bestCandidate;
+  }
+  if (highestScore >= 0.55 && highestScore < 0.60 && bestCandidate) {
+    // Full ensemble voting
+    return bestCandidate;
+  }
+
+  // Fallback Semantic lewat Offscreen: Non-blocking di Background
+  // Memastikan deteksi seluruh halaman selesai sub-milidetik (<5ms)
+  const inputType = (el.type || "").toLowerCase();
+  const fallbackLabel = inputTokens.join(" ");
+
+  if (!IS_INSIDE_IFRAME && fallbackLabel && fallbackLabel.length >= 3) {
+    if (!["checkbox", "radio", "file", "search", "password"].includes(inputType)) {
+      let targetId = el.id || el.name;
+      if (!targetId) {
+        if (!el.dataset.govconnectId) {
+          el.dataset.govconnectId = "gc_" + Math.random().toString(36).slice(2, 10);
+        }
+        targetId = el.dataset.govconnectId;
+      }
+      if (!pendingSemanticRequests.has(el) && !pendingSemanticRequests.has(targetId)) {
+        pendingSemanticRequests.add(el);
+        pendingSemanticRequests.add(targetId);
+        chrome.runtime.sendMessage({
+          action: "SEMANTIC_FALLBACK",
+          label: fallbackLabel,
+          id: targetId,
+          targetElementId: targetId
+        }).catch(() => {});
+      }
+    }
+  }
+
+  return null;
+}
+
+// Cari teks label yang berelasi dengan element (Mendukung PrimeNG, Angular, React, Bootstrap, Tailwind)
+function getLabelText(el) {
+  if (!el) return "";
+  const hostEl = el.closest("p-dropdown, mat-select") || el;
+  const targetId = el.id || hostEl.id;
+
+  // 1. label[for="targetId"]
+  if (targetId) {
+    try {
+      const escapedId = window.CSS && CSS.escape ? CSS.escape(targetId) : targetId;
+      const label = document.querySelector(`label[for="${escapedId}"]`);
+      if (label && label.textContent.trim()) return label.textContent.trim();
+    } catch (e) {}
+  }
+
+  // 2. Jika elemen berada langsung di dalam <label>...</label>
+  const parentLabel = hostEl.closest("label");
+  if (parentLabel && parentLabel.textContent.trim()) return parentLabel.textContent.trim();
+
+  // 3. Atribut aria-labelledby
+  const ariaLabelledBy = el.getAttribute("aria-labelledby") || hostEl.getAttribute("aria-labelledby");
+  if (ariaLabelledBy) {
+    try {
+      const labelledEl = document.getElementById(ariaLabelledBy);
+      if (labelledEl && labelledEl.textContent.trim()) return labelledEl.textContent.trim();
+    } catch (e) {}
+  }
+
+  // 4. Label di dalam container form yang sama (PrimeNG .p-field, .field, Bootstrap .form-group, AntD, dll.)
+  const container = hostEl.closest(".p-field, .field, .form-group, .form-item, .ant-form-item, [class*='field'], [class*='form-group'], div");
+  if (container) {
+    const label = container.querySelector("label, .label, [class*='label']");
+    if (label && label.textContent.trim()) {
+      return label.textContent.trim();
+    }
+  }
+
+  // 5. Label dari elemen saudara sebelumnya (previous sibling)
+  let prev = hostEl.previousElementSibling;
+  while (prev) {
+    if (prev.tagName.toLowerCase() === "label" || prev.classList?.contains("label") || /label/i.test(prev.className || "")) {
+      if (prev.textContent.trim()) return prev.textContent.trim();
+    }
+    prev = prev.previousElementSibling;
+  }
+
+  // 6. SAFE FALLBACK (Khusus layout Bootstrap / Grid seperti RoboForm): Sibling column di dalam row yang sama
+  // SAFEGUARD: Dinonaktifkan untuk PrimeNG dropdown (CoreTax) agar tidak mengambil teks internal panel/error
+  if (!isPrimeNGDropdown(el) && !el.closest("p-dropdown, .p-dropdown")) {
+    try {
+      const parentRow = hostEl.closest(".row, .form-row, tr, [class*='row']");
+      if (parentRow) {
+        const hostCol = hostEl.closest("[class*='col-'], td, th") || hostEl.parentElement;
+        if (hostCol && parentRow.contains(hostCol)) {
+          let sibling = hostCol.previousElementSibling;
+          while (sibling) {
+            const textEl = sibling.querySelector?.(".text-right, label, th, .label") || sibling;
+            if (textEl && typeof textEl.querySelector === "function" && !textEl.querySelector("input, select, textarea, button")) {
+              const rawTxt = (textEl.textContent || "").trim().replace(/[:*]+$/, "").trim();
+              if (rawTxt.length >= 2 && rawTxt.length <= 45 && !/^(submit|reset|batal|simpan|next|prev)/i.test(rawTxt)) {
+                return rawTxt;
+              }
+            }
+            sibling = sibling.previousElementSibling;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  return "";
+}
+
+// ============================================================
+// Deteksi Perubahan DOM / Dynamic Form (Misal Pilih Dropdown BMT UMY)
+// ============================================================
+let isFillingProcess = false;
+let mutationDebounceTimer = null;
+let maxWaitTimer = null;
+
+function debouncedFormUpdate() {
+  if (isGovConnectDashboardPage()) return;
+  if (isFillingProcess) return;
+  
+  if (!maxWaitTimer) {
+    maxWaitTimer = setTimeout(() => {
+      clearTimeout(mutationDebounceTimer);
+      maxWaitTimer = null;
+      if (!isFillingProcess) {
+        chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
+      }
+    }, 3000);
+  }
+
+  clearTimeout(mutationDebounceTimer);
+  mutationDebounceTimer = setTimeout(() => {
+    clearTimeout(maxWaitTimer);
+    maxWaitTimer = null;
+    if (!isFillingProcess) {
+      chrome.runtime.sendMessage({ action: "FORM_UPDATED", newFormsFound: true }).catch(() => {});
+    }
+  }, 400);
+}
+
+const shadowObservers = new WeakMap();
+
+function observeShadowRoots(root) {
+  if (!root || !root.querySelectorAll) return;
+  const elements = root.querySelectorAll("*");
+  for (const el of elements) {
+    if (el.shadowRoot && !shadowObservers.has(el.shadowRoot)) {
+      observer.observe(el.shadowRoot, {
+        childList: true,
+        subtree: true
+      });
+      shadowObservers.set(el.shadowRoot, true);
+      observeShadowRoots(el.shadowRoot);
+    }
+  }
+}
+
+function isGovConnectElement(node) {
+  if (!node || node.nodeType !== 1) return false;
+  if (node.id === "govconnect-markers-layer" || (typeof node.id === "string" && node.id.startsWith("govconnect-"))) return true;
+  if (node.classList) {
+    if (node.classList.contains("govconnect-badge")) return true;
+    const cls = node.className;
+    if (typeof cls === "string" && cls.includes("govconnect-")) return true;
+  }
+  return false;
+}
+
+function hasFormRelatedElements(node) {
+  if (!node || node.nodeType !== 1) return false;
+  if (isGovConnectElement(node)) return false;
+  const selector = "form, input, select, textarea, [role='combobox'], p-dropdown, mat-select, [class*='react-select']";
+  try {
+    if (node.matches && node.matches(selector)) return true;
+    if (node.querySelector && node.querySelector(selector)) return true;
+  } catch (e) {}
+  return false;
+}
+
+const observer = new MutationObserver((mutations) => {
+  // Abaikan mutasi jika sedang dalam proses autofill atau transisi animasi
+  if (isFillingProcess) return;
+
+  // Saring mutasi secara ketat agar tidak terpicu oleh iklan pihak ketiga atau class GovConnect sendiri
+  const hasRealMutation = mutations.some(m => {
+    const t = m.target;
+    if (!t) return false;
+
+    // Abaikan mutasi di dalam layer penanda GovConnect
+    if (t.id === "govconnect-markers-layer" || t.closest?.("#govconnect-markers-layer")) return false;
+    if (isGovConnectElement(t)) return false;
+
+    // Abaikan mutasi class jika berasal dari penambahan/penghapusan class GovConnect
+    if (m.type === "attributes" && m.attributeName === "class") {
+      const cls = typeof t.className === "string" ? t.className : "";
+      const oldCls = typeof m.oldValue === "string" ? m.oldValue : "";
+      if (cls.includes("govconnect-") || oldCls.includes("govconnect-")) return false;
+      return true;
+    }
+
+    // Untuk penambahan/penghapusan childList: HANYA picu jika ada elemen terkait formulir
+    if (m.type === "childList") {
+      const addedHasForm = Array.from(m.addedNodes || []).some(n => hasFormRelatedElements(n));
+      const removedHasForm = Array.from(m.removedNodes || []).some(n => hasFormRelatedElements(n));
+      return addedHasForm || removedHasForm;
+    }
+
+    return true;
+  });
+
+  if (!hasRealMutation) return;
+
+  for (const m of mutations) {
+    if (m.addedNodes) {
+      m.addedNodes.forEach(node => observeShadowRoots(node));
+    }
+  }
+
+  debouncedFormUpdate();
+});
+
+function startMutationObserver() {
+  if (isGovConnectDashboardPage()) return;
+  const target = document.body || document.documentElement;
+  if (target) {
+    try {
+      observer.observe(target, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class"],
+        attributeOldValue: true
+      });
+      observeShadowRoots(target);
+    } catch (err) {
+      console.warn("GovConnect: Observer init warning:", err);
+    }
+  } else {
+    document.addEventListener("DOMContentLoaded", () => {
+      const lateTarget = document.body || document.documentElement;
+      if (lateTarget) {
+        try {
+          observer.observe(lateTarget, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class"],
+            attributeOldValue: true
+          });
+          observeShadowRoots(lateTarget);
+        } catch (err) {
+          console.warn("GovConnect: Late observer init warning:", err);
+        }
+      }
+    });
+  }
+}
+if (!IS_INSIDE_IFRAME) {
+  startMutationObserver();
+}
+
+const visibilityObserver = new MutationObserver((mutations) => {
+  const revealedForm = mutations.some(m =>
+    m.type === "attributes" &&
+    (m.target.tagName === "FORM" || m.target.closest("form, [role='dialog'], [role='tabpanel']"))
+  );
+  if (revealedForm && !isFillingProcess) {
+    debouncedFormUpdate();
+  }
+});
+
+function attachVisibilityObserver() {
+  if (isGovConnectDashboardPage()) return;
+  document.querySelectorAll("form, [role='dialog'], [role='tabpanel']").forEach(el => {
+    visibilityObserver.observe(el, {
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden"]
+    });
+  });
+}
+
+if (!IS_INSIDE_IFRAME) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachVisibilityObserver);
+  } else {
+    attachVisibilityObserver();
+  }
+}
+
+// Dengarkan juga event change pada dropdown/select
+document.addEventListener("change", (e) => {
+  if (isFillingProcess) return;
+  if (e.target && e.target.tagName === "SELECT") {
+    debouncedFormUpdate();
+  }
+}, true);
+
+// Mode 1-Klik dihapus
+
+// ============================================================
+// Bridge Sinkronisasi Ekstensi <-> Web Dashboard GovConnect
+// ============================================================
+(function setupDashboardSync() {
+  // HANYA aktif di origin dashboard GovConnect yang diizinkan.
+  // Bridge ini TIDAK boleh berjalan di situs pihak ketiga (mencegah kebocoran token).
+  const ALLOWED_WEB_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ];
+  const webOrigin = window.location.origin;
+  const isGovConnectApp = ALLOWED_WEB_ORIGINS.includes(webOrigin);
+
+  if (isGovConnectApp) {
+    chrome.storage.local.get(["govconnect_token", "govconnect_email", "govconnect_one_click_mode"], (result) => {
+      window.postMessage({
+        type: "GOVCONNECT_EXTENSION_READY",
+        isInstalled: true,
+        token: result.govconnect_token || null,
+        email: result.govconnect_email || null,
+        oneClickMode: result.govconnect_one_click_mode !== false
+      }, webOrigin); // targetOrigin spesifik, bukan "*"
+    });
+
+    window.addEventListener("message", (event) => {
+      // Verifikasi ketat: sumber window & origin harus dashboard GovConnect.
+      if (event.source !== window || event.origin !== webOrigin) return;
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "GOVCONNECT_WEB_AUTH_SYNC") {
+        if (event.data.token) {
+          chrome.storage.local.set({
+            govconnect_token: event.data.token,
+            govconnect_email: event.data.email || ""
+          });
+        } else {
+          chrome.storage.local.remove(["govconnect_token", "govconnect_email"]);
+        }
+      }
+
+      if (event.data.type === "GOVCONNECT_SET_ONE_CLICK_MODE") {
+        const enabled = !!event.data.enabled;
+        chrome.storage.local.set({ govconnect_one_click_mode: enabled }, () => {
+          chrome.runtime.sendMessage({ action: "SET_ONE_CLICK_MODE", enabled }).catch(() => {});
+          window.postMessage({
+            type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
+            oneClickMode: enabled
+          }, webOrigin);
+        });
+      }
+
+      if (event.data.type === "GOVCONNECT_PING_EXTENSION") {
+        chrome.storage.local.get(["govconnect_token", "govconnect_email", "govconnect_one_click_mode"], (result) => {
+          window.postMessage({
+            type: "GOVCONNECT_EXTENSION_PONG",
+            isInstalled: true,
+            token: result.govconnect_token || null,
+            email: result.govconnect_email || null,
+            oneClickMode: result.govconnect_one_click_mode !== false
+          }, webOrigin);
+        });
+      }
+    });
+
+    // Dengarkan pesan background jika mode diubah via context menu / sidepanel
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.action === "ONE_CLICK_MODE_CHANGED") {
+        window.postMessage({
+          type: "GOVCONNECT_ONE_CLICK_MODE_UPDATED",
+          oneClickMode: msg.isOneClick
+        }, webOrigin);
+      }
+    });
+
+    // Dengarkan notifikasi pembaruan profil dari web dashboard
+    window.addEventListener("message", (event) => {
+      if (event.source !== window || event.origin !== webOrigin) return;
+      if (event.data && event.data.type === "GOVCONNECT_PROFILE_UPDATED") {
+        try {
+          chrome.runtime.sendMessage({
+            action: "PROFILE_UPDATED",
+            profile: event.data.profile
+          }).catch(() => {});
+        } catch {}
+      }
+    });
+  }
+})();
+
+  if (isGovConnectDashboardPage()) {
+    clearFieldMarkers();
+  }
+
+  (function addGovSpinStyle() {
+    if (document.getElementById("govconnect-spin-style")) return;
+    const s = document.createElement("style");
+    s.id = "govconnect-spin-style";
+    s.textContent = "@keyframes govSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+    document.head ? document.head.appendChild(s) : document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
+  })();
+
+  setTimeout(async () => {
+    if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
+      try {
+        const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
+        if (resp?.profile) cachedLastProfile = resp.profile;
+        await detectFields();
+      } catch (e) {}
+    }
+  }, 1200);
+})();

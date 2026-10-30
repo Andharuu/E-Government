@@ -256,10 +256,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "FORWARD_TO_TAB") {
     const targetTabId = message.tabId;
     if (targetTabId) {
-      chrome.tabs.sendMessage(targetTabId, message.tabMessage, (resp) => {
+      const cb = (resp) => {
         const err = chrome.runtime.lastError;
         sendResponse(err ? { error: err.message } : resp);
-      });
+      };
+      if (message.options && typeof message.options === "object") {
+        chrome.tabs.sendMessage(targetTabId, message.tabMessage, message.options, cb);
+      } else {
+        chrome.tabs.sendMessage(targetTabId, message.tabMessage, cb);
+      }
       return true;
     }
   }
