@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1793021085.70785 "d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/iclamp/latex/govconnect_lncs_paper.tex" "govconnect_lncs_paper.pdf" "govconnect_lncs_paper" 1793021086.89277 0
+["pdflatex"] 1793339336.7562 "d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/iclamp/latex/govconnect_lncs_paper.tex" "govconnect_lncs_paper.pdf" "govconnect_lncs_paper" 1793339337.95088 0
   "C:/Users/Andharu" 1791305469 12709 041b67af479abdb9f89010437696e020 ""
   "C:/Users/Andharu Raffi/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1792997410 82507 a9eef8696c92627b87e9975edea03b2a ""
   "C:/Users/Andharu Raffi/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1788782355 13376988 250407cdce0fc63eac8aa97895a08f3c ""
@@ -8,6 +8,7 @@
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit.enc" 1256929440 2405 5dcf2c1b967ee25cc46c58cd52244aed ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.enc" 1256929440 2840 216e6e45ad352e2456e1149f28885bee ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-rm.enc" 1256929440 2327 9d6df24f9c4f7368395224341a95523a ""
+  "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/tfm/jknappen/ec/ecrm0700.tfm" 993062116 3168 c739b83da3134ef1007979877c1089cf ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/tfm/jknappen/ec/ecrm1000.tfm" 993062122 3148 7e594c8240c71e432203f65ab5f95a51 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1233951854 916 f87d7c45f9c908e672703b83b72241a3 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam5.tfm" 1233951854 924 9904cf1d39e9767e7a3622f2a125a565 ""
@@ -66,7 +67,6 @@
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi9.pfb" 1256929440 30698 e53a423459271d6c5cdd91f7559396af ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr10.pfb" 1256929440 119235 05e5c8d6d60439433e50047898c2c0e0 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr5.pfb" 1256929440 120387 4904c2679a7b90fe9e17171d6c7c9dd0 ""
-  "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr6.pfb" 1256929440 123394 992f5e87d698d9e94717394c62580ea6 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr7.pfb" 1256929440 121145 00b210fbe9efd7ce850c04e64670de9a ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr8.pfb" 1256929440 122174 a2d5e73f396ddbeb3bdf5c79aea0993d ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr9.pfb" 1256929440 121065 ba8daf2228d9e511988917831f1e22e9 ""
@@ -139,10 +139,10 @@
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/tex/latex/tools/array.sty" 1780057721 17611 1fdd60d12fed6aebd140f4d060571642 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/tex/latex/tools/tabularx.sty" 1780057721 7243 98a9e0737a56460d15d6b41be1ecc3b8 ""
   "C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/iclamp/latex/govconnect_lncs_paper.tex" 1793021083 32427 cfdba23a352e7a4e0cdb77ca97037caf ""
-  "govconnect_lncs_paper.aux" 1793021086 2135 25f1de7be9b8da8b58b606d772778e8e "pdflatex"
-  "govconnect_lncs_paper.out" 1793021086 1531 56781cae775dcd57b59f925e9892bc23 "pdflatex"
-  "govconnect_lncs_paper.tex" 1793021083 32427 cfdba23a352e7a4e0cdb77ca97037caf ""
+  "d:/01_Academics/01_College/Semester 3/Workshop Pemrograman Framework/GovConnect/E-Government/docs/iclamp/latex/govconnect_lncs_paper.tex" 1793339332 40246 f3c70a2908ca2bf3286357f69e9fbac1 ""
+  "govconnect_lncs_paper.aux" 1793339337 2513 e66d390ef672d3105a685ffffb0b500a "pdflatex"
+  "govconnect_lncs_paper.out" 1793339337 1430 f60a1604ee1114dbd679c0ab51620bb7 "pdflatex"
+  "govconnect_lncs_paper.tex" 1793339332 40246 f3c70a2908ca2bf3286357f69e9fbac1 ""
   (generated)
   "govconnect_lncs_paper.aux"
   "govconnect_lncs_paper.log"

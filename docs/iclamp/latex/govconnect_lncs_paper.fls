@@ -104,29 +104,6 @@ INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\rerunfilech
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\rerunfilecheck\rerunfilecheck.sty
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\generic\uniquecounter\uniquecounter.sty
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\generic\uniquecounter\uniquecounter.sty
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr10.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\l3kernel\l3backend-pdftex.def
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\l3kernel\l3backend-pdftex.def
-INPUT .\govconnect_lncs_paper.aux
-INPUT .\govconnect_lncs_paper.aux
-INPUT govconnect_lncs_paper.aux
-OUTPUT govconnect_lncs_paper.aux
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
-INPUT .\govconnect_lncs_paper.out
-INPUT .\govconnect_lncs_paper.out
-INPUT govconnect_lncs_paper.out
-INPUT govconnect_lncs_paper.out
-OUTPUT govconnect_lncs_paper.pdf
-INPUT .\govconnect_lncs_paper.out
-INPUT .\govconnect_lncs_paper.out
-OUTPUT govconnect_lncs_paper.out
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr12.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx12.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\ot1lmr.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\ot1lmr.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\ot1lmr.fd
@@ -153,21 +130,51 @@ INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\um
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\umsa.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\umsa.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msam10.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msam7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msam5.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\umsb.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\umsb.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\amsfonts\umsb.fd
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm5.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\jknappen\ec\ecrm0700.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmr.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr10.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\l3kernel\l3backend-pdftex.def
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\l3kernel\l3backend-pdftex.def
+INPUT .\govconnect_lncs_paper.aux
+INPUT .\govconnect_lncs_paper.aux
+INPUT govconnect_lncs_paper.aux
+OUTPUT govconnect_lncs_paper.aux
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-cmr.cfg
+INPUT .\govconnect_lncs_paper.out
+INPUT .\govconnect_lncs_paper.out
+INPUT govconnect_lncs_paper.out
+INPUT govconnect_lncs_paper.out
+OUTPUT govconnect_lncs_paper.pdf
+INPUT .\govconnect_lncs_paper.out
+INPUT .\govconnect_lncs_paper.out
+OUTPUT govconnect_lncs_paper.out
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr12.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx12.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msa.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\microtype\mt-msb.cfg
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr9.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmtt9.tfm
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx9.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr9.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\rm-lmr6.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\lmmi9.tfm
@@ -178,21 +185,15 @@ INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsf
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msam7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex\latex\lm\t1lmtt.fd
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmtt9.tfm
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx9.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr12.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx12.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmtt10.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmri10.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-ec.enc
+INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathit.enc
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-rm.enc
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathsy.enc
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\lm\lm-mathit.enc
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmbx7.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmtt8.tfm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\tfm\public\lm\ec-lmr5.tfm
@@ -239,8 +240,6 @@ INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr10.pfb
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr5.pfb
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr5.pfb
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr6.pfb
-INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr6.pfb
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr7.pfb
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr7.pfb
 INPUT C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\fonts\type1\public\lm\lmr8.pfb
