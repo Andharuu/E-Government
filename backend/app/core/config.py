@@ -87,6 +87,12 @@ class Settings:
     # memperkecil jendela penyalahgunaan bila token dicuri (Gelombang C).
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12)))
 
+    # Keamanan Cookie Sesi (HttpOnly + Secure + SameSite)
+    COOKIE_NAME: str = os.getenv("COOKIE_NAME", "govconnect_access_token")
+    COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+    COOKIE_SAMESITE: str = os.getenv("COOKIE_SAMESITE", "lax").lower()
+    COOKIE_DOMAIN: Optional[str] = os.getenv("COOKIE_DOMAIN", None)
+
     # Enkripsi PII (field-level) — KUNCI TERPISAH dari SECRET_KEY JWT.
     # Bila tidak diset, dibuat otomatis (acak) dan disimpan ke file lokal non-repo.
     PII_ENCRYPTION_KEY: str = os.getenv("PII_ENCRYPTION_KEY", "") or _load_or_create_pii_key()

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { FontAwesome } from '../components/ui';
 import { type NotificationItem } from '../services/api';
 import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '../context/AuthContext';
 
 type FilterType = 'all' | 'unread' | 'success' | 'warning' | 'info' | 'system';
 
@@ -136,7 +137,7 @@ function NotifCard({
 }
 
 export function NotificationsPage() {
-  const token = localStorage.getItem('govconnect_token');
+  const { token } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -356,7 +357,7 @@ export function NotificationsPage() {
       {notifications.length > 0 && (
         <p className="text-center text-[12px] text-[#6EA2B3] font-medium pt-2">
           Menampilkan {filtered.length} dari {notifications.length} notifikasi
-          {unreadCount > 0 && <span className="text-[#7BBDE8] font-semibold"> · {unreadCount} belum dibaca</span>}
+          {unreadCount > 0 && <span className="text-[#7BBDE8] font-semibold"> Â· {unreadCount} belum dibaca</span>}
         </p>
       )}
     </div>

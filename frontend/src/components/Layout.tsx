@@ -20,7 +20,7 @@ interface SearchResultItem {
 type SearchCategory = 'Halaman' | 'Data Profil' | 'Layanan E-Gov' | 'Aktivitas' | 'Pengaturan & Fitur';
 
 const SEARCH_ITEMS: SearchResultItem[] = [
-  // ── PAGES / HALAMAN ──────────────────────────────────────────────────────────
+  // â”€â”€ PAGES / HALAMAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'p1', title: 'Dasbor / Ringkasan', category: 'Halaman', path: '/dashboard', desc: 'Ringkasan analitik, KPI & efisiensi autofill', keywords: 'dashboard ringkasan analitik statistik' },
   { id: 'p2', title: 'Profil Saya', category: 'Halaman', path: '/profile', desc: 'Kelola data identitas, kontak, pekerjaan & dokumen', keywords: 'profil data diri atur ubah' },
   { id: 'p3', title: 'Grup Layanan & Template', category: 'Halaman', path: '/templates', desc: 'Template form Dukcapil, Kepolisian, Pajak, SSCASN & kustom', keywords: 'template grup layanan form template' },
@@ -29,7 +29,7 @@ const SEARCH_ITEMS: SearchResultItem[] = [
   { id: 'p6', title: 'Layanan Publik', category: 'Halaman', path: '/public-services', desc: 'Jadwal & agenda layanan pemerintah per kategori', keywords: 'layanan publik jadwal agenda pemerintah pendidikan ekonomi' },
   { id: 'p7', title: 'Pengaturan & Keamanan', category: 'Halaman', path: '/settings', desc: 'Ganti kata sandi, keamanan, enkripsi & kontrol privasi', keywords: 'pengaturan settings keamanan privasi' },
 
-  // ── PROFILE DATA / DATA PROFIL ───────────────────────────────────────────────
+  // â”€â”€ PROFILE DATA / DATA PROFIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'd1', title: 'Identitas Kependudukan', category: 'Data Profil', path: '/profile#section-identity', desc: 'NIK, Nama Lengkap, Tempat/Tgl Lahir, Jenis Kelamin, Agama', keywords: 'nik ktp identitas nama lahir gender agama' },
   { id: 'd2', title: 'Alamat & Domisili', category: 'Data Profil', path: '/profile#section-address', desc: 'Provinsi, Kota/Kab, Kecamatan, Kelurahan, Kode Pos', keywords: 'alamat domisili provinsi kota kabupaten kecamatan' },
   { id: 'd3', title: 'Kontak & Telepon', category: 'Data Profil', path: '/profile#section-contact', desc: 'Nomor HP, WhatsApp, Email', keywords: 'telepon hp whatsapp email kontak' },
@@ -38,22 +38,22 @@ const SEARCH_ITEMS: SearchResultItem[] = [
   { id: 'd6', title: 'Kartu & Nomor Penting', category: 'Data Profil', path: '/profile', desc: 'NPWP, BPJS, SIM, Surat Izin', keywords: 'npwp bpjs sim surat izin nomor penting' },
   { id: 'd7', title: 'Data Keluarga', category: 'Data Profil', path: '/profile', desc: 'Nama Ayah, Ibu, Kontak Darurat', keywords: 'keluarga ayah ibu orang tua darurat' },
 
-  // ── SERVICE TEMPLATES & E-GOV ────────────────────────────────────────────────
-  { id: 'e1', title: 'Dukcapil — KTP & Akta', category: 'Layanan E-Gov', path: '/templates', desc: 'Form isian otomatis untuk layanan Kemendagri / Dukcapil', keywords: 'dukcapil ktp akta kelahiran kematian nik' },
-  { id: 'e2', title: 'Polri — SKCK & Layanan Kepolisian', category: 'Layanan E-Gov', path: '/templates', desc: 'Pengajuan SKCK dan layanan kepolisian online', keywords: 'polri skck kepolisian polisi' },
-  { id: 'e3', title: 'BKN / SSCASN — Pendaftaran CASN', category: 'Layanan E-Gov', path: '/templates', desc: 'Pendaftaran seleksi CASN & PPPK terintegrasi BKN', keywords: 'bkn sscasn casn cpns p3k pppkcpns' },
-  { id: 'e4', title: 'DJP CoreTax — Pajak Online', category: 'Layanan E-Gov', path: '/templates', desc: 'Pelaporan SPT Tahunan & validasi NPWP DJP', keywords: 'pajak spt npwp djp coretax online' },
+  // â”€â”€ SERVICE TEMPLATES & E-GOV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'e1', title: 'Dukcapil â€” KTP & Akta', category: 'Layanan E-Gov', path: '/templates', desc: 'Form isian otomatis untuk layanan Kemendagri / Dukcapil', keywords: 'dukcapil ktp akta kelahiran kematian nik' },
+  { id: 'e2', title: 'Polri â€” SKCK & Layanan Kepolisian', category: 'Layanan E-Gov', path: '/templates', desc: 'Pengajuan SKCK dan layanan kepolisian online', keywords: 'polri skck kepolisian polisi' },
+  { id: 'e3', title: 'BKN / SSCASN â€” Pendaftaran CASN', category: 'Layanan E-Gov', path: '/templates', desc: 'Pendaftaran seleksi CASN & PPPK terintegrasi BKN', keywords: 'bkn sscasn casn cpns p3k pppkcpns' },
+  { id: 'e4', title: 'DJP CoreTax â€” Pajak Online', category: 'Layanan E-Gov', path: '/templates', desc: 'Pelaporan SPT Tahunan & validasi NPWP DJP', keywords: 'pajak spt npwp djp coretax online' },
   { id: 'e5', title: 'BPJS Kesehatan & Ketenagakerjaan', category: 'Layanan E-Gov', path: '/templates', desc: 'Klaim jaminan, verifikasi kepesertaan & iuran BPJS', keywords: 'bpjs kesehatan ketenagakerjaan jaminan' },
-  { id: 'e6', title: 'Imigrasi — Paspor & M-Paspor', category: 'Layanan E-Gov', path: '/templates', desc: 'Permohonan paspor baru, perpanjangan & M-Paspor Imigrasi', keywords: 'imigrasi paspor mpaspor passport' },
+  { id: 'e6', title: 'Imigrasi â€” Paspor & M-Paspor', category: 'Layanan E-Gov', path: '/templates', desc: 'Permohonan paspor baru, perpanjangan & M-Paspor Imigrasi', keywords: 'imigrasi paspor mpaspor passport' },
   { id: 'e7', title: 'Template Kustom / Baru', category: 'Layanan E-Gov', path: '/templates', desc: 'Buat template isian baru untuk layanan apa pun', keywords: 'kustom custom baru template baru layanan' },
 
-  // ── ACTIVITIES / AKTIVITAS ───────────────────────────────────────────────────
+  // â”€â”€ ACTIVITIES / AKTIVITAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'a1', title: 'Isi Form Otomatis (Autofill)', category: 'Aktivitas', path: '/activity', desc: 'Proses pengisian otomatis dari profil ke formulir government', keywords: 'autofill otomatis isi form' },
   { id: 'a2', title: 'Statistik & Laporan', category: 'Aktivitas', path: '/activity', desc: 'Grafik tren autofill, tingkat keberhasilan & waktu hemat per hari', keywords: 'statistik grafik laporan analisis' },
   { id: 'a3', title: 'Hapus Riwayat', category: 'Aktivitas', path: '/activity', desc: 'Hapus satu atau semua catatan aktivitas', keywords: 'hapus riwayat delete log clear' },
   { id: 'a4', title: 'Filter & Sortir Aktivitas', category: 'Aktivitas', path: '/activity', desc: 'Filter berdasarkan domain, status sukses/gagal', keywords: 'filter sortir search cari' },
 
-  // ── SETTINGS / PENGATURAN & FITUR ────────────────────────────────────────────
+  // â”€â”€ SETTINGS / PENGATURAN & FITUR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 's1', title: 'Ganti Kata Sandi', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Ubah password akun GovConnect secara berkala', keywords: 'sandi kata sandi password ubah ganti' },
   { id: 's2', title: 'Keamanan & Enkripsi AES-256', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Data dienkripsi dengan AES-256. Hanya Anda yang bisa membaca.', keywords: 'enkripsi aes encryption keamanan secure' },
   { id: 's3', title: 'Backup & Ekspor Data', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Unduh backup profil & template dalam format JSON/CSV', keywords: 'backup ekspor export unduh download json csv' },
@@ -74,8 +74,7 @@ const SEARCH_ITEMS: SearchResultItem[] = [
 
 export function Layout() {
   const { theme, toggleTheme } = useTheme();
-  const token = localStorage.getItem('govconnect_token');
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -211,8 +210,8 @@ export function Layout() {
     // tersamar agar tidak bocor lewat shoulder-surfing/screenshot.
     const mask = (val: string, visible = 4): string => {
       const s = String(val);
-      if (s.length <= visible) return '••••';
-      return s.slice(0, visible) + '•'.repeat(Math.min(s.length - visible, 12));
+      if (s.length <= visible) return 'â€¢â€¢â€¢â€¢';
+      return s.slice(0, visible) + 'â€¢'.repeat(Math.min(s.length - visible, 12));
     };
     if (userProfile) {
       if (userProfile.nik) {
@@ -284,7 +283,7 @@ export function Layout() {
         title: `${a.domain}`,
         category: 'Aktivitas',
         path: '/activity',
-        desc: `${a.status === 'success' ? 'Autofill sukses' : a.status === 'partial' ? 'Autofill sebagian' : 'Autofill gagal'} • ${a.filled} field • ${new Date(a.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+        desc: `${a.status === 'success' ? 'Autofill sukses' : a.status === 'partial' ? 'Autofill sebagian' : 'Autofill gagal'} â€¢ ${a.filled} field â€¢ ${new Date(a.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
       });
     });
 
@@ -571,7 +570,7 @@ export function Layout() {
               <FontAwesome name="bars" className="text-sm" />
             </button>
 
-            {/* Search Input with TailAdmin ⌘ K badge - Extended width to the right */}
+            {/* Search Input with TailAdmin âŒ˜ K badge - Extended width to the right */}
             <div className="relative flex-1 max-w-2xl lg:max-w-3xl" ref={searchContainerRef}>
               <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#6EA2B3]">
                 <FontAwesome name="magnifying-glass" className="text-sm" />
@@ -595,9 +594,9 @@ export function Layout() {
                   setIsSearchOpen(true);
                 }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded-md border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] cursor-pointer transition-colors"
-                title="Pintasan keyboard (⌘K / Ctrl+K)"
+                title="Pintasan keyboard (âŒ˜K / Ctrl+K)"
               >
-                <span>⌘</span>
+                <span>âŒ˜</span>
                 <span>K</span>
               </button>
 
@@ -637,7 +636,7 @@ export function Layout() {
 
           {/* Right: Circular Notification Bell + User Profile Dropdown (TailAdmin Dark Style) */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            {/* Theme Toggle Button (Dark / Light Mode) — di sebelah kiri tombol notifikasi */}
+            {/* Theme Toggle Button (Dark / Light Mode) â€” di sebelah kiri tombol notifikasi */}
             <button
               type="button"
               onClick={toggleTheme}

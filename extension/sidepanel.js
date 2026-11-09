@@ -1,4 +1,4 @@
-// Side Panel Script — GovConnect
+// Side Panel Script â€” GovConnect
 // Asisten Autofill Cerdas dengan Transisi Fluid Scanning & Sinkronisasi Real-Time
 
 var API_BASE = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.API_BASE) || "http://127.0.0.1:8000/api/v1";
@@ -390,7 +390,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     if (currentActiveScreen !== "screenResult") {
       await detectPageFieldsWithFluidScan();
     }
-    showStatus("✓ Data profil berhasil diperbarui!");
+    showStatus("âœ“ Data profil berhasil diperbarui!");
     setTimeout(() => showStatus(""), 3000);
   }
 
@@ -780,7 +780,7 @@ async function executeAutofill() {
           try {
             const parsed = new URL(currentTab.url);
             domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
-            // T7: buang query string & fragment — dapat memuat data sensitif/PII.
+            // T7: buang query string & fragment â€” dapat memuat data sensitif/PII.
             safeTargetUrl = parsed.origin && parsed.origin !== "null"
               ? `${parsed.origin}${parsed.pathname}`
               : `${parsed.protocol}//${parsed.pathname}`;
@@ -821,7 +821,7 @@ async function executeAutofill() {
     isAutofillingInProgress = false;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "⚡ Isi Formulir Otomatis";
+      btn.textContent = "âš¡ Isi Formulir Otomatis";
     }
   }
 }
@@ -1009,7 +1009,7 @@ function showStatus(msg) {
 function truncate(str, n) {
   if (!str) return "";
   const s = str.toString();
-  return s.length > n ? s.substring(0, n) + "…" : s;
+  return s.length > n ? s.substring(0, n) + "â€¦" : s;
 }
 
 function formatFieldLabel(key) {
@@ -1142,6 +1142,26 @@ function escapeHtml(str) {
 // ============================================================
 async function tryAutoSyncFromOpenTabs() {
   try {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend (via chrome.cookies API)
+    if (chrome.cookies) {
+      try {
+        const apiOrigin = new URL(typeof API_BASE !== "undefined" ? API_BASE : "http://127.0.0.1:8000").origin;
+        const cookie = await chrome.cookies.get({
+          url: apiOrigin,
+          name: "govconnect_access_token"
+        });
+        if (cookie?.value) {
+          await chrome.storage.local.set({
+            govconnect_token: cookie.value
+          });
+          return cookie.value;
+        }
+      } catch (cookieErr) {
+        // Fallback ke tab extraction bila cookie belum terbaca
+      }
+    }
+
+    // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
     const tabs = await chrome.tabs.query({});
     const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
@@ -1173,10 +1193,10 @@ function setupAuthListeners() {
   const btnSync = document.getElementById("btnAutoSyncTab");
   if (btnSync) {
     btnSync.onclick = async () => {
-      btnSync.textContent = "⏳ Memeriksa Dashboard...";
+      btnSync.textContent = "â³ Memeriksa Dashboard...";
       const token = await tryAutoSyncFromOpenTabs();
       if (token) {
-        btnSync.textContent = "✓ Berhasil Tersinkron!";
+        btnSync.textContent = "âœ“ Berhasil Tersinkron!";
         setTimeout(() => {
           initAuthenticatedSession(token);
         }, 500);

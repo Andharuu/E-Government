@@ -345,6 +345,26 @@ function clearUserEmail() {
 
 async function tryAutoSyncFromOpenTabs() {
   try {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend
+    if (chrome.cookies) {
+      try {
+        const apiOrigin = new URL(typeof GovConnectConfig !== "undefined" ? GovConnectConfig.API_BASE : "http://127.0.0.1:8000").origin;
+        const cookie = await chrome.cookies.get({
+          url: apiOrigin,
+          name: "govconnect_access_token"
+        });
+        if (cookie?.value) {
+          await chrome.storage.local.set({
+            govconnect_token: cookie.value
+          });
+          return cookie.value;
+        }
+      } catch (cookieErr) {
+        // Fallback ke tab extraction bila cookie belum terbaca
+      }
+    }
+
+    // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
     const tabs = await chrome.tabs.query({});
     const dashboardTab = tabs.find(t => {
       if (!t.url) return false;

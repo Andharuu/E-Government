@@ -1,4 +1,4 @@
-// Background Service Worker — GovConnect
+// Background Service Worker â€” GovConnect
 // Mode Panel Samping Cerdas dengan Deteksi Semantik & Sinkronisasi Profil Otomatis
 
 importScripts('config.js');
@@ -105,9 +105,9 @@ async function checkAndUpdateDictionaries(retries = 3, delayMs = 1500) {
       const remoteVersion = manifest.version;
       if (!remoteVersion) return;
 
-      // T9: integritas WAJIB — tolak update tanpa hash yang benar.
+      // T9: integritas WAJIB â€” tolak update tanpa hash yang benar.
       if (!manifest.hash) {
-        console.warn("GovConnect: Update kamus tanpa hash — DITOLAK (integritas tidak terverifikasi).");
+        console.warn("GovConnect: Update kamus tanpa hash â€” DITOLAK (integritas tidak terverifikasi).");
         return;
       }
 
@@ -150,13 +150,13 @@ async function setupContextMenus() {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         id: "govconnect_open_sidepanel",
-        title: "📋 Buka Panel Samping GovConnect",
+        title: "ðŸ“‹ Buka Panel Samping GovConnect",
         contexts: ["action", "page"]
       });
 
       chrome.contextMenus.create({
         id: "govconnect_open_dashboard",
-        title: "🌐 Buka Dashboard Web GovConnect",
+        title: "ðŸŒ Buka Dashboard Web GovConnect",
         contexts: ["action", "page"]
       });
     });
@@ -170,7 +170,7 @@ async function setupContextMenus() {
 // ============================================================
 async function updateActionBehavior() {
   chrome.action.setTitle({
-    title: "GovConnect — Asisten Pengisian Formulir Otomatis"
+    title: "GovConnect â€” Asisten Pengisian Formulir Otomatis"
   });
 }
 
@@ -189,7 +189,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       }
     }
   } else if (info.menuItemId === "govconnect_open_dashboard") {
-    // Token TIDAK lagi ditempel di URL (#token=) — hash bocor ke riwayat/Referer.
+    // Token TIDAK lagi ditempel di URL (#token=) â€” hash bocor ke riwayat/Referer.
     // Sinkronisasi sesi terjadi otomatis lewat bridge content-script (origin-verified).
     await chrome.storage.local.get("govconnect_token");
     chrome.tabs.create({ url: DASHBOARD_URL });
@@ -197,10 +197,30 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // ============================================================
-// Auto-Sync Token dari Tab Dashboard Terbuka
+// Auto-Sync Token dari Backend HttpOnly Cookie atau Tab Dashboard
 // ============================================================
 async function tryAutoSyncFromOpenTabs() {
   try {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend (via chrome.cookies API)
+    if (chrome.cookies) {
+      try {
+        const apiOrigin = new URL(typeof GovConnectConfig !== "undefined" ? GovConnectConfig.API_BASE : "http://127.0.0.1:8000").origin;
+        const cookie = await chrome.cookies.get({
+          url: apiOrigin,
+          name: "govconnect_access_token"
+        });
+        if (cookie?.value) {
+          await chrome.storage.local.set({
+            govconnect_token: cookie.value
+          });
+          return cookie.value;
+        }
+      } catch (cookieErr) {
+        // Fallback ke tab extraction bila cookie belum terbaca
+      }
+    }
+
+    // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
     const tabs = await chrome.tabs.query({});
     const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
@@ -226,6 +246,26 @@ async function tryAutoSyncFromOpenTabs() {
     console.warn("Auto-sync from open tabs error:", err);
   }
   return null;
+}
+
+// Listener perubahan cookie backend untuk auto-login / auto-logout di ekstensi
+if (chrome.cookies && chrome.cookies.onChanged) {
+  chrome.cookies.onChanged.addListener((changeInfo) => {
+    if (changeInfo.cookie.name === "govconnect_access_token") {
+      if (changeInfo.removed) {
+        memoryProfile = null;
+        chrome.storage.local.remove([
+          "govconnect_token",
+          "govconnect_email",
+          "govconnect_cached_profile"
+        ]);
+      } else if (changeInfo.cookie.value) {
+        chrome.storage.local.set({
+          govconnect_token: changeInfo.cookie.value
+        });
+      }
+    }
+  });
 }
 
 // Duplicate action click listener removed
@@ -337,7 +377,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "PROFILE_UPDATED" || message.action === "SET_CACHED_PROFILE") {
-    // Simpan profil DI MEMORI saja (T6) — jangan tulis PII ke disk.
+    // Simpan profil DI MEMORI saja (T6) â€” jangan tulis PII ke disk.
     if (message.profile) {
       memoryProfile = message.profile;
     }

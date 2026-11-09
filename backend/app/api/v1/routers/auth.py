@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -21,18 +21,33 @@ from app.schemas.schemas import (
     MessageResponse
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["Autentikasi"])
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    """Dependency otentikasi: mendecode token JWT dan mengambil user aktif dari basis data."""
+def get_current_user(
+    request: Request,
+    token_header: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    """Dependency otentikasi: mengekstrak token dari HttpOnly Cookie atau Authorization Header (Dual-Mode)."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token tidak valid atau telah kedaluwarsa",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    # 1. Prioritaskan token dari HttpOnly Cookie (Browser Web Dashboard)
+    token = request.cookies.get(settings.COOKIE_NAME)
+
+    # 2. Fallback ke Authorization Bearer header (Ekstensi / Mobile / Pytest / API Clients)
+    if not token and token_header:
+        token = token_header
+
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: Optional[str] = payload.get("sub")
@@ -73,7 +88,7 @@ def register(request: Request, payload: UserCreate, db: Session = Depends(get_db
     existing = db.query(User).filter(User.email == email).first()
     if not existing:
         # Hanya buat jika benar-benar belum ada. Jika email sudah terdaftar kita
-        # tidak melakukan apa pun (tidak mengganti password) — namun respons tetap sama.
+        # tidak melakukan apa pun (tidak mengganti password) â€” namun respons tetap sama.
         user = User(
             email=email,
             hashed_password=hash_password(payload.password),
@@ -86,8 +101,13 @@ def register(request: Request, payload: UserCreate, db: Session = Depends(get_db
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("30/minute")
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Otentikasi pengguna menggunakan kredensial dan terbitkan JWT access token."""
+def login(
+    request: Request,
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """Otentikasi pengguna menggunakan kredensial dan terbitkan JWT access token via HttpOnly Cookie dan JSON body."""
 
     email = form_data.username.strip().lower()
     user = db.query(User).filter(User.email == email).first()
@@ -106,7 +126,34 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         )
 
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
+
+    # Set HttpOnly + Secure Cookie untuk browser web dashboard
+    max_age_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    response.set_cookie(
+        key=settings.COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=max_age_seconds,
+        path="/",
+        domain=settings.COOKIE_DOMAIN
+    )
+
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout(response: Response):
+    """Menghapus cookie sesi otentikasi dari peramban pengguna."""
+    response.delete_cookie(
+        key=settings.COOKIE_NAME,
+        path="/",
+        domain=settings.COOKIE_DOMAIN,
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE
+    )
+    return {"detail": "Sesi berhasil ditutup."}
 
 
 @router.get("/me", response_model=UserResponse)

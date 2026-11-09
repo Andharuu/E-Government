@@ -28,59 +28,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleExpired = () => {
-      setUser(null);
+      // Hanya tampilkan modal kedaluwarsa sesi jika sebelumnya user memang sedang aktif login
+      setUser((currentUser) => {
+        if (currentUser) {
+          setSessionExpired(true);
+        }
+        return null;
+      });
       setToken(null);
-      setSessionExpired(true);
     };
 
     window.addEventListener('govconnect:session-expired', handleExpired);
 
-    // Periodic check token expiration (F-M1)
-    const checkTimer = setInterval(() => {
-      const currentToken = localStorage.getItem('govconnect_token');
-      if (currentToken) {
-        try {
-          const payload = JSON.parse(atob(currentToken.split('.')[1]));
-          if (payload.exp && Date.now() >= payload.exp * 1000) {
-            handleExpired();
-          }
-        } catch {}
-      }
-    }, 60000);
-
     return () => {
       window.removeEventListener('govconnect:session-expired', handleExpired);
-      clearInterval(checkTimer);
     };
   }, []);
 
   useEffect(() => {
-    // Token HANYA diambil dari storage (tidak lagi dari URL hash — hash bocor
-    // ke riwayat browser/Referer & dapat disuntik oleh tautan jahat).
-    const initialToken = localStorage.getItem('govconnect_token');
-
-    if (initialToken) {
-      setToken(initialToken);
-      authApi.me()
-        .then(res => {
-          setUser(res.data);
-          // Sync balik ke extension (targetOrigin spesifik, bukan "*")
-          window.postMessage({
-            type: 'GOVCONNECT_WEB_AUTH_SYNC',
-            token: initialToken,
-            email: res.data.email
-          }, WEB_ORIGIN);
-        })
-        .catch(() => {
-          localStorage.removeItem('govconnect_token');
-          localStorage.removeItem('govconnect_email');
-          setToken(null);
-          setUser(null);
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
+    // Sesi diotentikasi via HttpOnly Cookie (Credentials).
+    // Panggil authApi.me() secara langsung untuk bootstrapping sesi.
+    authApi.me()
+      .then(res => {
+        setUser(res.data);
+        setToken('cookie_session');
+        // Bersihkan token lama dari localStorage bila ada (migrasi P1)
+        localStorage.removeItem('govconnect_token');
+        if (res.data.email) {
+          localStorage.setItem('govconnect_email', res.data.email);
+        }
+        // Sync ke extension content script
+        window.postMessage({
+          type: 'GOVCONNECT_WEB_AUTH_SYNC',
+          authenticated: true,
+          email: res.data.email
+        }, WEB_ORIGIN);
+      })
+      .catch(() => {
+        localStorage.removeItem('govconnect_token');
+        localStorage.removeItem('govconnect_email');
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => setIsLoading(false));
 
     // 2. Listener komunikasi dengan Chrome Extension Content Script
     const handleMessage = (event: MessageEvent) => {
@@ -92,17 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event.data.type === 'GOVCONNECT_EXTENSION_READY' || event.data.type === 'GOVCONNECT_EXTENSION_PONG') {
         setIsExtensionConnected(true);
 
-        // Jika web belum login, tapi extension sudah punya token -> auto-sync
-        const currentSavedToken = localStorage.getItem('govconnect_token');
-        if (!currentSavedToken && event.data.token) {
-          localStorage.setItem('govconnect_token', event.data.token);
-          if (event.data.email) {
-            localStorage.setItem('govconnect_email', event.data.email);
-          }
-          setToken(event.data.token);
-          authApi.me()
-            .then(res => setUser(res.data))
-            .catch(() => {});
+        // Jika web belum login, tapi extension sudah punya token -> fetch me
+        if (event.data.token) {
+          setUser(currentUser => {
+            if (!currentUser) {
+              setToken(event.data.token);
+              authApi.me()
+                .then(res => setUser(res.data))
+                .catch(() => {});
+            }
+            return currentUser;
+          });
         }
       }
     };
@@ -123,13 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
     const { access_token } = res.data;
-    localStorage.setItem('govconnect_token', access_token);
+    // Token kini diamankan di HttpOnly Cookie, TIDAK lagi disimpan di localStorage.
+    localStorage.removeItem('govconnect_token');
     localStorage.setItem('govconnect_email', email);
-    setToken(access_token);
+    setToken('cookie_session');
+
     const me = await authApi.me();
     setUser(me.data);
 
-    // Broadcast ke extension content script
+    // Broadcast ke extension content script (one-time in-memory relay untuk sinkronisasi instan)
     window.postMessage({
       type: 'GOVCONNECT_WEB_AUTH_SYNC',
       token: access_token,
@@ -142,7 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(email, password);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (e) {
+      console.warn("Logout API request error:", e);
+    }
     localStorage.removeItem('govconnect_token');
     localStorage.removeItem('govconnect_email');
     setToken(null);
@@ -183,7 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => {
                 setSessionExpired(false);
-                window.location.href = '/login';
+                if (window.location.pathname !== '/login') {
+                  window.location.href = '/login';
+                }
               }}
               className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer text-sm"
             >
