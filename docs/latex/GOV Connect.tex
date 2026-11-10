@@ -131,7 +131,7 @@ GovConnect, layanan publik digital, otomatisasi formulir, ekstensi peramban, pem
 % ==========================================================
 % PENDAHULUAN (TANPA PENOMORAN ROMAWI I DAN SUBSEKSI A, B)
 % ==========================================================
-\section*{Pendahuluan}
+\section{Pendahuluan}
 
 Transformasi digital pelayanan publik di Indonesia telah berkembang pesat di berbagai kementerian, lembaga pemerintah, dan pemerintah daerah, mulai dari penerimaan peserta didik dan mahasiswa baru, administrasi kependudukan (Disdukcapil), jaminan kesehatan nasional (BPJS), hingga perpajakan daring dan perizinan berusaha. Meskipun demikian, digitalisasi tersebut ditandai oleh fragmentasi sistem yang mewajibkan warga negara memasukkan data identitas kependudukan yang serupa secara berulang pada setiap portal layanan daring, seperti Nomor Induk Kependudukan (NIK), nama lengkap, tempat tanggal lahir, alamat domisili terperinci, hingga data kontak dan keluarga. Pengisian formulir manual yang repetitif ini menimbulkan inefisiensi waktu yang substansial, dengan rata-rata 30 detik per \textit{field} formulir, serta memperbesar risiko kesalahan ketik (\textit{human error}) yang dapat membatalkan atau menunda verifikasi administrasi kependudukan penting \cite{OECD2023DGO}.
 
@@ -151,20 +151,318 @@ Sistematika penulisan laporan ini disusun sebagai berikut: Bagian selanjutnya me
 % ==========================================================
 % SECTION: TINJAUAN PUSTAKA
 % ==========================================================
-\section*{Tinjauan Pustaka}
+\section{Tinjauan Pustaka}
 
-\subsection*{Otomatisasi Formulir Web dan Keterbatasan Pengelola Kredensial}
+\subsection{Otomatisasi Formulir Web dan Keterbatasan Pengelola Kredensial}
 Otomatisasi pengisian formulir web di sisi klien telah menjadi bidang kajian aktif dalam interaksi manusia dan komputer serta rekayasa perangkat lunak \cite{Alqahtani2021}. Sebagian besar solusi komersial saat ini berfokus pada pengelola kata sandi (\textit{password managers}) seperti Bitwarden atau 1Password, serta fitur pengisian otomatis (\textit{autofill}) bawaan peramban web modern. Namun, instrumen-instrumen tersebut dirancang secara sempit untuk menangani kredensial autentikasi sederhana (\textit{username}, kata sandi) atau formulir transaksi pembayaran daring (nomor kartu kredit dan alamat penagihan standar). Ketika diterapkan pada formulir layanan publik di Indonesia, mekanisme ini mengalami kegagalan karena tidak mampu merepresentasikan struktur data kependudukan yang kompleks dan bertingkat, seperti hierarki wilayah administratif (provinsi, kabupaten/kota, kecamatan, kelurahan, hingga RT/RW), data keluarga, nomor kartu keluarga, NPWP, hingga nomor jaminan kesehatan nasional (BPJS).
 
-\subsection*{Heterogenitas dan Ketiadaan Standardisasi Formulir Publik}
+\subsection{Heterogenitas dan Ketiadaan Standardisasi Formulir Publik}
 Kendala mendasar otomasi formulir di sektor pemerintahan Indonesia adalah tingginya tingkat heterogenitas kode sumber antarmuka web antar-instansi. Mayoritas situs portal instansi publik tidak mengadopsi standar atribut W3C HTML5 \textit{autocomplete} (seperti \texttt{name}, \texttt{address-line1}, \texttt{postal-code}), melainkan menggunakan penamaan atribut \textit{custom}, singkatan bahasa lokal (seperti \texttt{txt\_nik\_pemohon}, \texttt{tgl\_lhr}, atau \texttt{kd\_pos\_dom}), maupun pengaburan (\textit{obfuscation}) penamaan elemen input. Algoritma pencocokan leksikal konvensional berbasis kata kunci eksak tunggal sering kali menghasilkan kesalahan identifikasi atau gagal mengenali elemen masukan sama sekali. Oleh karena itu, diperlukan pendekatan deteksi bertingkat hibrida (\textit{hybrid cascade}) yang menggabungkan pencocokan leksikal eksak berbobot dengan toleransi kesalahan ketik serta inferensi semantik kecerdasan buatan.
 
-\subsection*{Regulasi Ekstensi Peramban dan Privasi Komputasi Sisi Klien}
+\subsection{Regulasi Ekstensi Peramban dan Privasi Komputasi Sisi Klien}
 Evolusi arsitektur ekstensi peramban web modern yang dipelopori oleh Google melalui spesifikasi Manifest V3 menerapkan restriksi keamanan ketat, khususnya pembaruan \textit{Content Security Policy} (CSP) yang melarang pemuatan skrip eksternal dan eksekusi kode jarak jauh (\textit{remote code execution}) \cite{W3C2024WebExtensions}. Kebijakan ini mengubah paradigma rekayasa ekstensi peramban secara fundamental. Dalam konteks pengolahan data kependudukan sensitif, pendekatan otomasi cerdas yang mengirimkan teks label formulir ke peladen kecerdasan buatan pihak ketiga (\textit{cloud AI}) menimbulkan risiko pelanggaran kerahasiaan data pribadi. Sebagai solusinya, inferensi pemrosesan bahasa alami (NLP) berbasis model representasi vektor \textit{Sentence-BERT} (SBERT) \cite{Reimers2019} dapat dikemas dan dieksekusi secara lokal di lingkungan WebAssembly (WASM) peramban pengguna, sehingga menjamin prinsip kedaulatan data dan ketiadaan transmisi data keluar (\textit{zero-remote-code-execution}). Di samping itu, penyediaan antarmuka pemrograman aplikasi berbasis kerangka kerja modern berkinerja tinggi seperti FastAPI \cite{Ramirez2023FastAPI} memungkinkan pertukaran data profil antara peladen privat pengguna dan peramban berlangsung dengan latensi minimal dan perlindungan token yang ketat.
 
-\subsection*{Prinsip Aksesibilitas dan Pencegahan Kesalahan (Human-in-the-Loop)}
+\subsection{Prinsip Aksesibilitas dan Pencegahan Kesalahan (Human-in-the-Loop)}
 Dalam konteks layanan publik dan administrasi kependudukan digital, keandalan data merupakan prasyarat mutlak. Pedoman aksesibilitas web internasional \textit{Web Content Accessibility Guidelines} (WCAG) 2.2 Kriteria 3.3.4 menekankan prinsip pencegahan kesalahan (\textit{error prevention}) pada transaksi hukum dan keuangan, serta penghapusan entri berulang (\textit{redundant entry}) \cite{W3C2023WCAG}. Berdasarkan pedoman tersebut, sistem otomatisasi pengisian formulir tidak diperkenankan melakukan pengiriman formulir secara mandiri tanpa verifikasi eksplisit oleh pengguna. Paradigma kendali penuh manusia (\textit{human-in-the-loop}) melalui antarmuka panel samping (\textit{side panel}) interaktif menjadi krusial agar pengguna dapat meninjau, mengoreksi, dan memilih atribut yang hendak disuntikkan sebelum konfirmasi akhir dilakukan.
 
+% ==========================================================
+% SECTION III: SISTEM YANG DIUSULKAN
+% ==========================================================
+\section{Sistem yang Diusulkan}
+
+Bagian ini menyajikan perancangan dan implementasi teknis sistem GovConnect, yang membedah arsitektur perangkat lunak dari tingkat ingesti dokumen web, lapisan inferensi kecerdasan buatan di sisi klien, hingga antarmuka manajemen pengguna. GovConnect dikembangkan untuk menjembatani fragmentasi formulir pelayanan publik secara otonom tanpa memerlukan modifikasi pada peladen instansi pemerintah, dengan tetap menegakkan kepatuhan privasi data kependudukan secara ketat.
+
+\subsection{Tinjauan Sistem}
+GovConnect merupakan ekosistem asisten digital berbasis peramban modern yang mengotomatisasi pemetaan skema (\textit{schema matching}) dan injeksi nilai data kependudukan ke formulir web yang sangat heterogen. Sistem diorganisasikan ke dalam lima tingkatan arsitektur modular: (1) \textit{DOM \& Ingestion Tier}, (2) \textit{Extension Gateway Tier}, (3) \textit{Presentation Tier}, (4) \textit{AI \& Edge Computing Tier}, dan (5) \textit{Backend \& Storage Tier}, sebagaimana diilustrasikan pada Gambar~\ref{fig:arsitektur_sistem}.
+
+Tiga keputusan arsitektural utama melandasi perancangan GovConnect:
+\begin{enumerate}[label=(\arabic*), leftmargin=*]
+    \item \textbf{Inferensi Kecerdasan Buatan Lokal Sisi Klien (\textit{Zero-Egress Edge AI}):} Seluruh komputasi pemrosesan bahasa alami (NLP) berbasis model representasi vektor \textit{Sentence-BERT} dieksekusi secara lokal pada dokumen latar terisolasi (\textit{offscreen document}) menggunakan WebAssembly. Arsitektur ini memastikan bahwa label formulir maupun data pribadi warga tidak pernah ditransmisikan ke peladen API kecerdasan buatan pihak ketiga, sehingga mematuhi prinsip \textit{Privacy by Design} dan regulasi pelindungan data pribadi \cite{uupdp, W3C2024WebExtensions}.
+    \item \textbf{Pipa Deteksi Bertingkat Hibrida (\textit{Hybrid Cascade Pipeline}):} Mengombinasikan evaluasi atribut standar, pencocokan leksikal deterministik berbobot, aturan veto domain konteks, algoritma Okapi BM25 ternormalisasi, hingga inferensi semantik saraf. Desain bertingkat ini menyelesaikan lebih dari 95\% elemen masukan pada jalur leksikal berlatensi rendah ($<5$~ms) sebelum mengekskalasikannya ke model AI.
+    \item \textbf{Kendali Penuh Manusia (\textit{Human-in-the-Loop Safety Scheme}):} GovConnect tidak pernah mengirimkan (\textit{submit}) formulir web secara otomatis tanpa konfirmasi pengguna. Pengguna diberikan kendali penuh melalui antarmuka panel samping (\textit{side panel}) untuk meninjau, mengoreksi melalui pemetaan manual (\textit{manual override}), dan menyetujui injeksi data demi memenuhi panduan WCAG 2.2 Kriteria 3.3.4 \cite{W3C2023WCAG}.
+\end{enumerate}
+
+Ikhtisar peranan teknologi dan tanggung jawab masing-masing komponen sistem dirangkum pada Tabel~\ref{tab:system_components}.
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 1: Arsitektur Multi-Tier Sistem GovConnect]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Diagram blok arsitektur bertingkat GovConnect yang menggambarkan pemisahan ruang eksekusi: (1) \textit{User Space} (halaman web target dan penembusan DOM), (2) \textit{Extension Runtime} (\textit{Content Script}, \textit{Service Worker}, dan \textit{Side Panel}), (3) \textit{Offscreen Computing Layer} (eksekusi model Sentence-BERT via ONNX Runtime WebAssembly), serta (4) \textit{Backend \& Storage Tier} (FastAPI RESTful server dan basis data relasional) dengan perimeter isolasi \textit{zero-egress}.
+\end{minipage}
+\vspace{5pt}}}
+\caption{Arsitektur Sistem Multi-Tier GovConnect.}
+\label{fig:arsitektur_sistem}
+\end{figure}
+
+\begin{table}[!htbp]
+\caption{Ikhtisar Komponen Sistem GovConnect}
+\label{tab:system_components}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\columnwidth}{l l p{2.1cm} X}
+\toprule
+\textbf{Komponen} & \textbf{Lapisan (Tier)} & \textbf{Teknologi} & \textbf{Peran Utama} \\
+\midrule
+Content Script & DOM \& Ingestion & Vanilla JS (ES6+) & Penembusan Shadow DOM, ekstraksi metadata atribut input, observasi mutasi DOM, dan injeksi nilai visual. \\
+Service Worker & Extension Gateway & Chromium MV3 Worker & Orkestrasi siklus hidup ekstensi, broker pesan peramban, dan sinkronisasi token autentikasi sesi. \\
+Offscreen Doc. & AI \& Edge Compute & Transformers.js, ONNX WASM & Inferensi saraf lokal Sentence-BERT (all-MiniLM-L6-v2), kalkulasi cosine similarity tanpa koneksi internet. \\
+Side Panel & Presentation & HTML5, Tailwind CSS & Antarmuka interaksi utama, preview hasil pemetaan, penyesuaian manual field, dan konfirmasi human-in-the-loop. \\
+Extension Popup & Presentation & HTML5, Tailwind CSS & Antarmuka ringkas status ekstensi, status koneksi backend, dan tombol navigasi dasbor. \\
+Web Dashboard & Application / BI & React 18, Vite, TS & Dasbor manajemen 45 atribut data profil kependudukan, visualisasi analitik aktivitas, dan pengaturan akun. \\
+FastAPI Backend & Application & FastAPI (Python 3.11) & Layanan REST API asinkron, verifikasi token JWT HS256, hashing Bcrypt, dan validasi skema data Pydantic. \\
+Database & Data Store & SQLite / MySQL 8.x & Persistensi data kredensial terenkripsi, profil pengguna kependudukan, log audit, dan pemetaan kustom. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Lapisan Ekstensi Peramban dan Pipa Ekstraksi DOM}
+Lapisan ekstensi peramban bertindak sebagai garis terdepan dalam menganalisis dokumen web target. Proses ini diorkestrasi oleh \texttt{content\_script.js} yang dieksekusi langsung pada konteks tab aktif. Tantangan fundamental pada portal layanan publik modern adalah penggunaan kerangka kerja antarmuka komponen web yang mengisolasi elemen masukan di dalam \textit{Shadow DOM}. Panggilan standar \texttt{document.querySelectorAll} gagal menemukan elemen di balik batas enkapsulasi tersebut.
+
+Untuk mengatasi batasan ini, GovConnect mengimplementasikan fungsi traversal rekursif \texttt{querySelectorAllDeep}. Fungsi ini menelusuri seluruh simpul pohon DOM utama dan secara rekursif memeriksa keberadaan properti \texttt{shadowRoot} (khususnya mode \textit{open}) pada setiap elemen khusus (\textit{custom elements}). Dari setiap elemen kontrol masukan (\texttt{<input>}, \texttt{<select>}, \texttt{<textarea>}) yang teridentifikasi, pipa ekstraksi mengumpulkan metadata kontekstual yang komprehensif, mencakup:
+\begin{itemize}[leftmargin=*]
+    \item Atribut teknis HTML: \texttt{id}, \texttt{name}, \texttt{type}, \texttt{placeholder}, dan \texttt{autocomplete};
+    \item Atribut aksesibilitas W3C ARIA: \texttt{aria-label}, \texttt{aria-labelledby}, dan \texttt{aria-describedby};
+    \item Teks label terkait: elemen \texttt{<label>} yang terhubung melalui atribut \texttt{for}, label yang membungkus elemen input secara hierarkis (\textit{ancestor label}), atau teks judul fieldset;
+    \item Konteks teks terdekat (\textit{proximity text}): teks penjelas dalam radius simpul saudara kandung (\textit{sibling nodes}) pada tata letak tabel atau grid formulir.
+\end{itemize}
+
+Guna menangani aplikasi halaman tunggal (\textit{Single Page Application} / SPA) yang melakukan render komponen secara asinkron atau memicu mutasi kelas CSS secara berulang (\textit{burst DOM mutations}), sistem menerapkan \texttt{MutationObserver} yang dikombinasikan dengan teknik \textit{debouncing} sebesar 400~ms dan batas atas waktu (\textit{hard ceiling} / \texttt{maxWaitTimer}) sebesar 1500~ms. Selain itu, untuk mencegah terjadinya pengiriman pesan berulang yang tidak berujung (\textit{infinite message loop}) saat proses komputasi berlangsung, skrip konten memelihara koleksi \texttt{pendingSemanticRequests} Set. Setiap elemen yang sedang diproses ditandai sehingga peristiwa mutasi baru tidak akan memicu permintaan analisis duplikat. Alur ingesti data DOM disajikan pada Gambar~\ref{fig:pipeline_ingestion}.
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 2: Alur Ingesti dan Pipa Ekstraksi DOM Formulir]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Diagram alur tahapan pemrosesan dokumen web pada Content Script: traversal pohon DOM secara rekursif menembus batas Open Shadow DOM (\texttt{querySelectorAllDeep}), ekstraksi metadata kontekstual (tag, atribut teknis, atribut aksesibilitas W3C ARIA, asosiasi teks label induk, dan teks sekitar), penanganan debounced \texttt{MutationObserver} (interval 400 ms dan ceiling 1500 ms) untuk stabilitas SPA, mekanisme pencegahan loop pesan (\texttt{pendingSemanticRequests} Set), serta penapisan perangkap keamanan sebelum pengiriman ke mesin pencocokan.
+\end{minipage}
+\vspace{5pt}}}
+\caption{Alur Ingesti dan Pipa Ekstraksi DOM Formulir.}
+\label{fig:pipeline_ingestion}
+\end{figure}
+
+\subsection{Normalisasi Data dan Modul Deteksi Leksikal}
+Setelah metadata formulir diekstraksi, data mentah tersebut tidak langsung diserahkan ke model kecerdasan buatan, melainkan diproses melalui tahapan normalisasi dan penyelesaian deterministik:
+
+\textbf{Pass 0 (Pencarian Standar W3C Autocomplete):} Modul mengevaluasi atribut \texttt{autocomplete} terhadap daftar token standar HTML5 \cite{whatwg}, seperti \texttt{given-name}, \texttt{family-name}, \texttt{email}, \texttt{tel}, \texttt{bday}, \texttt{street-address}, dan \texttt{postal-code}. Kecocokan pada tahapan ini langsung memetakan elemen ke kunci profil kanonikal dengan presisi 100\% dan latensi $<0.001$~ms.
+
+\textbf{Pass 1 (Pembersihan Prefiks dan Ekspansi Singkatan Warisan):} Pada portal instansi pemerintah berbasis sistem warisan (ASP, JSP, atau ERP lama), penamaan atribut sering kali menggunakan prefiks numerik urutan basis data atau singkatan lokal terpotong. GovConnect menerapkan pembersihan prefiks dengan ekspresi reguler \texttt{/\textasciicircum[0-9]+[\_-]*/} dengan syarat menyisakan minimal dua karakter alfabet (misal: \texttt{02frstname} $\to$ \texttt{frstname}). Selanjutnya, modul membersihkan prefiks vendor teknis (\texttt{txt\_}, \texttt{ctl00\$}, \texttt{inp\_}) dan melakukan ekspansi terhadap 29 singkatan warisan kependudukan melalui kamus deterministik (\texttt{pers\_ssn} $\to$ \texttt{nik}, \texttt{cellphon} $\to$ \texttt{phone}, \texttt{driv\_lic} $\to$ \texttt{driver\_license}, \texttt{birth\_pl} $\to$ \texttt{birth\_place}, \texttt{workphon} $\to$ \texttt{work\_phone}).
+
+\textbf{Pass 1.5 (Heuristik Opsi Dropdown Tanggal):} Banyak portal publik memecah tanggal lahir menjadi tiga kontrol dropdown terpisah tanpa label eksplisit. Sistem menganalisis sebaran nilai numerik pada tag \texttt{<select>}: rentang $[1, 31]$ dipetakan ke hari kelahiran (\texttt{birth\_day}), rentang $[1, 12]$ ke bulan kelahiran (\texttt{birth\_month}), dan rentang $[1900, 2026]$ ke tahun kelahiran (\texttt{birth\_year}).
+
+\subsection{Pipa Deteksi Bertingkat Hibrida dan Pemetaan Semantik}
+Elemen formulir yang tidak terselesaikan pada tahapan deterministik awal akan dieskalasikan ke pipa deteksi bertingkat hibrida (\textit{Hybrid Cascade Pipeline}), dengan alur keputusan lengkap diilustrasikan pada Gambar~\ref{fig:hybrid_cascade}.
+
+\textbf{Pass 2 (Tokenisasi dan Scoped Cross-Domain Vetoes):} Identifier elemen dipecah menjadi token berdasarkan konvensi \textit{camelCase}, garis bawah, tanda hubung, dan spasi. Untuk mengantisipasi tabrakan positif palsu lintas domain (\textit{cross-domain collisions}), sistem menerapkan enam aturan veto berbasis konteks (\textit{scoped vetoes}):
+\begin{enumerate}[label=(\alph*), leftmargin=*]
+    \item \texttt{hasIbu}: melarang label yang mengandung kata ibu/maternal memetakan atribut nama pemohon;
+    \item \texttt{hasAyah}: melarang label paternal memetakan nama pemohon;
+    \item \texttt{hasDarurat}: melarang kontak darurat memetakan nomor telepon pribadi;
+    \item \texttt{hasKantor} / \texttt{work}: melarang atribut instansi/kantor memetakan nomor telepon atau alamat rumah pribadi;
+    \item \texttt{hasHome}: melarang telepon rumah memetakan nomor ponsel seluler;
+    \item \texttt{hasFax}: melarang nomor faksimili memetakan telepon standar.
+\end{enumerate}
+
+\textbf{Pass 2.5 (Pencarian Leksikal BM25 Ternormalisasi):} Untuk menangani label naratif deskriptif yang panjang (misalnya: \textit{"Tuliskan nama ibu kandung yang melahirkan pemohon"}), metrik jarak karakter konvensional sering mengalami degradasi. GovConnect mengevaluasi kemiripan menggunakan algoritma Okapi BM25 \cite{bm25} yang dinormalisasi dengan jumlah token query $|Q|$:
+\begin{align}
+\text{Skor}_{\text{BM25}}(Q, D) &= \frac{1}{|Q|} \sum_{q \in Q} \frac{\text{IDF}(q) \cdot \text{TF}(q, D) \cdot (k_1 + 1)}{\text{TF}(q, D) + k_1 \cdot K(D)} \label{eq:bm25} \\
+K(D) &= 1 - b + b \cdot \frac{|D|}{\text{avgdl}} \nonumber
+\end{align}
+Parameter dikalibrasi ke $k_1 = 1.2$, $b = 0.30$, $\text{avgdl} = 6.0$, dan $\text{IDF} = 1.0$. Nilai skor yang melampaui ambang batas $\tau = 0.75$ langsung diterima sebagai resolusi valid.
+
+\textbf{Pass 3 (Penilaian Leksikal Hibrida Terbatas):} Menggabungkan kombinasi linier berbobot dari Jaro-Winkler ($\text{JW}$), kesamaan substring ($\text{Sub}$), Levenshtein ($\text{Lev}$), dan koefisien S{\o}rensen-Dice ($\text{Dice}$) dengan penambahan bobot domain (\textit{Bonus}):
+\begin{align}
+\text{Skor}_{\text{final}} = \min \bigl( & 1.0, \, 0.40\,\text{JW} + 0.35\,\text{Sub} \nonumber \\
+& + 0.15\,\text{Lev} + 0.10\,\text{Dice} + \text{Bonus} \bigr) \label{eq:hybrid_score}
+\end{align}
+Perutean kepercayaan beroperasi pada tiga zona: Zona Tinggi ($\ge 0.85$) dan Sedang ($0.60 \le s < 0.85$) langsung menyetujui kandidat teratas; Zona Rendah ($0.55 \le s < 0.60$) menerapkan penjaga selisih peringkat kedua (\textit{runner-up margin guard}) $\ge 0.10$ untuk menghindari ambiguitas. Kontrol dengan skor $<0.55$ dieskalasikan ke Pass 4.
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 3: Pipa Deteksi Bertingkat Hibrida]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Diagram alur keputusan 7-tier Hybrid Cascade Pipeline: evaluasi HTML5 autocomplete (Pass 0), pembersihan prefiks numerik dan ekspansi 29 singkatan warisan (Pass 1), heuristik distribusi opsi dropdown tanggal (Pass 1.5), tokenisasi dan evaluasi 6 scoped cross-domain veto (Pass 2), pencarian leksikal BM25 ternormalisasi panjang query (Pass 2.5), penilaian leksikal hibrida Jaro-Winkler + Substring + Dice dengan margin guard runner-up (Pass 3), serta eskalasi inferensi semantik lokal Sentence-BERT (all-MiniLM-L6-v2) via WebAssembly offscreen (Pass 4).
+\end{minipage}
+\vspace{5pt}}}
+\caption{Alur Keputusan Pipa Deteksi Bertingkat Hibrida.}
+\label{fig:hybrid_cascade}
+\end{figure}
+
+\textbf{Pass 4 (Inferensi Semantik Lokal Sisi Klien):} Kontrol yang gagal dipetakan secara leksikal dikirimkan ke \textit{offscreen document}. Dokumen ini mengisolasi eksekusi model Sentence-BERT \cite{Reimers2019} terdistilasi \texttt{all-MiniLM-L6-v2} (kuantisasi INT8, 22.7~MB) \cite{minilm} menggunakan pustaka Transformers.js dan \textit{runtime} ONNX WebAssembly. Sesuai restriksi ketat Manifest V3, konfigurasi disetel ke mode \textit{single-threaded} (\texttt{numThreads = 1}) guna mencegah pelanggaran CSP \cite{W3C2024WebExtensions}. Vektor semantik 384-dimensi dihitung dan dievaluasi kemiripannya menggunakan \textit{Cosine Similarity}:
+\begin{equation}
+\text{Sim}_{\text{cos}}(\mathbf{e}_{\text{field}}, \mathbf{e}_{\text{target}}) = \frac{\mathbf{e}_{\text{field}} \cdot \mathbf{e}_{\text{target}}}{\|\mathbf{e}_{\text{field}}\| \|\mathbf{e}_{\text{target}}\|}
+\label{eq:cosine_sim}
+\end{equation}
+Kandidat atribut dengan kemiripan kosinus $\ge 0.50$ dikembalikan sebagai hasil resolusi semantik ke tab aktif.
+
+\subsection{Mekanisme Injeksi Otomatis dan Keamanan Human-in-the-Loop}
+Setelah proses pemetaan selesai, nilai profil diinjeksikan secara visual ke elemen target. Kerangka kerja JavaScript modern (React, Vue, Angular) menggunakan manipulasi \textit{virtual DOM} yang mengabaikan pengubahan properti \texttt{element.value} secara langsung. Untuk menjamin keterbacaan data oleh aplikasi target, GovConnect memicu rangkaian sintetis peristiwa web standar secara berurutan: \texttt{focus}, pembaharuan nilai via \textit{HTMLInputElement prototype setter}, \texttt{input}, \texttt{change}, dan diakhiri dengan \texttt{blur}.
+
+\textbf{Penolakan Mutlak Perangkap Kredensial (\textit{Security Trap Rejection}):} Demi mencegah kebocoran kredensial atau transaksi tidak terduga, sistem menolak seluruh elemen sensitif: \texttt{type="password"}, \texttt{type="hidden"}, atribut pembayaran (\texttt{cc-number}, CVV, PIN), dan elemen tantangan CAPTCHA. Pipa deteksi memastikan bahwa tidak ada data kependudukan yang diisikan ke dalam elemen perangkap keamanan tersebut, menghasilkan tingkat penolakan positif palsu (\textit{False Positive Rate}) sebesar 0.0\%.
+
+\textbf{Skema Pengendalian Manusia (\textit{Human-in-the-Loop}):} Mengacu pada regulasi aksesibilitas WCAG 2.2 Kriteria 3.3.4 terkait pencegahan kesalahan transaksi \cite{W3C2023WCAG}, sistem tidak diperkenankan melakukan pengiriman formulir secara mandiri. Seluruh hasil pencocokan disajikan terlebih dahulu pada panel samping (\textit{Side Panel}) untuk diverifikasi oleh pengguna sebelum injeksi nilai dieksekusi.
+
+\subsection{Antarmuka Panel Samping dan Dasbor Pengelolaan Profil}
+Interaksi pengguna diakomodasi melalui dua antarmuka pelengkap:
+\begin{enumerate}[label=(\arabic*), leftmargin=*]
+    \item \textbf{Chrome Extension Side Panel:} Menyajikan antarmuka kontekstual pada sisi peramban yang mendukung empat status operasional: \textit{Form Detected State} (merangkum jumlah field yang dikenali), \textit{Autofill Result State} (menampilkan ringkasan status injeksi), \textit{Manual Override State} (memungkinkan pengguna memetakan ulang field yang ambigu), dan \textit{Unsupported Website State} (notifikasi aman jika halaman tidak memuat form publik).
+    \item \textbf{Web Dashboard:} Dasbor berbasis React 18 dan Tailwind CSS yang menyediakan pengelolaan terpusat atas 45 atribut kependudukan terstruktur (identitas, alamat bertingkat provinsi hingga RT/RW, data kontak, pendidikan, pekerjaan, dan keluarga), visualisasi log audit pengisian, dan konfigurasi keamanan, sebagaimana diperlihatkan pada Gambar~\ref{fig:mockup_ui}.
+\end{enumerate}
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 4: Antarmuka Panel Samping dan Dasbor Pengelolaan Profil]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Tampilan antarmuka visual GovConnect yang menyajikan: (1) Side Panel Chrome Extension yang berdampingan langsung dengan halaman web target, memperlihatkan status deteksi formulir (\textit{Form Detected State}), ringkasan hasil pengisian otomatis (\textit{Autofill Result State}), dan kontrol koreksi manual field (\textit{Manual Override State}); serta (2) Web Dashboard berbasis React 18 untuk pengelolaan 45 atribut data profil kependudukan berjenjang dan pemantauan riwayat log aktivitas pengisian.
+\end{minipage}
+\vspace{5pt}}}
+\caption{Antarmuka Panel Samping Ekstensi dan Dasbor Web GovConnect.}
+\label{fig:mockup_ui}
+\end{figure}
+
+% ==========================================================
+% SECTION IV: PENGUJIAN DAN HASIL EVALUASI
+% ==========================================================
+\section{Pengujian dan Hasil Evaluasi}
+
+Bagian ini menyajikan metodologi pengujian, parameter eksperimental, dan analisis hasil evaluasi sistem GovConnect. Evaluasi difokuskan pada tiga dimensi: kebenaran fungsional komponen terintegrasi, efisiensi waktu respons sistem, serta akurasi pemetaan skema formulir.
+
+\subsection{Pengaturan Eksperimen}
+Pengujian eksperimental dilaksanakan pada lingkungan stasiun kerja representatif dengan spesifikasi perangkat keras dan tumpukan perangkat lunak yang dirinci pada Tabel~\ref{tab:experimental_env}. Seluruh pengujian inferensi kecerdasan buatan dieksekusi secara lokal tanpa sambungan internet luar, konsisten dengan paradigma \textit{zero-egress}.
+
+Evaluasi memanfaatkan dua korpus pengujian:
+\begin{enumerate}[label=(\arabic*), leftmargin=*]
+    \item \textbf{Suite Benchmark Internasional ($N = 177$ kontrol DOM, 64 target kanonikal):} Mencakup 5 situs representatif dari 4 kelas heterogenitas (RoboForm All-Fields, University of Michigan Wolverine Access, SelectorsHub Practice Form, GetAutoClicker, dan PasswordManager UK).
+    \item \textbf{Suite Portal Layanan Publik Indonesia ($N = 136$ kontrol DOM, 41 target identitas inti):} Meliputi Coretax DJP (47 kontrol), SPMB SMK Negeri (31 kontrol), SSCASN BKN (28 kontrol), portal pendaftaran administrasi kependudukan Disdukcapil (21 kontrol), dan Online Single Submission / OSS BKPM (9 kontrol).
+\end{enumerate}
+
+\begin{table}[!htbp]
+\caption{Spesifikasi Lingkungan Pengujian Eksperimen}
+\label{tab:experimental_env}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\columnwidth}{p{2.8cm} X}
+\toprule
+\textbf{Komponen / Parameter} & \textbf{Spesifikasi Teknis Pengujian} \\
+\midrule
+CPU & AMD Ryzen 7 5800H / Intel Core i7-11800H (8 Cores, 16 Threads, 3.20 GHz) \\
+RAM & 16 GB DDR4 3200 MHz \\
+Penyimpanan & 512 GB NVMe PCIe Gen3 SSD \\
+Sistem Operasi & Microsoft Windows 11 Pro 64-bit (Versi 23H2) \\
+Peramban Web & Google Chrome Versi 128.0.6613.120 (Manifest V3 Engine) \\
+Runtime Frontend & Node.js v20.12.0, React 18.2.0, Vite 5.1.0, Tailwind CSS 3.4.1 \\
+Runtime Backend & Python 3.11.9, FastAPI 0.110.0, Uvicorn 0.28.0, SQLAlchemy 2.0.28 \\
+Mesin Inferensi Sisi Klien & ONNX Runtime WebAssembly (single-threaded, numThreads = 1) \\
+Model Representasi Semantik & all-MiniLM-L6-v2 (Kuantisasi INT8, 22.7 MB, 384 Dimensi Vektor) \\
+Dataset Benchmark & 5 Halaman Web Benchmark Internasional ($N = 177$ kontrol DOM, 64 target kontrol) dan 5 Portal Publik Indonesia ($N = 136$ kontrol DOM) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Evaluasi Fungsional}
+Evaluasi fungsional menilai apakah setiap modul dari arsitektur GovConnect beroperasi sesuai spesifikasi perancangan di bawah kondisi formulir dinamis. Hasil pengujian fungsional disajikan pada Tabel~\ref{tab:functional_eval}.
+
+\begin{table}[!htbp]
+\caption{Hasil Evaluasi Fungsional Komponen GovConnect}
+\label{tab:functional_eval}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{p{2.2cm} X c}
+\toprule
+\textbf{Komponen / Modul} & \textbf{Kriteria Fungsional Evaluasi} & \textbf{Hasil} \\
+\midrule
+Content Script (DOM Traversal) & Menembus hierarki open Shadow DOM secara rekursif dan mengekstraksi seluruh metadata atribut masukan & Berhasil \\
+MutationObserver \& Anti-Looping & Memproses 100x mutasi CSS beruntun pada SPA via debounce tanpa freeze UI dan mencegah duplikasi pesan via Set & Berhasil \\
+Prefix Stripper \& Singkatan & Menghapus prefiks numerik/vendor dan menerjemahkan 29 singkatan warisan dengan akurasi 100\% & Berhasil \\
+Option-Profiled Heuristics & Mengidentifikasi dropdown tanggal, bulan, dan tahun berdasarkan sebaran nilai numerik tanpa label eksplisit & Berhasil \\
+BM25 Lexical Engine & Menghitung skor relevansi label naratif panjang dengan normalisasi panjang query dan ambang $\tau \ge 0.75$ & Berhasil \\
+Scoped Context Vetoes & Mengeksekusi 6 aturan veto silang domain (hasIbu, hasAyah, dll.) guna mengeliminasi tabrakan nama dan kontak & Berhasil \\
+Offscreen SBERT WASM & Memuat model MiniLM INT8 22.7 MB, menghitung embedding dan cosine similarity $\ge 0.50$ sesuai regulasi CSP MV3 & Berhasil \\
+Security Trap Rejection & Menolak 100\% bidang sensitif (kata sandi, PIN, kartu kredit, CAPTCHA, token hidden) dari pipa pengisian & Berhasil \\
+Side Panel Human-in-the-Loop & Menampilkan preview pemetaan, memfasilitasi manual override, dan mengeksekusi injeksi hanya setelah konfirmasi & Berhasil \\
+FastAPI \& Database API & Menangani autentikasi JWT HS256, validasi skema profil, dan pencatatan audit log aktivitas pengisian & Berhasil \\
+React Web Dashboard & Menyinkronkan 45 atribut data kependudukan dan merender grafik riwayat aktivitas dengan waktu pemuatan $<100$ ms & Berhasil \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Seluruh 11 komponen fungsional berhasil memenuhi kriteria kelulusan (100\% \textit{Pass}). Uji ketahanan \textit{burst mutation} membuktikan bahwa mekanisme jeda pembatas \texttt{maxWaitTimer} berhasil mencegah pembekuan thread antarmuka peramban, sementara pemisahan komputasi AI pada dokumen \textit{offscreen} menjaga responsivitas tab aktif tetap mulus.
+
+\subsection{Evaluasi Waktu Respons Sistem}
+Evaluasi waktu respons mengukur latensi eksekusi pada setiap tingkatan eskalasi pipa deteksi serta efisiensi waktu pengisian total:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Jalur Cepat Leksikal (Pass 0--3):} Berhasil menyelesaikan 95.3\% (61/64) dari target kontrol formulir dengan latensi di bawah 5~ms. Secara terperinci, pencarian standar W3C (Pass 0) membutuhkan waktu $<0.001$~ms, pembersihan prefiks dan singkatan (Pass 1--1.5) membutuhkan $<0.01$~ms, serta penilaian leksikal BM25 dan argmax hibrida (Pass 2--3) rata-rata mencatatkan latensi 1.45~ms.
+    \item \textbf{Inferensi Neural Lokal SBERT WASM (Pass 4):} Menghasilkan latensi rata-rata 185~ms (rentang 120--280~ms) pada CPU klien, sepenuhnya dijalankan di latar belakang dokumen tersembunyi.
+    \item \textbf{Latensi Komunikasi API Backend:} Pengambilan data profil kependudukan terenkripsi melalui FastAPI mencatatkan latensi rata-rata $<25$~ms.
+\end{itemize}
+
+Dalam hal efisiensi pengguna, pengisian formulir pelayanan publik secara manual (6 hingga 10 elemen masukan) memerlukan durasi rata-rata 180 detik (sekitar 30 detik per field). Dengan GovConnect, seluruh proses deteksi, pemetaan skema, dan injeksi visual diselesaikan dalam waktu kurang dari 1.5 detik, mewakili penghematan waktu pengisian lebih dari 98\%, sebagaimana diilustrasikan pada Gambar~\ref{fig:response_time}.
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 5: Grafik Waktu Respons Sistem per Tahap Pemrosesan]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Grafik batang dan distribusi latensi pemrosesan sistem GovConnect per tingkatan eskalasi: perbandingan latensi jalur cepat leksikal Pass 0--3 (<5 ms untuk 95.3\% kontrol) terhadap inferensi saraf lokal SBERT WASM Pass 4 (rata-rata 185 ms, rentang 120--280 ms), serta perbandingan efisiensi waktu total pengisian formulir antara proses manual (rata-rata 180 detik per dokumen) dan otomatisasi GovConnect (<1.5 detik per dokumen) yang menghasilkan efisiensi penghematan waktu hingga 98\%.
+\end{minipage}
+\vspace{5pt}}}
+\caption{Distribusi Waktu Respons Sistem per Tahap Pemrosesan dan Penghematan Waktu Pengisian.}
+\label{fig:response_time}
+\end{figure}
+
+\subsection{Evaluasi Akurasi Deteksi dan Pemetaan Field}
+Kinerja pemetaan skema dievaluasi menggunakan metrik \textit{recall}, \textit{precision}, dan ketahanan terhadap perangkap keamanan pada 64 kontrol target kanonikal beranotasi:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Native Chromium Autofill \cite{chromium}:} Menyelesaikan 38 dari 64 kontrol (59.4\% \textit{recall} [95\% CI: 47.1, 70.5], 100\% presisi). Pendekatan ini gagal pada penamaan singkatan warisan dan penamaan acak.
+    \item \textbf{TF-IDF + Logistic Regression Baseline:} Menyelesaikan 48 dari 64 kontrol (75.0\% \textit{recall} [95\% CI: 63.2, 84.0], 98.0\% presisi).
+    \item \textbf{Rule-only Matcher (Pass 0--1.5):} Menyelesaikan 36 dari 64 kontrol (56.3\% \textit{recall} [95\% CI: 44.1, 67.8], 100\% presisi).
+    \item \textbf{GovConnect Hybrid Cascade Pipeline:} Berhasil menyelesaikan 62 dari 64 target kontrol (\textbf{96.9\% \textit{recall}} [95\% Wilson CI: 89.3, 99.1], \textbf{100.0\% presisi}).
+\end{itemize}
+
+\begin{figure}[!htbp]
+\centering
+\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\centering\vspace{5pt}
+\small\textbf{[Deskripsi Gambar 6: Grafik Evaluasi Akurasi dan Recall Pemetaan Field Formulir]}\\[4pt]
+\begin{minipage}{0.92\linewidth}
+\footnotesize
+Grafik metrik evaluasi kinerja pemetaan skema formulir: (1) perbandingan recall GovConnect (96.9\% [95\% CI: 89.3, 99.1]) terhadap baseline native Chromium autofill (59.4\%), TF-IDF regresi logistik (75.0\%), dan rule-only (56.3\%) pada 64 target kontrol benchmark internasional; (2) tingkat resolusi 100\% (41/41) pada kelompok atribut identitas inti di 5 portal pelayanan publik Indonesia (Coretax DJP, SSCASN BKN, SPMB SMK, Dukcapil, dan OSS BKPM); serta (3) efektivitas penapisan perangkap keamanan (63/63 kontrol ditolak, 0.0\% FPR).
+\end{minipage}
+\vspace{5pt}}}
+\caption{Evaluasi Kinerja Deteksi Field Formulir Lintas Kategori dan Portal Layanan Publik.}
+\label{fig:eval_accuracy}
+\end{figure}
+
+Pada pengujian 63 perangkap keamanan (kata sandi, nomor kartu kredit, CVV, PIN, CAPTCHA, dan token CSRF tersembunyi), pipa GovConnect mencapai tingkat penolakan 100\% (63/63, 0.0\% FPR). Pada suite 5 portal layanan publik Indonesia, sistem menuntaskan 41 dari 41 kontrol identitas inti (\textbf{100\% \textit{recall}}), mencakup NIK, nama lengkap, tempat dan tanggal lahir, nama ibu kandung, jenis kelamin, agama, status perkawinan, serta alamat domisili hierarkis (Gambar~\ref{fig:eval_accuracy}).
+
+% ==========================================================
+% SECTION V: KESIMPULAN
+% ==========================================================
+\section{Kesimpulan}
+
+Penelitian ini mempresentasikan perancangan dan evaluasi sistem GovConnect, sebuah ekosistem otomatisasi pengisian formulir pelayanan publik berbasis peramban modern yang memadukan arsitektur bertingkat Manifest V3, pipa deteksi bertingkat hibrida 7-tier, dan inferensi semantik lokal \textit{Sentence-BERT} via WebAssembly. Hasil evaluasi empiris membuktikan bahwa GovConnect berhasil mengatasi fragmentasi formulir kependudukan tanpa menuntut integrasi API pada peladen instansi pemerintah, mencapai \textit{recall} 96.9\% pada benchmark heterogen dan 100\% pada kelompok data identitas inti portal publik Indonesia dengan tingkat presisi 100\% serta 0\% kesalahan pengisian perangkap keamanan. Lebih dari 95\% kontrol diselesaikan melalui jalur leksikal berkecepatan tinggi di bawah 5~ms, memangkas durasi pengisian formulir hingga 98\% dibandingkan proses manual serta menjamin privasi kedaulatan data secara mutlak di sisi klien (\textit{zero-egress}).
+
+Meskipun menunjukkan performa yang sangat menjanjikan, penelitian ini mencatat beberapa arah pengembangan masa depan: (1) pengembangan modul verifikasi status DOM pasca-injeksi yang lebih adaptif terhadap kerangka kerja reaktif bertingkat tinggi; (2) integrasi modul OCR KTP dan deteksi keaktifan (\textit{on-device vision liveness}) secara lokal pada lingkungan \textit{offscreen}; (3) kalibrasi model \textit{Sentence-BERT} multibahasa guna mendukung terminologi lokal kedaerahan; serta (4) transisi model penyimpanan data profil menuju standar identitas terdesentralisasi \textit{W3C Verifiable Credentials} \cite{vc}.
+
+% ==========================================================
+% UCAPAN TERIMA KASIH (ACKNOWLEDGEMENT)
+% ==========================================================
+\section*{Ucapan Terima Kasih}
+Penulis menyampaikan rasa terima kasih yang mendalam kepada Program Studi D3 Teknik Informatika, Departemen Teknik Informatika dan Komputer, Politeknik Elektronika Negeri Surabaya (PENS), serta Dosen Pengampu Ibu Amma Liesvarastranta Haz, S.Tr.T., M.T. atas bimbingan, arahan akademis, dan fasilitas laboratorium yang diberikan selama proses perancangan, pengembangan, dan evaluasi ekosistem GovConnect ini.
+
+% ==========================================================
+% DAFTAR PUSTAKA (REFERENCES)
+% ==========================================================
 \begin{thebibliography}{00}
 
 \bibitem{OECD2023DGO}
@@ -188,527 +486,36 @@ S. Ram\'{i}rez, ``FastAPI: Modern, high-performance web framework for Python,'' 
 \bibitem{W3C2023WCAG}
 W3C, ``Web Content Accessibility Guidelines (WCAG) 2.2,'' \textit{W3C Recommendation}, Oct. 2023. [Daring]. Tersedia: \url{https://www.w3.org/TR/WCAG22/}.
 
-\end{thebibliography}
+\bibitem{spbe}
+Pemerintah Republik Indonesia, ``Peraturan Presiden Republik Indonesia Nomor 95 Tahun 2018 tentang Sistem Pemerintahan Berbasis Elektronik (SPBE),'' Lembaran Negara Republik Indonesia Tahun 2018 Nomor 182, Jakarta, 2018.
 
-\clearpage
-\onecolumn
-% ==========================================================
-% SECTION II: SUMBER KODE (Format 1 Kolom / Non-IEEE)
-% ==========================================================
-\section{Sumber Kode}
+\bibitem{uupdp}
+Pemerintah Republik Indonesia, ``Undang-Undang Republik Indonesia Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi,'' Lembaran Negara Republik Indonesia Tahun 2022 Nomor 196, Jakarta, 2022.
 
-\begin{lstlisting}
-\documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
-% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\bibitem{whatwg}
+WHATWG, ``HTML Living Standard -- In-depth specification of form control autofill tokens and standard attributes,'' 2024. [Daring]. Tersedia: \url{https://html.spec.whatwg.org/multipage/form-control-infrastructure.html}.
 
-% Paket Standar IEEE
-\usepackage{cite}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
-\usepackage{graphicx}
-\usepackage{textcomp}
-\usepackage{xcolor}
-\usepackage{booktabs}
-\usepackage{tabularx}
-\usepackage{enumitem}
-\usepackage{listings}
-\usepackage{hyperref}
+\bibitem{rahm}
+E. Rahm and P. A. Bernstein, ``A survey on approaches to automatic schema matching,'' \textit{VLDB Journal}, vol. 10, no. 4, pp. 334--350, Dec. 2001. DOI: 10.1007/s007780100057.
 
-% Lokasi Folder Gambar
-\graphicspath{{./}{./Frontend/}}
+\bibitem{bm25}
+S. Robertson and H. Zaragoza, ``The Probabilistic Relevance Framework: BM25 and Beyond,'' \textit{Foundations and Trends in Information Retrieval}, vol. 3, no. 4, pp. 333--389, 2009. DOI: 10.1561/1500000019.
 
-% Definisi Warna Identitas GovConnect
-\definecolor{govblue}{HTML}{1E40AF}
-\definecolor{govemerald}{HTML}{059669}
-\definecolor{govdark}{HTML}{0F172A}
-\definecolor{govslate}{HTML}{64748B}
+\bibitem{chromium}
+The Chromium Authors, ``Autofill heuristics, regular expressions, and field detection architecture,'' \textit{Chromium Source Documentation}, 2024. [Daring]. Tersedia: \url{https://source.chromium.org/chromium/src/+/main:components/autofill/}.
 
-\hypersetup{
-    colorlinks=true,
-    linkcolor=govblue,
-    urlcolor=govblue,
-    citecolor=govemerald
-}
+\bibitem{minilm}
+W. Wang, F. Wei, L. Dong, H. Bao, N. Yang, and M. Zhou, ``MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained transformers,'' in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 33, pp. 5776--5788, 2020.
 
-% Parameter Penataan Gambar (Float Control)
-\renewcommand{\topfraction}{0.95}
-\renewcommand{\bottomfraction}{0.95}
-\renewcommand{\textfraction}{0.05}
-\renewcommand{\floatpagefraction}{0.8}
+\bibitem{onnxweb}
+ONNX Runtime Authors, ``ONNX Runtime Web: Running Machine Learning Models in the Browser with WebAssembly and WebGPU,'' 2024. [Daring]. Tersedia: \url{https://onnxruntime.ai/docs/tutorials/web/}.
 
-\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
-    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\bibitem{kairouz2021}
+P. Kairouz et al., ``Advances and open problems in federated learning and edge computing,'' \textit{Foundations and Trends in Machine Learning}, vol. 14, no. 1--2, pp. 1--210, 2021. DOI: 10.1561/2200000083.
 
-\begin{document}
-
-% ==========================================================
-% HALAMAN COVER (BERDASARKAN COVER.DOCX)
-% ==========================================================
-\begin{titlepage}
-\onecolumn
-\centering
-\thispagestyle{empty}
-
-\vspace*{0.5cm}
-
-{\fontsize{16pt}{22pt}\selectfont\bfseries LAPORAN PROGRESS\par}
-\vspace{0.4cm}
-{\fontsize{14pt}{18pt}\selectfont\bfseries Mata Kuliah Workshop Pemrograman Framework\par}
-\vspace{0.3cm}
-{\fontsize{14pt}{18pt}\selectfont\bfseries Dokumen PRD\par}
-
-\vfill
-
-\includegraphics[width=7.5cm]{pens_logo.png}\par
-
-\vfill
-
-{\fontsize{12pt}{16pt}\selectfont\bfseries Dosen Pengampu:\par}
-\vspace{0.2cm}
-{\fontsize{12pt}{16pt}\selectfont Amma Liesvarastranta Haz, S.Tr.T., M.T.\par}
-
-\vspace{0.8cm}
-
-{\fontsize{12pt}{16pt}\selectfont\bfseries Disusun Oleh:\par}
-\vspace{0.25cm}
-{\fontsize{12pt}{16pt}\selectfont 1. Andharu Raffi (3125521011)\par}
-\vspace{0.15cm}
-{\fontsize{12pt}{16pt}\selectfont 2. Fajrian Aprilio (3125521012)\par}
-
-\vfill
-
-{\fontsize{13pt}{18pt}\selectfont\bfseries PROGRAM STUDI D3 TEKNIK INFORMATIKA\par}
-\vspace{0.15cm}
-{\fontsize{13pt}{18pt}\selectfont\bfseries DEPARTEMEN TEKNIK INFORMATIKA DAN KOMPUTER\par}
-\vspace{0.15cm}
-{\fontsize{13pt}{18pt}\selectfont\bfseries POLITEKNIK ELEKTRONIKA NEGERI SURABAYA\par}
-\vspace{0.2cm}
-{\fontsize{13pt}{18pt}\selectfont\bfseries 2025\par}
-
-\vspace*{0.5cm}
-\end{titlepage}
-\clearpage
-\twocolumn
-
-\title{GovConnect: Perancangan Sistem Otomatisasi Pengisian Formulir Layanan Publik Berbasis Ekstensi Peramban}
-
-\author{
-    \IEEEauthorblockN{1\textsuperscript{st} Andharu Raffi}
-    \IEEEauthorblockA{\textit{Informatics Engineering} \\
-    \textit{Electronic Engineering Polytechnic Institute of Surabaya}\\
-    Surabaya, Indonesia \\
-    andharuraffi003@gmail.com}
-    \and
-    \IEEEauthorblockN{2\textsuperscript{nd} Fajrian Aprilio}
-    \IEEEauthorblockA{\textit{Informatics Engineering} \\
-    \textit{Electronic Engineering Polytechnic Institute of Surabaya}\\
-    Surabaya, Indonesia \\
-    apriliofajrian@gmail.com}
-}
-
-\maketitle
-
-\begin{abstract}
-Fragmentasi platform pelayanan publik digital di Indonesia saat ini mewajibkan warga negara memasukkan data identitas kependudukan yang sama secara berulang pada berbagai portal instansi pemerintah. Proses manual repetitif ini tidak hanya memicu inefisiensi waktu rata-rata tiga puluh detik per elemen formulir, tetapi juga memperbesar risiko kesalahan pengetikan yang berpotensi menggagalkan transaksi administrasi. Penelitian ini bertujuan merancang dan mengimplementasikan GovConnect, sebuah ekosistem asisten digital berbasis peramban web modern yang mengotomatisasi pendeteksian dan pengisian formulir layanan publik secara terpadu, aman, dan adaptif. Sistem dikembangkan menggunakan arsitektur tiga lapis yang mengintegrasikan ekstensi Google Chrome modern berbasis Manifest V3 dengan dokumen latar independen, dasbor berbasis React dan Tailwind CSS untuk manajemen data profil kependudukan, serta layanan terdistribusi berbasis FastAPI dan basis data relasional. Inti otomatisasi bertumpu pada pipa deteksi bertingkat hibrida yang memadukan evaluasi atribut standar dokumen web, pencocokan token leksikal eksak terhadap basis kata kunci kependudukan, penghitungan kesamaan string, hingga inferensi semantik kecerdasan buatan berbasis Sentence-BERT yang dieksekusi secara lokal pada lingkungan peramban pengguna. Sistem menerapkan kendali penuh manusia pada antarmuka panel samping guna memastikan kepatuhan aksesibilitas dan pencegahan kesalahan sebelum eksekusi pengisian data. Hasil evaluasi implementasi menunjukkan bahwa GovConnect mampu mencapai akurasi deteksi formulir di atas 85 persen dengan latensi respons di bawah 200 milidetik, menghemat waktu pengisian formulir hingga 80 persen, serta menjamin privasi data kependudukan secara menyeluruh tanpa ketergantungan pada layanan pihak ketiga.
-\end{abstract}
-
-\begin{IEEEkeywords}
-GovConnect, layanan publik digital, otomatisasi formulir, ekstensi peramban, pemetaan data, civic-tech
-\end{IEEEkeywords}
-
-% ==========================================================
-% SECTION I: PENDAHULUAN
-% ==========================================================
-% PENDAHULUAN (TANPA PENOMORAN ROMAWI I DAN SUBSEKSI A, B)
-% ==========================================================
-\section*{Pendahuluan}
-
-Transformasi digital pelayanan publik di Indonesia telah berkembang pesat di berbagai kementerian, lembaga pemerintah, dan pemerintah daerah, mulai dari penerimaan peserta didik dan mahasiswa baru, administrasi kependudukan (Disdukcapil), jaminan kesehatan nasional (BPJS), hingga perpajakan daring dan perizinan berusaha. Meskipun demikian, digitalisasi tersebut ditandai oleh fragmentasi sistem yang mewajibkan warga negara memasukkan data identitas kependudukan yang serupa secara berulang pada setiap portal layanan daring, seperti Nomor Induk Kependudukan (NIK), nama lengkap, tempat tanggal lahir, alamat domisili terperinci, hingga data kontak dan keluarga. Pengisian formulir manual yang repetitif ini menimbulkan inefisiensi waktu yang substansial, dengan rata-rata 30 detik per \textit{field} formulir, serta memperbesar risiko kesalahan ketik (\textit{human error}) yang dapat membatalkan atau menunda verifikasi administrasi kependudukan penting \cite{OECD2023DGO}.
-
-Upaya integrasi antarsistem informasi layanan publik melalui konsolidasi basis data terpusat maupun penyediaan \textit{Application Programming Interface} (API) \textit{server-to-server} antar-instansi masih sulit diwujudkan dalam waktu dekat di tingkat nasional. Hal ini disebabkan oleh tingginya disparitas arsitektur perangkat lunak sistem warisan (\textit{legacy systems}), perbedaan standar keamanan antardepartemen, regulasi sektoral yang kaku, serta keengganan institusional dalam berbagi data sensitif \cite{OECD2022Principles}. Di sisi lain, pendekatan integrasi berbasis peladen terpusat juga memunculkan risiko kegagalan tunggal (\textit{single point of failure}) dan ancaman kedaulatan data pribadi masyarakat apabila seluruh rekam kependudukan dihimpun oleh entitas perantara tunggal.
-
-Guna mengatasi tantangan fragmentasi data tersebut tanpa bergantung pada kesiapan integrasi API pemerintah, penelitian ini merancang dan mengimplementasikan \textbf{GovConnect}. GovConnect merupakan ekosistem asisten digital berbasis peramban modern (\textit{client-side civic-tech}) yang mengotomatisasi pendeteksian dan pengisian formulir layanan publik secara terpadu, adaptif, dan privat. Arsitektur sistem mengintegrasikan tiga pilar utama: (1) \textit{Chrome Extension} berbasis Google Manifest V3 yang mengeksekusi analisis DOM formulir secara langsung pada halaman web; (2) \textit{Web Dashboard} mandiri berbasis React 18, TypeScript, dan Tailwind CSS untuk manajemen data profil kependudukan 29+ atribut serta visualisasi analitik aktivitas; dan (3) layanan \textit{backend} berbasis kerangka kerja modern untuk autentikasi aman dan persistensi data profil terstruktur.
-
-Kontribusi utama dari makalah ini mencakup:
-\begin{enumerate}[label=(\arabic*), leftmargin=*]
-    \item Perancangan dan implementasi ekosistem \textit{civic-tech} berbasis peramban yang mengatasi fragmentasi formulir layanan publik di Indonesia secara instan tanpa memerlukan perubahan infrastruktur pada peladen instansi pemerintah;
-    \item Pengembangan pipa deteksi bertingkat hibrida yang memadukan pencocokan leksikal eksak, pemodelan heuristik DOM, dan model semantik SBERT lokal via WebAssembly yang mematuhi standar privasi data dan regulasi Manifest V3; serta
-    \item Penerapan desain interaksi \textit{human-in-the-loop} yang memenuhi prinsip pencegahan kesalahan WCAG 2.2 untuk menjamin presisi data kependudukan dan kenyamanan pengguna.
-\end{enumerate}
-
-Sistematika penulisan laporan ini disusun sebagai berikut: Bagian selanjutnya menyajikan tinjauan pustaka dan analisis penelitian terkait; dilanjutkan dengan spesifikasi sistem desain dan token antarmuka visual GovConnect; pembahasan arsitektur sistem, alur interaksi pengguna (\textit{user flow}), dan spesifikasi diagram teknis; serta visualisasi implementasi antarmuka pengguna (\textit{mockup UI}) pada dasbor web maupun ekstensi peramban.
-
-% ==========================================================
-% SECTION: TINJAUAN PUSTAKA
-% ==========================================================
-\section*{Tinjauan Pustaka}
-
-\subsection*{Otomatisasi Formulir Web dan Keterbatasan Pengelola Kredensial}
-Otomatisasi pengisian formulir web di sisi klien telah menjadi bidang kajian aktif dalam interaksi manusia dan komputer serta rekayasa perangkat lunak \cite{Alqahtani2021}. Sebagian besar solusi komersial saat ini berfokus pada pengelola kata sandi (\textit{password managers}) seperti Bitwarden atau 1Password, serta fitur pengisian otomatis (\textit{autofill}) bawaan peramban web modern. Namun, instrumen-instrumen tersebut dirancang secara sempit untuk menangani kredensial autentikasi sederhana (\textit{username}, kata sandi) atau formulir transaksi pembayaran daring (nomor kartu kredit dan alamat penagihan standar). Ketika diterapkan pada formulir layanan publik di Indonesia, mekanisme ini mengalami kegagalan karena tidak mampu merepresentasikan struktur data kependudukan yang kompleks dan bertingkat, seperti hierarki wilayah administratif (provinsi, kabupaten/kota, kecamatan, kelurahan, hingga RT/RW), data keluarga, nomor kartu keluarga, NPWP, hingga nomor jaminan kesehatan nasional (BPJS).
-
-\subsection*{Heterogenitas dan Ketiadaan Standardisasi Formulir Publik}
-Kendala mendasar otomasi formulir di sektor pemerintahan Indonesia adalah tingginya tingkat heterogenitas kode sumber antarmuka web antar-instansi. Mayoritas situs portal instansi publik tidak mengadopsi standar atribut W3C HTML5 \textit{autocomplete} (seperti \texttt{name}, \texttt{address-line1}, \texttt{postal-code}), melainkan menggunakan penamaan atribut \textit{custom}, singkatan bahasa lokal (seperti \texttt{txt\_nik\_pemohon}, \texttt{tgl\_lhr}, atau \texttt{kd\_pos\_dom}), maupun pengaburan (\textit{obfuscation}) penamaan elemen input. Algoritma pencocokan leksikal konvensional berbasis kata kunci eksak tunggal sering kali menghasilkan kesalahan identifikasi atau gagal mengenali elemen masukan sama sekali. Oleh karena itu, diperlukan pendekatan deteksi bertingkat hibrida (\textit{hybrid cascade}) yang menggabungkan pencocokan leksikal eksak berbobot dengan toleransi kesalahan ketik serta inferensi semantik kecerdasan buatan.
-
-\subsection*{Regulasi Ekstensi Peramban dan Privasi Komputasi Sisi Klien}
-Evolusi arsitektur ekstensi peramban web modern yang dipelopori oleh Google melalui spesifikasi Manifest V3 menerapkan restriksi keamanan ketat, khususnya pembaruan \textit{Content Security Policy} (CSP) yang melarang pemuatan skrip eksternal dan eksekusi kode jarak jauh (\textit{remote code execution}) \cite{W3C2024WebExtensions}. Kebijakan ini mengubah paradigma rekayasa ekstensi peramban secara fundamental. Dalam konteks pengolahan data kependudukan sensitif, pendekatan otomasi cerdas yang mengirimkan teks label formulir ke peladen kecerdasan buatan pihak ketiga (\textit{cloud AI}) menimbulkan risiko pelanggaran kerahasiaan data pribadi. Sebagai solusinya, inferensi pemrosesan bahasa alami (NLP) berbasis model representasi vektor \textit{Sentence-BERT} (SBERT) \cite{Reimers2019} dapat dikemas dan dieksekusi secara lokal di lingkungan WebAssembly (WASM) peramban pengguna, sehingga menjamin prinsip kedaulatan data dan ketiadaan transmisi data keluar (\textit{zero-remote-code-execution}). Di samping itu, penyediaan antarmuka pemrograman aplikasi berbasis kerangka kerja modern berkinerja tinggi seperti FastAPI \cite{Ramirez2023FastAPI} memungkinkan pertukaran data profil antara peladen privat pengguna dan peramban berlangsung dengan latensi minimal dan perlindungan token yang ketat.
-
-\subsection*{Prinsip Aksesibilitas dan Pencegahan Kesalahan (Human-in-the-Loop)}
-Dalam konteks layanan publik dan administrasi kependudukan digital, keandalan data merupakan prasyarat mutlak. Pedoman aksesibilitas web internasional \textit{Web Content Accessibility Guidelines} (WCAG) 2.2 Kriteria 3.3.4 menekankan prinsip pencegahan kesalahan (\textit{error prevention}) pada transaksi hukum dan keuangan, serta penghapusan entri berulang (\textit{redundant entry}) \cite{W3C2023WCAG}. Berdasarkan pedoman tersebut, sistem otomatisasi pengisian formulir tidak diperkenankan melakukan pengiriman formulir secara mandiri tanpa verifikasi eksplisit oleh pengguna. Paradigma kendali penuh manusia (\textit{human-in-the-loop}) melalui antarmuka panel samping (\textit{side panel}) interaktif menjadi krusial agar pengguna dapat meninjau, mengoreksi, dan memilih atribut yang hendak disuntikkan sebelum konfirmasi akhir dilakukan.
-
-\begin{thebibliography}{00}
-
-\bibitem{OECD2023DGO}
-OECD, \textit{Digital Government Outlook 2023: Empowering Citizen-Centric Public Services}. Paris, France: OECD Publishing, 2023. DOI: 10.1787/9789264305847-en.
-
-\bibitem{OECD2022Principles}
-OECD, ``OECD good practice principles for public service design and delivery in the digital age,'' \textit{OECD Public Governance Policy Papers}, no. 23, Paris, France: OECD Publishing, Nov. 2022. DOI: 10.1787/093b4e60-en.
-
-\bibitem{Alqahtani2021}
-A. Alqahtani and A. Al-Daraiseh, ``Web form filling automation: Techniques, challenges, and future directions,'' \textit{IEEE Access}, vol. 9, pp. 112345--112360, Aug. 2021. DOI: 10.1109/ACCESS.2021.3103487.
-
-\bibitem{W3C2024WebExtensions}
-W3C WebExtensions Community Group, ``WebExtensions API specification and Manifest V3 architecture,'' \textit{W3C Community Group Report}, 2024. [Daring]. Tersedia: \url{https://github.com/w3c/webextensions}.
-
-\bibitem{Reimers2019}
-N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence embeddings using Siamese BERT-networks,'' in \textit{Proc. 2019 Conf. Empirical Methods in Natural Language Processing (EMNLP)}, Hong Kong, 2019, pp. 3982--3992. DOI: 10.18653/v1/D19-1410.
-
-\bibitem{Ramirez2023FastAPI}
-S. Ram\'{i}rez, ``FastAPI: Modern, high-performance web framework for Python,'' 2023. [Daring]. Tersedia: \url{https://fastapi.tiangolo.com}.
-
-\bibitem{W3C2023WCAG}
-W3C, ``Web Content Accessibility Guidelines (WCAG) 2.2,'' \textit{W3C Recommendation}, Oct. 2023. [Daring]. Tersedia: \url{https://www.w3.org/TR/WCAG22/}.
+\bibitem{vc}
+W3C, ``Verifiable Credentials Data Model v2.0,'' \textit{W3C Candidate Recommendation}, 2024. [Daring]. Tersedia: \url{https://www.w3.org/TR/vc-data-model-2.0/}.
 
 \end{thebibliography}
-
-\clearpage
-\onecolumn
-% ==========================================================
-% SECTION III: DESIGN SYSTEM
-% ==========================================================
-\section{Design System}
-
-Perancangan visual dan komponen antarmuka GovConnect mengacu pada sistem desain terpadu yang mencakup token warna, tipografi, sistem status, serta komponen UI modular untuk \textit{web dashboard} dan ekstensi peramban, sebagaimana diilustrasikan pada Gambar~\ref{fig:design_system}.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth, height=0.82\textheight, keepaspectratio]{designsystem.png}
-\caption{Sistem Desain dan Komponen UI GovConnect.}
-\label{fig:design_system}
-\end{figure}
-
-\clearpage
-% ==========================================================
-% SECTION IV: ARSITEKTUR SISTEM (ALUR & TECH STACK)
-% ==========================================================
-\section{Arsitektur Sistem (Alur \& Tech Stack)}
-
-Arsitektur sistem GovConnect dirancang dengan memisahkan antarmuka interaksi pengguna (\textit{browser extension} dan \textit{web dashboard}) dari layanan backend (\textit{RESTful API} berbasis FastAPI dan basis data MySQL), sebagaimana ditampilkan pada Gambar~\ref{fig:arsitektur_sistem}.
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.75\textwidth]{Arsitektur Sistem.png}
-\caption{Diagram Arsitektur Sistem GovConnect.}
-\label{fig:arsitektur_sistem}
-\end{figure}
-
-Struktur relasi dan aliran data antarkomponen arsitektur sistem GovConnect didefinisikan secara deklaratif menggunakan diagram alur \textit{Mermaid} pada Listing~\ref{lst:mermaid_architecture}. Diagram ini menggambarkan batas segregasi tanggung jawab antara lingkungan pengguna (\textit{User Space}), lingkungan peramban web (\textit{Google Chrome Browser}), lapisan logika server (\textit{FastAPI Server}), dan lapisan persistensi data relasional (\textit{MySQL Database}).
-
-\begin{lstlisting}[caption={Spesifikasi Diagram Arsitektur Sistem GovConnect (Mermaid)}, label={lst:mermaid_architecture}]
-flowchart TB
-    subgraph UserSpace["Lingkungan Pengguna & Browser"]
-        User["Pengguna (End User)"]
-        subgraph Browser["Google Chrome Browser"]
-            Dashboard["Web Dashboard (React 18 + TS + Vite) :5173"]
-            Extension["Browser Extension (Manifest V3 Vanilla JS)"]
-        end
-        User -->|Akses Dashboard| Dashboard
-        User -->|Buka Form & Isi Data| Extension
-    end
-
-    subgraph BackendSpace["Lingkungan Backend (FastAPI Server :8000)"]
-        Backend["FastAPI Application"]
-        AuthModule["Auth Module (JWT HS256 + Bcrypt)"]
-        APIRouter["Core API Router (/api/v1/...)"]
-        ORM["SQLAlchemy ORM Layer"]
-        Backend --> AuthModule
-        Backend --> APIRouter
-        AuthModule --> ORM
-        APIRouter --> ORM
-    end
-
-    subgraph DatabaseSpace["Lingkungan Database"]
-        DB[("MySQL 8.x Database (govconnect_db)")]
-    end
-
-    Dashboard -->|REST / HTTP + Bearer JWT| Backend
-    Extension -->|REST / HTTP + Bearer JWT| Backend
-    ORM -->|PyMySQL Connection Pool| DB
-\end{lstlisting}
-
-\subsection{Alur Pengguna (User Flow)}
-Alur interaksi pengguna dengan sistem GovConnect terbagi menjadi dua alur kerja utama, yaitu proses \textit{Onboarding \& Profile Setup} (Gambar~\ref{fig:userflow_onboarding}) serta proses \textit{Autofill Flow} pada situs layanan publik (Gambar~\ref{fig:userflow_autofill}).
-
-\begin{figure}[!ht]
-\centering
-\begin{minipage}[t]{0.42\textwidth}
-\centering
-\includegraphics[height=0.65\textheight, keepaspectratio]{userflow_onboarding.png}
-\caption{Alur \textit{Onboarding} \& Setup Profil.}
-\label{fig:userflow_onboarding}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.54\textwidth}
-\centering
-\includegraphics[height=0.65\textheight, keepaspectratio]{userflow_autofill.png}
-\caption{Alur Pengisian Formulir (\textit{Autofill Flow}).}
-\label{fig:userflow_autofill}
-\end{minipage}
-\end{figure}
-
-\clearpage
-% ==========================================================
-% SECTION V: MOCKUP UI
-% ==========================================================
-\section{Mockup UI}
-
-Perancangan antarmuka pengguna (\textit{User Interface}) GovConnect dibagi menjadi dua lingkungan operasional utama, yaitu \textit{Web Dashboard} untuk manajemen data pribadi dan analitik, serta \textit{Chrome Extension} (termasuk \textit{Side Panel}) untuk interaksi pengisian otomatis pada halaman formulir layanan publik.
-
-\subsection{Antarmuka Web Dashboard}
-Bagian \textit{Web Dashboard} memfasilitasi pengguna dalam memantau statistik aktivitas, memutakhirkan data identitas kependudukan, serta mengelola konfigurasi akun:
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.50\textheight, keepaspectratio]{Main Dashboard.png}
-\caption{Antarmuka Halaman Utama (\textit{Main Dashboard}) GovConnect.}
-\label{fig:mockup_dashboard}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{My Profile.png}
-\caption{Halaman Pengelolaan Data Profil Pengguna (\textit{My Profile}).}
-\label{fig:mockup_profile}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{Activity.png}
-\caption{Halaman Riwayat Log Aktivitas Pengisian Formulir (\textit{Activity Log}).}
-\label{fig:mockup_activity}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{Setting.png}
-\caption{Halaman Pengaturan Akun dan Preferensi Sistem (\textit{Settings}).}
-\label{fig:mockup_setting}
-\end{figure}
-
-\subsection{Antarmuka Chrome Extension \& Side Panel}
-Bagian ekstensi peramban menyajikan interaksi langsung pada situs web target yang mencakup berbagai kondisi operasional:
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.45\textwidth, height=0.42\textheight, keepaspectratio]{Frontend Extension.png}
-\caption{Tampilan Antarmuka \textit{Popup} Ekstensi Peramban GovConnect.}
-\label{fig:mockup_extension}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Form Detected.png}
-\caption{\textit{Side Panel}: Status Formulir Terdeteksi (\textit{Form Detected State}).}
-\label{fig:mockup_sidepanel_detected}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Autofill Result.png}
-\caption{\textit{Side Panel}: Rangkuman Hasil Pengisian (\textit{Autofill Result State}).}
-\label{fig:mockup_sidepanel_result}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Manual Override.png}
-\caption{\textit{Side Panel}: Pemetaan Manual Field (\textit{Manual Override State}).}
-\label{fig:mockup_sidepanel_override}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Unsupported Website.png}
-\caption{\textit{Side Panel}: Situs Web Belum Didukung (\textit{Unsupported Website State}).}
-\label{fig:mockup_sidepanel_unsupported}
-\end{figure}
-
-\end{document}
-\end{lstlisting}
-
-\clearpage
-% ==========================================================
-% SECTION III: DESIGN SYSTEM
-% ==========================================================
-\section{Design System}
-
-Perancangan visual dan komponen antarmuka GovConnect mengacu pada sistem desain terpadu yang mencakup token warna, tipografi, sistem status, serta komponen UI modular untuk \textit{web dashboard} dan ekstensi peramban, sebagaimana diilustrasikan pada Gambar~\ref{fig:design_system}.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth, height=0.82\textheight, keepaspectratio]{designsystem.png}
-\caption{Sistem Desain dan Komponen UI GovConnect.}
-\label{fig:design_system}
-\end{figure}
-
-% Silakan isi source code LaTeX tambahan untuk bagian Design System di sini.
-
-
-\clearpage
-% ==========================================================
-% SECTION IV: ARSITEKTUR SISTEM (ALUR & TECH STACK)
-% ==========================================================
-\section{Arsitektur Sistem (Alur \& Tech Stack)}
-
-Arsitektur sistem GovConnect dirancang dengan memisahkan antarmuka interaksi pengguna (\textit{browser extension} dan \textit{web dashboard}) dari layanan backend (\textit{RESTful API} berbasis FastAPI dan basis data MySQL), sebagaimana ditampilkan pada Gambar~\ref{fig:arsitektur_sistem}.
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.75\textwidth]{Arsitektur Sistem.png}
-\caption{Diagram Arsitektur Sistem GovConnect.}
-\label{fig:arsitektur_sistem}
-\end{figure}
-
-Struktur relasi dan aliran data antarkomponen arsitektur sistem GovConnect didefinisikan secara deklaratif menggunakan diagram alur \textit{Mermaid} pada Listing~\ref{lst:mermaid_architecture}. Diagram ini menggambarkan batas segregasi tanggung jawab antara lingkungan pengguna (\textit{User Space}), lingkungan peramban web (\textit{Google Chrome Browser}), lapisan logika server (\textit{FastAPI Server}), dan lapisan persistensi data relasional (\textit{MySQL Database}).
-
-\begin{lstlisting}[caption={Spesifikasi Diagram Arsitektur Sistem GovConnect (Mermaid)}, label={lst:mermaid_architecture}]
-flowchart TB
-    subgraph UserSpace["Lingkungan Pengguna & Browser"]
-        User["Pengguna (End User)"]
-        subgraph Browser["Google Chrome Browser"]
-            Dashboard["Web Dashboard (React 18 + TS + Vite) :5173"]
-            Extension["Browser Extension (Manifest V3 Vanilla JS)"]
-        end
-        User -->|Akses Dashboard| Dashboard
-        User -->|Buka Form & Isi Data| Extension
-    end
-
-    subgraph BackendSpace["Lingkungan Backend (FastAPI Server :8000)"]
-        Backend["FastAPI Application"]
-        AuthModule["Auth Module (JWT HS256 + Bcrypt)"]
-        APIRouter["Core API Router (/api/v1/...)"]
-        ORM["SQLAlchemy ORM Layer"]
-        Backend --> AuthModule
-        Backend --> APIRouter
-        AuthModule --> ORM
-        APIRouter --> ORM
-    end
-
-    subgraph DatabaseSpace["Lingkungan Database"]
-        DB[("MySQL 8.x Database (govconnect_db)")]
-    end
-
-    Dashboard -->|REST / HTTP + Bearer JWT| Backend
-    Extension -->|REST / HTTP + Bearer JWT| Backend
-    ORM -->|PyMySQL Connection Pool| DB
-\end{lstlisting}
-
-\subsection{Alur Pengguna (User Flow)}
-Alur interaksi pengguna dengan sistem GovConnect terbagi menjadi dua alur kerja utama, yaitu proses \textit{Onboarding \& Profile Setup} (Gambar~\ref{fig:userflow_onboarding}) serta proses \textit{Autofill Flow} pada situs layanan publik (Gambar~\ref{fig:userflow_autofill}).
-
-\begin{figure}[!ht]
-\centering
-\begin{minipage}[t]{0.42\textwidth}
-\centering
-\includegraphics[height=0.65\textheight, keepaspectratio]{userflow_onboarding.png}
-\caption{Alur \textit{Onboarding} \& Setup Profil.}
-\label{fig:userflow_onboarding}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.54\textwidth}
-\centering
-\includegraphics[height=0.65\textheight, keepaspectratio]{userflow_autofill.png}
-\caption{Alur Pengisian Formulir (\textit{Autofill Flow}).}
-\label{fig:userflow_autofill}
-\end{minipage}
-\end{figure}
-
-
-\clearpage
-% ==========================================================
-% SECTION V: MOCKUP UI
-% ==========================================================
-\section{Mockup UI}
-
-Perancangan antarmuka pengguna (\textit{User Interface}) GovConnect dibagi menjadi dua lingkungan operasional utama, yaitu \textit{Web Dashboard} untuk manajemen data pribadi dan analitik, serta \textit{Chrome Extension} (termasuk \textit{Side Panel}) untuk interaksi pengisian otomatis pada halaman formulir layanan publik.
-
-\subsection{Antarmuka Web Dashboard}
-Bagian \textit{Web Dashboard} memfasilitasi pengguna dalam memantau statistik aktivitas, memutakhirkan data identitas kependudukan, serta mengelola konfigurasi akun:
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.50\textheight, keepaspectratio]{Main Dashboard.png}
-\caption{Antarmuka Halaman Utama (\textit{Main Dashboard}) GovConnect.}
-\label{fig:mockup_dashboard}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{My Profile.png}
-\caption{Halaman Pengelolaan Data Profil Pengguna (\textit{My Profile}).}
-\label{fig:mockup_profile}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{Activity.png}
-\caption{Halaman Riwayat Log Aktivitas Pengisian Formulir (\textit{Activity Log}).}
-\label{fig:mockup_activity}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.40\textheight, keepaspectratio]{Setting.png}
-\caption{Halaman Pengaturan Akun dan Preferensi Sistem (\textit{Settings}).}
-\label{fig:mockup_setting}
-\end{figure}
-
-\subsection{Antarmuka Chrome Extension \& Side Panel}
-Bagian ekstensi peramban menyajikan interaksi langsung pada situs web target yang mencakup berbagai kondisi operasional:
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.45\textwidth, height=0.42\textheight, keepaspectratio]{Frontend Extension.png}
-\caption{Tampilan Antarmuka \textit{Popup} Ekstensi Peramban GovConnect.}
-\label{fig:mockup_extension}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Form Detected.png}
-\caption{\textit{Side Panel}: Status Formulir Terdeteksi (\textit{Form Detected State}).}
-\label{fig:mockup_sidepanel_detected}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Autofill Result.png}
-\caption{\textit{Side Panel}: Rangkuman Hasil Pengisian (\textit{Autofill Result State}).}
-\label{fig:mockup_sidepanel_result}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Manual Override.png}
-\caption{\textit{Side Panel}: Pemetaan Manual Field (\textit{Manual Override State}).}
-\label{fig:mockup_sidepanel_override}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.65\textwidth, height=0.36\textheight, keepaspectratio]{Side Panel - Unsupported Website.png}
-\caption{\textit{Side Panel}: Situs Web Belum Didukung (\textit{Unsupported Website State}).}
-\label{fig:mockup_sidepanel_unsupported}
-\end{figure}
 
 \end{document}

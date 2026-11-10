@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.9.7)  30 SEP 2026 14:34
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.9.7)  4 NOV 2026 21:19
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -580,7 +580,7 @@ Package hyperref Info: Link coloring ON on input line 52.
 \@outlinefile=\write3
 \openout3 = `"GOV Connect.out"'.
 
-<pens_logo.png, id=27, 392.46625pt x 373.395pt>
+<pens_logo.png, id=83, 392.46625pt x 373.395pt>
 File: pens_logo.png Graphic file (type png)
 <use pens_logo.png>
 Package pdftex.def Info: pens_logo.png  used on input line 72.
@@ -643,91 +643,348 @@ LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 1
 (C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ot1pcr.f
 d
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+) [2]
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Chromium MV3
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Orkestrasi sik-lus
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 sinkro-nisasi to-ken
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Transformers.js,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 Sentence-BERT
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 (all-MiniLM-L6-v2),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 kalku-lasi co-sine
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 sim-i-lar-ity tanpa
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 HTML5, Tail-wind
+ []
+
+
+Underfull \hbox (badness 6625) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Antarmuka in-ter-aksi
+ []
+
+
+Underfull \hbox (badness 2334) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 pemetaan, penye-sua-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 HTML5, Tail-wind
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Antarmuka ringkas
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 koneksi back-end,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Dasbor man-a-je-men
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 45 atribut data
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 vi-su-al-isasi anal-i-tik
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 ak-tiv-i-tas, dan
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 FastAPI (Python
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 asinkron, ver-i-fikasi
+ []
+
+
+Underfull \hbox (badness 3884) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 to-ken JWT HS256,
+ []
+
+
+Underfull \hbox (badness 2726) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 val-i-dasi skema data
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+[]|\OT1/ptm/m/n/7 Persistensi data
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 pro-fil peng-guna
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
+\OT1/ptm/m/n/7 kepen-dudukan, log
+ []
+
+
+Underfull \hbox (badness 2253) in paragraph at lines 223--224
+\OT1/ptm/m/n/10 de-pan dalam men-ganal-i-sis doku-men web tar-get. Proses
+ []
+
+
+Underfull \hbox (badness 1418) in paragraph at lines 223--224
+\OT1/ptm/m/n/10 ini diorkestrasi oleh \OT1/pcr/m/n/10 content_script.js \OT1/pt
+m/m/n/10 yang diek-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 228--229
+[]\OT1/ptm/m/n/10 Atribut ak-sesi-bil-i-tas W3C ARIA: \OT1/pcr/m/n/10 aria-labe
+l\OT1/ptm/m/n/10 ,
+ []
+
+[3]
+Underfull \hbox (badness 2065) in paragraph at lines 229--230
+[]\OT1/ptm/m/n/10 Teks la-bel terkait: el-e-men \OT1/pcr/m/n/10 <label> \OT1/pt
+m/m/n/10 yang ter-hubung
+ []
+
+
+Underfull \hbox (badness 2302) in paragraph at lines 233--234
+\OT1/ptm/m/n/10 yang dikom-bi-nasikan den-gan teknik \OT1/ptm/m/it/10 de-bounc-
+ing \OT1/ptm/m/n/10 sebe-sar
+ []
+
+
+Underfull \hbox (badness 2027) in paragraph at lines 243--243
+\OT1/ptm/m/n/8 Script: traver-sal po-hon DOM se-cara rekur-sif men-em-bus batas
+
+ []
+
+
+Underfull \hbox (badness 2005) in paragraph at lines 243--243
+\OT1/ptm/m/n/8 data kon-tek-stual (tag, atribut tek-nis, atribut ak-sesi-bil-i-
+tas W3C
+ []
+
+
+Underfull \hbox (badness 4328) in paragraph at lines 251--252
+[]\OT1/ptm/b/n/10 Pass 0 (Pen-car-ian Stan-dar W3C Au-to-com-plete):
+ []
+
+
+Underfull \hbox (badness 2941) in paragraph at lines 251--252
+\OT1/ptm/m/n/10 tar to-ken stan-dar HTML5 [[][]10[][]], seperti \OT1/pcr/m/n/10
+ given-name\OT1/ptm/m/n/10 ,
+ []
+
+LaTeX Font Info:    Trying to load font information for TS1+pcr on input line 2
+53.
+
+(C:\Users\Andharu Raffi\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ts1pcr.f
+d
+File: ts1pcr.fd 2001/06/04 font definitions for TS1/pcr.
 )
-Underfull \hbox (badness 2237) in paragraph at lines 171--172
+Underfull \hbox (badness 1776) in paragraph at lines 253--254
+\OT1/ptm/b/n/10 Warisan): \OT1/ptm/m/n/10 Pada por-tal in-stansi pe-mer-in-tah 
+berba-sis sis-
+ []
+
+
+Underfull \hbox (badness 6047) in paragraph at lines 253--254
+\OT1/ptm/m/n/10 tem warisan (ASP, JSP, atau ERP lama), pe-na-maan
+ []
+
+
+Underfull \hbox (badness 1762) in paragraph at lines 253--254
+\OT1/ptm/m/n/10 atribut ser-ing kali meng-gu-nakan pre-fiks nu-merik uru-tan
+ []
+
+
+Underfull \hbox (badness 3049) in paragraph at lines 253--254
+\OT1/ptm/m/n/10 ba-sis data atau singkatan lokal ter-po-tong. Gov-Con-nect
+ []
+
+
+Underfull \hbox (badness 3000) in paragraph at lines 253--254
+\OT1/pcr/m/n/10 ctl00\TS1/pcr/m/n/10 $\OT1/ptm/m/n/10 , \OT1/pcr/m/n/10 inp_\OT
+1/ptm/m/n/10 ) dan melakukan ekspansi ter-hadap 29
+ []
+
+
+Underfull \hbox (badness 1558) in paragraph at lines 253--254
+\OMS/cmsy/m/n/10 !$ \OT1/pcr/m/n/10 driver_license\OT1/ptm/m/n/10 , \OT1/pcr/m/
+n/10 birth_pl $\OMS/cmsy/m/n/10 !$ \OT1/pcr/m/n/10 birth_place\OT1/ptm/m/n/10 ,
+
+ []
+
+
+Underfull \hbox (badness 7704) in paragraph at lines 262--263
+[]\OT1/pcr/m/n/10 hasIbu\OT1/ptm/m/n/10 : melarang la-bel yang men-gan-dung kat
+a
+ []
+
+
+Underfull \hbox (badness 2285) in paragraph at lines 264--265
+[]\OT1/pcr/m/n/10 hasDarurat\OT1/ptm/m/n/10 : melarang kon-tak daru-rat memetak
+an
+ []
+
+
+Underfull \hbox (badness 1365) in paragraph at lines 277--278
+\OT1/ptm/m/n/10 S^^\rensen-Dice ($[]$) den-gan pe-nam-ba-han bobot do-main
+ []
+
+[4]
+Underfull \hbox (badness 3000) in paragraph at lines 305--306
+[]\OT1/ptm/m/n/10 Setelah proses pemetaan se-le-sai, ni-lai pro-fil di-in-jek-
+ []
+
+
+Underfull \hbox (badness 3919) in paragraph at lines 305--306
+\OT1/ptm/m/n/10 sikan se-cara vi-sual ke el-e-men tar-get. Kerangka kerja
+ []
+
+
+Underfull \hbox (badness 2452) in paragraph at lines 307--308
+[]\OT1/ptm/b/n/10 Penolakan Mut-lak Perangkap Kre-den-sial (\OT1/ptm/b/it/10 Se
+-cu-rity
+ []
+
+
+Underfull \hbox (badness 1603) in paragraph at lines 309--310
+[]\OT1/ptm/b/n/10 Skema Pen-gen-dalian Manu-sia (\OT1/ptm/b/it/10 Human-in-the-
+Loop\OT1/ptm/b/n/10 ):
+ []
+
+
+Underfull \hbox (badness 2409) in paragraph at lines 314--315
+[]\OT1/ptm/b/n/10 Chrome Ex-ten-sion Side Panel: \OT1/ptm/m/n/10 Menya-jikan an
+-tar-
+ []
+
+
+Underfull \hbox (badness 5607) in paragraph at lines 314--315
+\OT1/ptm/m/n/10 muka kon-tek-stual pada sisi per-am-ban yang men-
+ []
+
+[5]
+Underfull \hbox (badness 4899) in paragraph at lines 368--368
+[]|\OT1/ptm/m/n/7 Python 3.11.9, FastAPI 0.110.0, Uvi-corn 0.28.0,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 368--368
+[]|\OT1/ptm/m/n/7 ONNX Run-time We-bAssem-bly (single-threaded,
+ []
+
+
+Underfull \hbox (badness 1616) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Menembus hi-er-arki open Shadow DOM se-cara
+ []
+
+
+Underfull \hbox (badness 3635) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 MutationObserver &
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Prefix Strip-per &
+ []
+
+
+Underfull \hbox (badness 2418) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Menghapus pre-fiks nu-merik/vendor dan men-er-
+ []
+
+
+Underfull \hbox (badness 1406) in paragraph at lines 396--396
+\OT1/ptm/m/n/7 jemahkan 29 singkatan warisan den-gan akurasi
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Option-Profiled
+ []
+
+
+Underfull \hbox (badness 2970) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Mengidentifikasi drop-down tang-gal, bu-lan, dan
+ []
+
+
+Underfull \hbox (badness 1609) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Scoped Con-text Ve-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Offscreen SBERT
+ []
+
+
+Underfull \hbox (badness 7722) in paragraph at lines 396--396
+[]|\OT1/ptm/m/n/7 Menampilkan pre-view pemetaan, mem-fasil-i-tasi
+ []
+
+
+Underfull \vbox (badness 1215) has occurred while \output is active []
+
+ [6]
+Underfull \hbox (badness 1783) in paragraph at lines 453--454
+\OT1/ptm/m/n/10 memadukan ar-sitek-tur bert-ingkat Man-i-fest V3, pipa de-
+ []
+
+
+Underfull \hbox (badness 2237) in paragraph at lines 469--470
 []\OT1/ptm/m/n/8 OECD, \OT1/ptm/m/it/8 Dig-i-tal Gov-ern-ment Out-look 2023: Em
 -pow-er-ing Citizen-
  []
 
-[2] [3
-
-] [4
-
-
-]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [5]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [6]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [7]
-<userflow_onboarding.png, id=289, 347.2975pt x 1289.81876pt>
-File: userflow_onboarding.png Graphic file (type png)
-<use userflow_onboarding.png>
-Package pdftex.def Info: userflow_onboarding.png  used on input line 456.
-(pdftex.def)             Requested size: 117.60794pt x 436.7959pt.
-<userflow_autofill.png, id=290, 620.3175pt x 2041.6275pt>
-File: userflow_autofill.png Graphic file (type png)
-<use userflow_autofill.png>
-Package pdftex.def Info: userflow_autofill.png  used on input line 463.
-(pdftex.def)             Requested size: 132.71255pt x 436.7959pt.
-
-[8] [9 <./userflow_onboarding.png> <./userflow_autofill.png>]
-<./Frontend/Main Dashboard.png, id=357, 1460.45625pt x 2150.0325pt>
-File: ./Frontend/Main Dashboard.png Graphic file (type png)
-<use ./Frontend/Main Dashboard.png>
-Package pdftex.def Info: ./Frontend/Main Dashboard.png  used on input line 482.
-
-(pdftex.def)             Requested size: 228.21802pt x 335.97456pt.
-<./Frontend/My Profile.png, id=358, 1460.45625pt x 1851.91875pt>
-File: ./Frontend/My Profile.png Graphic file (type png)
-<use ./Frontend/My Profile.png>
-Package pdftex.def Info: ./Frontend/My Profile.png  used on input line 489.
-(pdftex.def)             Requested size: 211.97244pt x 268.7898pt.
-<./Frontend/Activity.png, id=359, 1460.45625pt x 1495.5875pt>
-File: ./Frontend/Activity.png Graphic file (type png)
-<use ./Frontend/Activity.png>
-Package pdftex.def Info: ./Frontend/Activity.png  used on input line 496.
-(pdftex.def)             Requested size: 262.46965pt x 268.78336pt.
-<./Frontend/Setting.png, id=360, 1460.45625pt x 1791.69376pt>
-File: ./Frontend/Setting.png Graphic file (type png)
-<use ./Frontend/Setting.png>
-Package pdftex.def Info: ./Frontend/Setting.png  used on input line 503.
-(pdftex.def)             Requested size: 219.08127pt x 268.7698pt.
-<./Frontend/Frontend Extension.png, id=361, 1027.84pt x 1652.1725pt>
-File: ./Frontend/Frontend Extension.png Graphic file (type png)
-<use ./Frontend/Frontend Extension.png>
-Package pdftex.def Info: ./Frontend/Frontend Extension.png  used on input line 
-513.
-(pdftex.def)             Requested size: 175.5774pt x 282.22696pt.
-<./Frontend/Side Panel - Form Detected.png, id=362, 1284.8pt x 927.465pt>
-File: ./Frontend/Side Panel - Form Detected.png Graphic file (type png)
-<use ./Frontend/Side Panel - Form Detected.png>
-Package pdftex.def Info: ./Frontend/Side Panel - Form Detected.png  used on inp
-ut line 520.
-(pdftex.def)             Requested size: 335.11836pt x 241.91357pt.
-<./Frontend/Side Panel - Autofill Result.png, id=363, 1284.8pt x 1200.485pt>
-File: ./Frontend/Side Panel - Autofill Result.png Graphic file (type png)
-<use ./Frontend/Side Panel - Autofill Result.png>
-Package pdftex.def Info: ./Frontend/Side Panel - Autofill Result.png  used on i
-nput line 527.
-(pdftex.def)             Requested size: 258.89629pt x 241.90622pt.
-<./Frontend/Side Panel - Manual Override.png, id=364, 1296.845pt x 1104.125pt>
-File: ./Frontend/Side Panel - Manual Override.png Graphic file (type png)
-<use ./Frontend/Side Panel - Manual Override.png>
-Package pdftex.def Info: ./Frontend/Side Panel - Manual Override.png  used on i
-nput line 534.
-(pdftex.def)             Requested size: 284.13928pt x 241.91425pt.
-<./Frontend/Side Panel - Unsupported Website.png, id=365, 1284.8pt x 923.45pt>
-File: ./Frontend/Side Panel - Unsupported Website.png Graphic file (type png)
-<use ./Frontend/Side Panel - Unsupported Website.png>
-Package pdftex.def Info: ./Frontend/Side Panel - Unsupported Website.png  used 
-on input line 541.
-(pdftex.def)             Requested size: 335.39282pt x 241.06358pt.
-
+[7]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -739,37 +996,43 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[10
+[8
 
- <./Frontend/Main Dashboard.png>] [11 <./Frontend/My Profile.png> <./Frontend/A
-ctivity.png>] [12 <./Frontend/Setting.png> <./Frontend/Frontend Extension.png>]
- [13 <./Frontend/Side Panel - Form Detected.png> <./Frontend/Side Panel - Autof
-ill Result.png>] [14 <./Frontend/Side Panel - Manual Override.png> <./Frontend/
-Side Panel - Unsupported Website.png>] (GOV Connect.aux)
+] (GOV Connect.aux)
  ***********
 LaTeX2e <2026-06-01>
 L3 programming layer <2026-08-10>
  ***********
 Package rerunfilecheck Info: File `"GOV Connect".out' has not changed.
-(rerunfilecheck)             Checksum: 77FD5E6AE616FE82F3CA40E193B9BEA5;931.
+(rerunfilecheck)             Checksum: 7F175C3639AD82C60EBE03DB885BDB0A;4883.
  ) 
 Here is how much of TeX's memory you used:
- 13930 strings out of 467441
- 219545 string characters out of 5403668
- 1593038 words of memory out of 5000000
- 42771 multiletter control sequences out of 15000+600000
- 677110 words of font info for 134 fonts, out of 8000000 for 9000
+ 13447 strings out of 467441
+ 211770 string characters out of 5403668
+ 660338 words of memory out of 5000000
+ 42490 multiletter control sequences out of 15000+600000
+ 686863 words of font info for 157 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 74i,9n,79p,1876b,1972s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier
-/ucrr8a.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/u
-rw/times/utmb8a.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts
-/type1/urw/times/utmbi8a.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiK
-TeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Andharu Raffi/AppData/Local/Prog
-rams/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on "GOV Connect.pdf" (15 pages, 1976992 bytes).
+ 74i,12n,79p,1829b,610s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsf
+onts/cm/cmbx10.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/
+type1/public/amsfonts/cm/cmex10.pfb><C:/Users/Andharu Raffi/AppData/Local/Progr
+ams/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Andharu Raffi/Ap
+pData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/
+Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr1
+0.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/public/
+amsfonts/cm/cmr7.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/font
+s/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Andharu Raffi/AppData/Local/Pro
+grams/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/Andharu Raffi/A
+ppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrr8a.pfb><C:/Users/Andha
+ru Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Use
+rs/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmbi8a.pf
+b><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/u
+tmr8a.pfb><C:/Users/Andharu Raffi/AppData/Local/Programs/MiKTeX/fonts/type1/urw
+/times/utmri8a.pfb>
+Output written on "GOV Connect.pdf" (9 pages, 289426 bytes).
 PDF statistics:
- 492 PDF objects out of 1000 (max. 8388607)
- 296 named destinations out of 1000 (max. 500000)
- 109 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 295 PDF objects out of 1000 (max. 8388607)
+ 76 named destinations out of 1000 (max. 500000)
+ 166 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -90,7 +90,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins_list,
     allow_origin_regex=getattr(settings, "CORS_ORIGIN_REGEX", None),
     allow_credentials=True,
-    # Metode dibatasi (bukan "*") — hanya yang benar-benar dipakai aplikasi.
+    # Metode dibatasi (bukan "*") â€” hanya yang benar-benar dipakai aplikasi.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # Header dibatasi ke yang dipakai (Authorization, Content-Type, dsb).
     allow_headers=[
@@ -106,7 +106,30 @@ app.add_middleware(
 
 
 # ============================================================
-# Security Headers (T5) — defense-in-depth untuk seluruh respons
+# CSRF Protection Middleware (Cookie-based State Mutating Requests)
+# ============================================================
+@app.middleware("http")
+async def csrf_protection_middleware(request: Request, call_next):
+    # Endpoint autentikasi publik (login & register) tidak memodifikasi data sesi yang ada
+    if request.url.path.endswith("/auth/login") or request.url.path.endswith("/auth/register"):
+        return await call_next(request)
+
+    # Hanya periksa metode mutasi yang mengandalkan Cookie (tanpa Authorization Bearer)
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        auth_header = request.headers.get("Authorization")
+        has_cookie = settings.COOKIE_NAME in request.cookies
+        if has_cookie and not (auth_header and auth_header.startswith("Bearer ")):
+            x_requested_with = request.headers.get("X-Requested-With")
+            if not x_requested_with or x_requested_with.lower() != "xmlhttprequest":
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={"detail": "CSRF protection: Header X-Requested-With diperlukan untuk permintaan berbasis cookie."}
+                )
+    return await call_next(request)
+
+
+# ============================================================
+# Security Headers (T5) â€” defense-in-depth untuk seluruh respons
 # ============================================================
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):

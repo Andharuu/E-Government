@@ -147,10 +147,14 @@ if (message.action === "SEMANTIC_FALLBACK") {
         try {
             // Jika label sudah pernah dihitung, langsung ambil dari cache! (Bypass SBERT)
             if (semanticCache.has(message.label)) {
+                const cachedResult = semanticCache.get(message.label);
+                try {
+                    sendResponse({ profileKey: cachedResult, cached: true });
+                } catch (e) {}
                 chrome.runtime.sendMessage({
                     action: "SEMANTIC_RESULT",
                     targetElementId: message.targetElementId,
-                    profileKey: semanticCache.get(message.label)
+                    profileKey: cachedResult
                 }).catch(() => {});
                 return;
             }
@@ -161,6 +165,9 @@ if (message.action === "SEMANTIC_FALLBACK") {
             // Simpan hasilnya ke memori agar perhitungan berikutnya instan
             semanticCache.set(message.label, result);
 
+            try {
+                sendResponse({ profileKey: result });
+            } catch (e) {}
             chrome.runtime.sendMessage({
                 action: "SEMANTIC_RESULT",
                 targetElementId: message.targetElementId,
@@ -168,6 +175,9 @@ if (message.action === "SEMANTIC_FALLBACK") {
             }).catch(() => {});
         } catch (err) {
             console.error("Offscreen: Semantic Fallback Error", err);
+            try {
+                sendResponse({ profileKey: null, error: err?.message });
+            } catch (e) {}
             chrome.runtime.sendMessage({
                 action: "SEMANTIC_RESULT",
                 targetElementId: message.targetElementId,

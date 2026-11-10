@@ -1,9 +1,30 @@
 import axios from 'axios';
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
+let rawBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
+
+// Dynamic host alignment: jika frontend dibuka lewat localhost atau 127.0.0.1,
+// samakan hostname API agar browser memperlakukannya sebagai Same-Site
+// dan cookie HttpOnly (SameSite=Lax) tidak diblokir oleh Chromium.
+if (typeof window !== 'undefined') {
+  try {
+    const currentHost = window.location.hostname;
+    const apiUrl = new URL(rawBase);
+    if ((currentHost === 'localhost' || currentHost === '127.0.0.1') &&
+        (apiUrl.hostname === 'localhost' || apiUrl.hostname === '127.0.0.1')) {
+      apiUrl.hostname = currentHost;
+      rawBase = apiUrl.toString().replace(/\/+$/, '');
+    }
+  } catch {}
+}
+
+export const API_BASE = rawBase;
 
 const api = axios.create({
   baseURL: API_BASE,
+  withCredentials: true,
+  headers: {
+    'X-Requested-With': 'XMLHttpRequest',
+  },
 });
 
 api.interceptors.request.use((config) => {
@@ -17,7 +38,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+    const url = error.config?.url || '';
+    // Jangan picu event kedaluwarsa sesi untuk panggilan autentikasi probe awal (/auth/me, /auth/login, /auth/register)
+    // atau jika pengguna memang sedang berada di halaman login/register
+    const isAuthProbe = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/me');
+    const isAuthPage = typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/login') ||
+      window.location.pathname.startsWith('/register')
+    );
+
+    if (error.response?.status === 401 && !isAuthProbe && !isAuthPage) {
       localStorage.removeItem('govconnect_token');
       localStorage.removeItem('govconnect_email');
       if (typeof window !== 'undefined') {
@@ -290,6 +320,7 @@ export const authApi = {
     });
   },
   me: () => api.get<User>('/auth/me'),
+  logout: () => api.post<{ detail: string }>('/auth/logout'),
   changePassword: (old_password: string, new_password: string) =>
     api.post<{ detail: string }>('/auth/change-password', { old_password, new_password }),
 };

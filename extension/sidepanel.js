@@ -1,4 +1,4 @@
-// Side Panel Script — GovConnect
+// Side Panel Script â€” GovConnect
 // Asisten Autofill Cerdas dengan Transisi Fluid Scanning & Sinkronisasi Real-Time
 
 var API_BASE = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.API_BASE) || "http://127.0.0.1:8000/api/v1";
@@ -32,6 +32,10 @@ let allDetectedResult = null;
 let currentActiveScreen = "screenDetect";
 let isAutofillingInProgress = false;
 let userSelectedMap = {};
+let isScanningActive = false;
+let hasPendingScan = false;
+let formUpdateDebounceTimer = null;
+let detectedFrameId = 0;
 
 function parseBirthDate(dateStr) {
   if (!dateStr) return { day: "", month: "", year: "" };
@@ -386,7 +390,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     if (currentActiveScreen !== "screenResult") {
       await detectPageFieldsWithFluidScan();
     }
-    showStatus("✓ Data profil berhasil diperbarui!");
+    showStatus("âœ“ Data profil berhasil diperbarui!");
     setTimeout(() => showStatus(""), 3000);
   }
 
@@ -394,7 +398,14 @@ chrome.runtime.onMessage.addListener(async (message) => {
     if (currentActiveScreen === "screenResult" || isAutofillingInProgress) {
       return;
     }
-    detectPageFieldsWithFluidScan();
+    clearTimeout(formUpdateDebounceTimer);
+    formUpdateDebounceTimer = setTimeout(() => {
+      if (isScanningActive) {
+        hasPendingScan = true;
+        return;
+      }
+      detectPageFieldsWithFluidScan();
+    }, 350);
   }
 });
 
@@ -435,46 +446,63 @@ function updatePageHeader(tab) {
 // FLUID SCANNING TRANSITION: Pindai halaman dengan animasi jeda
 // ============================================================
 async function detectPageFieldsWithFluidScan() {
-  currentTab = await getActiveTab();
-  if (!currentTab?.id) {
-    showScreen("screenUnsupported");
+  if (isScanningActive) {
+    hasPendingScan = true;
     return;
   }
-
-  if (currentTab.url?.startsWith("chrome://") || currentTab.url?.startsWith("chrome-extension://")) {
-    showScreen("screenUnsupported");
-    return;
-  }
-
-  updatePageHeader(currentTab);
-
-  // 1. Tampilkan layar pemindaian fluid dengan animasi progress & jeda elegan
-  showScreen("screenScanning");
-  setScanPhase("form", "Memindai Formulir Web...", "Menganalisis elemen input formulir dan atribut semantik...", "45%");
-
-  // Jeda fluid awal (200ms)
-  await new Promise(r => setTimeout(r, 200));
+  isScanningActive = true;
 
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId: currentTab.id },
-      files: ["content_script.js"]
-    }).catch(() => {});
+    currentTab = await getActiveTab();
+    if (!currentTab?.id) {
+      showScreen("screenUnsupported");
+      return;
+    }
 
-    setScanPhase("form", "Mencocokkan Profil Kependudukan...", "Memvalidasi NIK, nama lengkap, dan berkas foto terenkripsi...", "80%");
+    if (currentTab.url?.startsWith("chrome://") || currentTab.url?.startsWith("chrome-extension://")) {
+      showScreen("screenUnsupported");
+      return;
+    }
 
-    // Jeda transisi kedua (250ms)
-    await new Promise(r => setTimeout(r, 250));
+    updatePageHeader(currentTab);
 
-    const result = await sendMessageToTab(currentTab.id, {
+    // Tampilkan layar pemindaian
+    showScreen("screenScanning");
+    setScanPhase("form", "Memindai Formulir...", "Menganalisis kolom input web...", "60%");
+
+    // 1. Coba kirim pesan deteksi langsung ke top frame ({ frameId: 0 }) agar respon tidak dicuri oleh iklan/iframe lain
+    let result = await sendMessageToTab(currentTab.id, {
       action: "DETECT_FIELDS",
       profile: cachedProfile
-    });
+    }, 2500, { frameId: 0 });
 
-    setScanPhase("form", "Pemindaian Selesai", "Menyiapkan daftar kolom formulir...", "100%");
+    // 2. Fallback: Jika tab belum memuat content script pada frameId 0, suntikkan sekali
+    if (!result) {
+      await chrome.scripting.executeScript({
+        target: { tabId: currentTab.id, frameIds: [0] },
+        files: ["content_script.js"]
+      }).catch(() => {});
 
-    // Jeda akhir agar transisi terasa halus sebelum layar beralih (200ms)
-    await new Promise(r => setTimeout(r, 200));
+      result = await sendMessageToTab(currentTab.id, {
+        action: "DETECT_FIELDS",
+        profile: cachedProfile
+      }, 2500, { frameId: 0 });
+    }
+
+    if (result && (result.matched > 0 || result.hiddenMatchedCount > 0)) {
+      detectedFrameId = 0;
+    } else {
+      // 3. Fallback jika frameId: 0 tidak memiliki form cocok sama sekali, cek child frames (broadcast)
+      const broadcastResult = await sendMessageToTab(currentTab.id, {
+        action: "DETECT_FIELDS",
+        profile: cachedProfile
+      }, 2500);
+
+      if (broadcastResult && (broadcastResult.matched > 0 || broadcastResult.hiddenMatchedCount > 0)) {
+        result = broadcastResult;
+        detectedFrameId = null;
+      }
+    }
 
     if (!result || result.total === 0 || (result.matched === 0 && result.hiddenMatchedCount === 0)) {
       showScreen("screenUnsupported");
@@ -488,6 +516,16 @@ async function detectPageFieldsWithFluidScan() {
   } catch (err) {
     console.warn("Scan failed:", err);
     showScreen("screenUnsupported");
+  } finally {
+    isScanningActive = false;
+    if (hasPendingScan) {
+      hasPendingScan = false;
+      setTimeout(() => {
+        if (!isAutofillingInProgress && currentActiveScreen !== "screenResult") {
+          detectPageFieldsWithFluidScan();
+        }
+      }, 200);
+    }
   }
 }
 
@@ -604,18 +642,20 @@ function renderFieldList() {
     // Highlight pada hover di tab web
     item.addEventListener("mouseenter", () => {
       if (currentTab?.id && field.profileKey) {
+        const targetOpts = (typeof detectedFrameId === "number") ? { frameId: detectedFrameId } : null;
         sendMessageToTab(currentTab.id, {
           action: "HOVER_FIELD",
           profileKey: field.profileKey,
           name: field.name,
           id: field.id
-        });
+        }, 1500, targetOpts);
       }
     });
 
     item.addEventListener("mouseleave", () => {
       if (currentTab?.id) {
-        sendMessageToTab(currentTab.id, { action: "UNHOVER_FIELD" });
+        const targetOpts = (typeof detectedFrameId === "number") ? { frameId: detectedFrameId } : null;
+        sendMessageToTab(currentTab.id, { action: "UNHOVER_FIELD" }, 1500, targetOpts);
       }
     });
 
@@ -658,11 +698,12 @@ function syncMarkersWithCheckedFields() {
     return detectedFields[idx]?.profileKey;
   }).filter(Boolean);
 
+  const targetOpts = (typeof detectedFrameId === "number") ? { frameId: detectedFrameId } : null;
   sendMessageToTab(currentTab.id, {
     action: "UPDATE_ACTIVE_MARKERS",
     activeKeys: activeKeys,
     profile: cachedProfile
-  });
+  }, 3000, targetOpts);
 }
 
 // ============================================================
@@ -712,16 +753,17 @@ async function executeAutofill() {
   try {
     if (currentTab?.id) {
       await chrome.scripting.executeScript({
-        target: { tabId: currentTab.id },
+        target: { tabId: currentTab.id, ...(typeof detectedFrameId === "number" ? { frameIds: [detectedFrameId] } : {}) },
         files: ["content_script.js"]
       }).catch(() => {});
     }
 
+    const targetOpts = (typeof detectedFrameId === "number") ? { frameId: detectedFrameId } : null;
     const result = await sendMessageToTab(currentTab.id, {
       action: "EXECUTE_AUTOFILL",
       profile: selectedProfile,
       targetFields: targetFields
-    }, 15000);
+    }, 15000, targetOpts);
 
     if (!result) throw new Error("Tidak ada respons dari halaman");
 
@@ -738,7 +780,7 @@ async function executeAutofill() {
           try {
             const parsed = new URL(currentTab.url);
             domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
-            // T7: buang query string & fragment — dapat memuat data sensitif/PII.
+            // T7: buang query string & fragment â€” dapat memuat data sensitif/PII.
             safeTargetUrl = parsed.origin && parsed.origin !== "null"
               ? `${parsed.origin}${parsed.pathname}`
               : `${parsed.protocol}//${parsed.pathname}`;
@@ -779,7 +821,7 @@ async function executeAutofill() {
     isAutofillingInProgress = false;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "⚡ Isi Formulir Otomatis";
+      btn.textContent = "âš¡ Isi Formulir Otomatis";
     }
   }
 }
@@ -967,7 +1009,7 @@ function showStatus(msg) {
 function truncate(str, n) {
   if (!str) return "";
   const s = str.toString();
-  return s.length > n ? s.substring(0, n) + "…" : s;
+  return s.length > n ? s.substring(0, n) + "â€¦" : s;
 }
 
 function formatFieldLabel(key) {
@@ -1018,7 +1060,7 @@ function formatFieldLabel(key) {
   return map[key] || customFieldLabels[key] || key;
 }
 
-function sendMessageToTab(tabId, message, timeoutMs = 5000) {
+function sendMessageToTab(tabId, message, timeoutMs = 5000, options = null) {
   return new Promise((resolve) => {
     let done = false;
     const timer = setTimeout(() => {
@@ -1034,7 +1076,8 @@ function sendMessageToTab(tabId, message, timeoutMs = 5000) {
           chrome.runtime.sendMessage({
             action: "FORWARD_TO_TAB",
             tabId: tabId,
-            tabMessage: message
+            tabMessage: message,
+            options: options
           }, (response) => {
             if (!done) {
               done = true;
@@ -1054,7 +1097,7 @@ function sendMessageToTab(tabId, message, timeoutMs = 5000) {
 
     try {
       if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.sendMessage) {
-        chrome.tabs.sendMessage(tabId, message, (response) => {
+        const cb = (response) => {
           if (!done) {
             if (chrome.runtime.lastError || !response) {
               tryForwardViaBackground();
@@ -1064,7 +1107,13 @@ function sendMessageToTab(tabId, message, timeoutMs = 5000) {
               resolve(response);
             }
           }
-        });
+        };
+
+        if (options && typeof options === "object") {
+          chrome.tabs.sendMessage(tabId, message, options, cb);
+        } else {
+          chrome.tabs.sendMessage(tabId, message, cb);
+        }
         return;
       }
     } catch (e) {}
@@ -1093,6 +1142,26 @@ function escapeHtml(str) {
 // ============================================================
 async function tryAutoSyncFromOpenTabs() {
   try {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend (via chrome.cookies API)
+    if (chrome.cookies) {
+      try {
+        const apiOrigin = new URL(typeof API_BASE !== "undefined" ? API_BASE : "http://127.0.0.1:8000").origin;
+        const cookie = await chrome.cookies.get({
+          url: apiOrigin,
+          name: "govconnect_access_token"
+        });
+        if (cookie?.value) {
+          await chrome.storage.local.set({
+            govconnect_token: cookie.value
+          });
+          return cookie.value;
+        }
+      } catch (cookieErr) {
+        // Fallback ke tab extraction bila cookie belum terbaca
+      }
+    }
+
+    // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
     const tabs = await chrome.tabs.query({});
     const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
@@ -1124,10 +1193,10 @@ function setupAuthListeners() {
   const btnSync = document.getElementById("btnAutoSyncTab");
   if (btnSync) {
     btnSync.onclick = async () => {
-      btnSync.textContent = "⏳ Memeriksa Dashboard...";
+      btnSync.textContent = "â³ Memeriksa Dashboard...";
       const token = await tryAutoSyncFromOpenTabs();
       if (token) {
-        btnSync.textContent = "✓ Berhasil Tersinkron!";
+        btnSync.textContent = "âœ“ Berhasil Tersinkron!";
         setTimeout(() => {
           initAuthenticatedSession(token);
         }, 500);
