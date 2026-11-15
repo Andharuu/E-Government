@@ -167,6 +167,10 @@ export function Layout() {
     remove,
   } = useNotifications(token, { pollInterval: 20000, useSSE: true });
 
+  // Jaring pengaman: payload notifikasi yang tidak berbentuk array tidak boleh
+  // menjatuhkan seluruh Layout (pernah memicu layar "Terjadi kesalahan aplikasi").
+  const notifList = Array.isArray(notifications) ? notifications : [];
+
   useEffect(() => {
     profileApi
       .get()
@@ -314,7 +318,7 @@ export function Layout() {
       });
     });
 
-    notifications.slice(0, 10).forEach((n) => {
+    notifList.slice(0, 10).forEach((n) => {
       items.push({
         id: `notif_${n.id}`,
         title: n.title,
@@ -603,8 +607,8 @@ export function Layout() {
                   </div>
 
                   <div className="max-h-[320px] overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((n) => (
+                    {notifList.length > 0 ? (
+                      notifList.map((n) => (
                         <div
                           key={n.id}
                           onClick={() => !n.read && markRead(n.id)}
