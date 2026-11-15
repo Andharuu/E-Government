@@ -1141,3 +1141,107 @@ body.panel .screen {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* =========================================================================
+   EMPTY STATE — daftar field kosong
+   ========================================================================= */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 20px;
+  gap: 5px;
+  animation: screenIn 240ms var(--ease) both;
+}
+
+.empty-state-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  margin-bottom: 7px;
+}
+
+.empty-state-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.empty-state-desc {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  max-width: 250px;
+}
+
+.empty-state .btn-outline {
+  width: auto;
+  height: 32px;
+  padding: 0 14px;
+  margin-top: 10px;
+}
+
+/* =========================================================================
+   PROGRESS STRIP — indikator saat autofill berjalan
+   ========================================================================= */
+
+.progress-strip {
+  height: 0;
+  opacity: 0;
+  background: var(--surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+  transition: height 160ms ease, opacity 160ms ease, margin 160ms ease;
+}
+
+.detect-footer.is-filling .progress-strip {
+  height: 3px;
+  opacity: 1;
+  margin-bottom: 2px;
+}
+
+.progress-strip::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 38%;
+  background: var(--accent);
+  border-radius: 999px;
+  animation: indeterminate 1.15s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}
+
+/* =========================================================================
+   TRANSISI ANTAR LAYAR — arah maju/mundur
+   ========================================================================= */
+
+.screen.active[data-dir="forward"] {
+  animation: screenInForward 240ms var(--ease) both;
+}
+
+.screen.active[data-dir="back"] {
+  animation: screenInBack 240ms var(--ease) both;
+}
+
+@keyframes screenInForward {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes screenInBack {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
