@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let rawBase = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api/v1';
+let rawBase = import.meta.env.VITE_API_BASE || '/api/v1';
 
 // Dynamic host alignment: jika frontend dibuka lewat localhost atau 127.0.0.1,
 // samakan hostname API agar browser memperlakukannya sebagai Same-Site

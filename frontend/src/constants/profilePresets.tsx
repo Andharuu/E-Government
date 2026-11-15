@@ -82,7 +82,7 @@ export const RICH_CATEGORY_PRESETS: Record<string, RichPreset[]> = {
     { label: 'Umur / Usia', key: 'age', type: 'text', placeholder: 'Contoh: 28' },
     { label: 'Nama Panggilan', key: 'nama_panggilan', type: 'text', placeholder: 'Raffi' },
     { label: 'Suku Bangsa', key: 'suku_bangsa', type: 'text', placeholder: 'Jawa / Sunda / Batak' },
-    { label: 'Kewarganegaraan Asal', key: 'kewarganegaraan_asal', type: 'text', placeholder: 'Indonesia' },
+    { label: 'Kepenggunanegaraan Asal', key: 'kepenggunanegaraan_asal', type: 'text', placeholder: 'Indonesia' },
     { label: 'Gelar Akademik', key: 'gelar_akademik', type: 'text', placeholder: 'S.Kom., M.Cs.' },
     { label: 'Foto Tanda Tangan Digital', key: 'foto_ttd', type: 'image', placeholder: 'Foto tanda tangan' },
   ],

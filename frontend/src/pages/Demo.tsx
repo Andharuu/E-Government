@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { FontAwesome } from '../components/ui';
+import { Button, FontAwesome } from '../components/ui';
 import logoDark from '../assets/logo dark.png';
 import logoLight from '../assets/logo light.png';
 
@@ -198,146 +198,123 @@ export function Demo() {
     f => selectedFieldKeys[f.valueKey] !== false
   ).length;
 
+  // Alur simulasi: dua langkah pertama selalu punya nilai awal, langkah ketiga mengikuti eksekusi
+  const steps: { label: string; state: 'done' | 'active' }[] = [
+    { label: 'Pilih layanan', state: 'done' },
+    { label: 'Pilih profil pengguna', state: 'done' },
+    { label: 'Isi otomatis', state: isFilled ? 'done' : 'active' },
+  ];
+  const completedSteps = steps.filter(step => step.state === 'done').length;
+  const progressPercent = Math.round((completedSteps / steps.length) * 100);
+
   return (
-    <div className="min-h-screen bg-[#F6F8FB] dark:bg-[#080E1A] text-slate-900 dark:text-slate-100 transition-colors duration-200 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* ================= 1. FULL WIDTH EDGE-TO-EDGE NAVBAR ================= */}
-      <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/90 dark:bg-[#080E1A]/90 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
-        <div className="w-full px-4 sm:px-8 lg:px-12 h-16 sm:h-20 flex items-center justify-between gap-4">
-          {/* Left: Brand Logo & Name with Smooth Transition */}
-          <Link to="/" className="flex items-center gap-3 group focus:outline-none shrink-0">
+    <div className="flex min-h-screen flex-col bg-canvas text-ink">
+      {/* ================= 1. TOPBAR ================= */}
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
+        <div className="mx-auto flex h-14 w-full max-w-[1500px] items-center justify-between gap-3 px-4 sm:px-6">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
             <img
               src={theme === 'dark' ? logoDark : logoLight}
-              alt="GovConnect Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-sm transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 shrink-0"
+              alt=""
+              className="h-8 w-8 shrink-0 object-contain"
             />
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight">
-                GovConnect
-              </span>
-              <span className="hidden sm:inline-block text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-sky-300 border border-blue-200 dark:border-blue-800">
-                Simulator Ekstensi
-              </span>
-            </div>
+            <span className="truncate text-[15px] font-bold tracking-[-0.02em] text-ink">GovConnect</span>
+            <span className="badge badge-neutral hidden shrink-0 sm:inline-flex">Simulator Ekstensi</span>
           </Link>
 
-          {/* Right: Controls & Actions */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-            {/* Back to Home Link */}
-            <Link
-              to="/"
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-            >
-              <FontAwesome name="arrow-left" className="text-xs" />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link to="/" className="btn btn-ghost btn-sm hidden md:inline-flex">
+              <FontAwesome name="arrow-left" className="text-[11px]" />
               <span>Beranda</span>
             </Link>
 
-            {/* Theme Toggle Button (Dashboard Style) */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer shadow-xs group"
+              className="btn btn-ghost btn-icon btn-sm text-ink-2"
               title={theme === 'dark' ? 'Beralih ke mode terang (Light mode)' : 'Beralih ke mode gelap (Dark mode)'}
               aria-label="Toggle mode gelap atau terang"
             >
-              {theme === 'dark' ? (
-                <FontAwesome
-                  name="sun"
-                  className="text-base text-amber-400 group-hover:rotate-45 transition-transform duration-300"
-                />
-              ) : (
-                <FontAwesome
-                  name="moon"
-                  className="text-base text-[#0A4174] group-hover:-rotate-12 transition-transform duration-300"
-                />
-              )}
+              <FontAwesome name={theme === 'dark' ? 'sun' : 'moon'} className="text-[13px]" />
             </button>
 
-            {/* Masuk / Dashboard */}
             {user ? (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate('/dashboard')}
-                className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs sm:text-sm font-bold transition-all cursor-pointer"
+                icon={<FontAwesome name="user" className="text-[11px]" />}
               >
-                <FontAwesome name="user" className="text-xs text-blue-600 dark:text-sky-400" />
-                <span>Dashboard</span>
-              </button>
+                Dashboard
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/login')}
-                className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                icon={<FontAwesome name="right-to-bracket" className="text-[11px]" />}
               >
-                <FontAwesome name="right-to-bracket" className="text-xs text-slate-500 dark:text-slate-400" />
-                <span>Masuk</span>
-              </button>
+                Masuk
+              </Button>
             )}
 
-            {/* Pasang Ekstensi */}
-            <button
-              type="button"
+            <Button
+              size="sm"
               onClick={handleDownloadExtension}
-              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white text-xs sm:text-sm font-bold transition-all shadow-md hover:shadow-xl hover:shadow-blue-900/20 active:scale-95 cursor-pointer shrink-0"
+              icon={<FontAwesome name="download" className="text-[11px]" />}
               title="Unduh file ekstensi zip"
             >
-              <FontAwesome name="download" className="text-xs" />
-              <span>Pasang Ekstensi</span>
-            </button>
+              Pasang Ekstensi
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* ================= 2. CONTROLS SUB-HEADER ================= */}
-      <div className="bg-white dark:bg-[#0D1526] border-b border-slate-200/90 dark:border-slate-800/90 px-4 sm:px-8 lg:px-12 py-3.5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Service Selector Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Layanan:</span>
-            {[
-              { id: 'dukcapil', label: 'Dukcapil', icon: 'landmark', iconColor: 'text-blue-500 dark:text-sky-400' },
-              { id: 'kelurahan', label: 'Kelurahan', icon: 'building', iconColor: 'text-indigo-500 dark:text-indigo-400' },
-              { id: 'beasiswa', label: 'Beasiswa', icon: 'graduation-cap', iconColor: 'text-amber-500 dark:text-amber-400' },
-              { id: 'bpjs', label: 'BPJS Kesehatan', icon: 'heart-pulse', iconColor: 'text-rose-500 dark:text-rose-400' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setSelectedServiceId(tab.id);
-                  handleReset();
-                }}
-                className={`group px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ease-out hover:scale-105 active:scale-95 whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                  selectedServiceId === tab.id
-                    ? 'bg-[#0A4174] text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                <FontAwesome
-                  name={tab.icon}
-                  className={`text-xs transition-transform duration-300 ease-out group-hover:scale-110 ${
-                    selectedServiceId === tab.id ? 'text-white' : tab.iconColor
-                  }`}
-                />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+      {/* ================= 2. PEMILIH LAYANAN & PROFIL ================= */}
+      <div className="border-b border-line bg-surface-2">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col justify-between gap-2.5 px-4 py-2.5 sm:px-6 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+            <span className="eyebrow shrink-0">Layanan</span>
+            <div className="segmented">
+              {[
+                { id: 'dukcapil', label: 'Dukcapil', icon: 'landmark' },
+                { id: 'kelurahan', label: 'Kelurahan', icon: 'building' },
+                { id: 'beasiswa', label: 'Beasiswa', icon: 'graduation-cap' },
+                { id: 'bpjs', label: 'BPJS Kesehatan', icon: 'heart-pulse' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  data-active={selectedServiceId === tab.id}
+                  onClick={() => {
+                    setSelectedServiceId(tab.id);
+                    handleReset();
+                  }}
+                  className="segmented-item"
+                >
+                  <FontAwesome
+                    name={tab.icon}
+                    className={`text-[11px] ${selectedServiceId === tab.id ? 'text-accent-text' : 'text-ink-3'}`}
+                  />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Profile Selector Tabs & Reset */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
-            <span className="text-xs font-bold text-slate-400 shrink-0 mr-1">Profil:</span>
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+          <div className="flex items-center justify-between gap-2.5 lg:justify-end">
+            <span className="eyebrow shrink-0">Profil</span>
+            <div className="segmented">
               {(['budi', 'siti', 'joko'] as const).map(pKey => (
                 <button
                   key={pKey}
+                  type="button"
+                  data-active={selectedProfileId === pKey}
                   onClick={() => {
                     setSelectedProfileId(pKey);
                     handleReset();
                   }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    selectedProfileId === pKey
-                      ? 'bg-white dark:bg-[#1E2C44] text-blue-600 dark:text-sky-400 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                  className="segmented-item"
                 >
                   {pKey === 'budi' ? 'Ahmad (Pekerja)' : pKey === 'siti' ? 'Siti (Mahasiswi)' : 'H. Joko (Wiraswasta)'}
                 </button>
@@ -345,240 +322,278 @@ export function Demo() {
             </div>
 
             {isFilled && (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleReset}
-                className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shrink-0"
+                icon={<FontAwesome name="undo" className="text-[11px]" />}
+                className="shrink-0"
               >
                 Reset
-              </button>
+              </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ================= 3. MAIN INTERACTIVE SPLIT SCREEN ================= */}
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-[1600px] mx-auto rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-[#0D1526] grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
-          {/* ================= LEFT: SIMULATED GOVERNMENT WEB FORM (8 Cols) ================= */}
-          <div className="lg:col-span-7 xl:col-span-8 flex flex-col bg-slate-50/60 dark:bg-slate-900/40">
-            {/* Simulated Browser Chrome Bar */}
-            <div className="h-11 bg-slate-100/90 dark:bg-[#0B1220] border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between gap-3 select-none">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#EF4444]"></span>
-                <span className="w-3 h-3 rounded-full bg-[#F59E0B]"></span>
-                <span className="w-3 h-3 rounded-full bg-[#10B981]"></span>
-              </div>
-              <div className="flex-1 max-w-md mx-auto bg-white dark:bg-[#192438] border border-slate-200 dark:border-slate-700/70 rounded-lg px-3 py-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300 font-mono truncate">
-                <FontAwesome name="lock" className="text-emerald-500 text-[10px]" />
-                <span className="truncate">{currentService.url}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <FontAwesome name="refresh" className="hover:text-slate-600 cursor-pointer" />
-              </div>
-            </div>
-
-            {/* Target Form Content */}
-            <div className="p-6 sm:p-10 flex-1 overflow-y-auto">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-8 border-b border-slate-200 dark:border-slate-800 gap-3">
-                <div>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-sky-400">
-                    {currentService.agency}
+      {/* ================= 3. KONTEN ================= */}
+      <main className="flex w-full flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-4 px-4 py-5 sm:px-6 lg:min-h-0">
+          {/* Progres alur */}
+          <section className="card card-flat flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <ol className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {steps.map((step, index) => (
+                <li key={step.label} className="flex items-center gap-2">
+                  <span
+                    className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums ${
+                      step.state === 'done'
+                        ? 'border-accent bg-accent text-accent-fg'
+                        : 'border-accent bg-surface text-accent-text'
+                    }`}
+                  >
+                    {step.state === 'done' ? <FontAwesome name="check-pure" className="text-[7px]" /> : index + 1}
                   </span>
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {currentService.name}
-                  </h1>
+                  <span
+                    className={`text-[12px] ${
+                      step.state === 'done' ? 'text-ink-2' : 'font-semibold text-ink'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {index < steps.length - 1 && <span className="ml-1 h-px w-4 bg-line sm:w-6" />}
+                </li>
+              ))}
+            </ol>
+
+            <div className="flex w-full items-center gap-2.5 sm:w-[220px]">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width] duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className="shrink-0 text-[11px] font-medium tabular-nums text-ink-3">
+                {completedSteps}/{steps.length}
+              </span>
+            </div>
+          </section>
+
+          {/* Split: formulir instansi + panel ekstensi */}
+          <div className="card grid grid-cols-1 overflow-hidden lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)]">
+            {/* ---------- KIRI: FORMULIR INSTANSI SIMULASI ---------- */}
+            <div className="flex min-w-0 flex-col border-b border-line lg:col-span-7 lg:min-h-0 lg:border-b-0 xl:col-span-8">
+              {/* Chrome bar */}
+              <div className="flex h-10 items-center gap-3 border-b border-line bg-surface-2 px-3 select-none">
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
+                </div>
+                <div className="mx-auto flex h-7 w-full max-w-[420px] items-center gap-2 rounded-md border border-line bg-surface px-2.5">
+                  <FontAwesome name="lock" className="shrink-0 text-[9px] text-ok" />
+                  <span className="mono truncate text-[11px] text-ink-3">{currentService.url}</span>
+                </div>
+                <FontAwesome name="rotate-right" className="shrink-0 text-[11px] text-ink-3" />
+              </div>
+
+              {/* Isi formulir */}
+              <div className="min-h-0 flex-1 overflow-y-auto bg-canvas p-5 sm:p-7">
+                <div className="mb-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="eyebrow">{currentService.agency}</p>
+                    <h1 className="mt-1.5 text-[18px] font-bold leading-snug tracking-[-0.02em] text-ink sm:text-[20px]">
+                      {currentService.name}
+                    </h1>
+                  </div>
+
+                  {isFilled ? (
+                    <span className="badge badge-ok shrink-0 self-start">
+                      <FontAwesome name="circle-check" className="text-[10px]" />
+                      Terisi otomatis dalam {fillTime}s
+                    </span>
+                  ) : (
+                    <span className="badge badge-neutral shrink-0 self-start">
+                      <span className="dot animate-pulse" />
+                      Menunggu pengisian ekstensi
+                    </span>
+                  )}
                 </div>
 
-                {/* Status Indicator without box container & animated ellipsis dots */}
-                {isFilled ? (
-                  <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 self-start sm:self-auto shrink-0 animate-in fade-in duration-300">
-                    <FontAwesome name="circle-check" className="text-sm" />
-                    <span>Terisi otomatis dalam {fillTime}s</span>
-                  </div>
-                ) : (
-                  <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 self-start sm:self-auto shrink-0 flex items-center gap-1 select-none">
-                    <span>Menunggu pengisian ekstensi</span>
-                    <span className="inline-flex tracking-wider font-extrabold text-[#0A4174] dark:text-[#7BBDE8]">
-                      <span className="animate-pulse">.</span>
-                      <span className="animate-pulse [animation-delay:200ms]">.</span>
-                      <span className="animate-pulse [animation-delay:400ms]">.</span>
-                    </span>
+                {/* Kolom formulir */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {currentService.fields.map(field => {
+                    const shouldFill = isFilled && selectedFieldKeys[field.valueKey] !== false;
+                    const profileVal = (currentProfile as Record<string, string>)[field.valueKey] || '';
+                    const isFullWidth = field.valueKey === 'alamat';
+
+                    return (
+                      <div key={field.id} className={isFullWidth ? 'sm:col-span-2' : ''}>
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <label htmlFor={field.id} className="text-[11.5px] font-semibold text-ink-2">
+                            {field.label}
+                          </label>
+                          {shouldFill && (
+                            <span className="flex shrink-0 items-center gap-1 text-[10.5px] font-semibold text-ok">
+                              <FontAwesome name="check-pure" className="text-[8px]" />
+                              Cocok
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          id={field.id}
+                          type="text"
+                          readOnly
+                          value={shouldFill ? profileVal : ''}
+                          placeholder={field.placeholder}
+                          className={`input ${
+                            shouldFill
+                              ? 'border-ok-line bg-ok-soft font-medium text-ink'
+                              : 'bg-surface-2 text-ink-3'
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Hasil autofill */}
+                {isFilled && (
+                  <div className="mt-6 flex flex-col gap-3 rounded-lg border border-ok-line bg-ok-soft p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-2.5">
+                      <FontAwesome name="circle-check" className="mt-[1px] shrink-0 text-[15px] text-ok" />
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] font-semibold text-ink">Autofill Berhasil Dieksekusi</p>
+                        <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-2">
+                          {activeFieldsCount} kolom instansi telah diisi secara akurat dari data profil{' '}
+                          {currentProfile.name}.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleDownloadExtension}
+                      icon={<FontAwesome name="arrow-right" className="text-[11px]" />}
+                      className="shrink-0"
+                    >
+                      Pasang di Browser Anda
+                    </Button>
                   </div>
                 )}
               </div>
-
-              {/* Form Input Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {currentService.fields.map(field => {
-                  const shouldFill = isFilled && selectedFieldKeys[field.valueKey] !== false;
-                  const profileVal = (currentProfile as Record<string, string>)[field.valueKey] || '';
-                  const isFullWidth = field.valueKey === 'alamat';
-
-                  return (
-                    <div key={field.id} className={`space-y-1.5 ${isFullWidth ? 'sm:col-span-2' : ''}`}>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                        <span>{field.label}</span>
-                        {shouldFill && (
-                          <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-extrabold flex items-center gap-1">
-                            <FontAwesome name="check-circle" className="text-[10px]" />
-                            Cocok
-                          </span>
-                        )}
-                      </label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={shouldFill ? profileVal : ''}
-                        placeholder={field.placeholder}
-                        className={`w-full px-4 py-3 rounded-xl border text-xs sm:text-sm transition-all duration-300 font-medium ${
-                          shouldFill
-                            ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 text-slate-900 dark:text-white ring-2 ring-emerald-500/25 shadow-xs'
-                            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400'
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Toast when filled */}
-              {isFilled && (
-                <div className="mt-8 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                      ✓
-                    </span>
-                    <div>
-                      <div className="font-extrabold text-sm text-emerald-900 dark:text-emerald-100">
-                        Autofill Berhasil Dieksekusi!
-                      </div>
-                      <div className="text-xs text-emerald-700 dark:text-emerald-300">
-                        {activeFieldsCount} kolom instansi telah diisi secara akurat dari data profil {currentProfile.name}.
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleDownloadExtension}
-                    className="px-4 py-2 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white font-bold text-xs transition-colors shrink-0 cursor-pointer shadow-xs"
-                  >
-                    Pasang di Browser Anda →
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* ================= RIGHT: DOCKED GOVCONNECT EXTENSION SIDEPANEL (4-5 Cols) ================= */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-[#131C2E] border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-            <div>
-              {/* Sidepanel Header */}
-              <div className="h-14 px-4 bg-[#0A4174] dark:bg-[#001D39] text-white flex items-center justify-between shadow-xs">
-                <div className="flex items-center gap-2.5">
+            {/* ---------- KANAN: PANEL EKSTENSI ---------- */}
+            <aside className="flex min-w-0 flex-col border-line bg-surface lg:col-span-5 lg:min-h-0 lg:border-l xl:col-span-4">
+              {/* Header panel */}
+              <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface-2 px-4">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <img
                     src={theme === 'dark' ? logoDark : logoLight}
-                    alt="GovConnect"
-                    className="w-6 h-6 object-contain shrink-0"
+                    alt=""
+                    className="h-6 w-6 shrink-0 object-contain"
                   />
-                  <div>
-                    <div className="font-extrabold text-xs tracking-tight">GovConnect Assistant</div>
-                    <div className="text-[10px] text-sky-200">Ekstensi Pengisian Formulir</div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[12.5px] font-semibold leading-tight text-ink">
+                      GovConnect Assistant
+                    </p>
+                    <p className="mt-0.5 truncate text-[10.5px] leading-tight text-ink-3">
+                      Ekstensi Pengisian Formulir
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-sky-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span className="text-[11px] font-bold">Siaga Aktif</span>
-                </div>
+                <span className="badge badge-ok shrink-0">
+                  <span className="dot" />
+                  Siaga Aktif
+                </span>
               </div>
 
-              {/* Status URL Bar */}
-              <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span className="truncate font-mono">🌐 {new URL(currentService.url).hostname}</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">100% Cocok</span>
+              {/* Host aktif */}
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
+                <span className="mono truncate text-[11px] text-ink-3">
+                  {new URL(currentService.url).hostname}
+                </span>
+                <span className="shrink-0 text-[11px] font-semibold text-ok">100% Cocok</span>
               </div>
 
-              {/* Summary Detection Banner */}
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="p-3.5 bg-blue-50/90 dark:bg-blue-950/50 rounded-2xl border border-blue-200/80 dark:border-blue-800 flex items-center justify-between">
-                  <div>
-                    <div className="font-black text-xs text-slate-900 dark:text-white">
+              {/* Ringkasan deteksi */}
+              <div className="shrink-0 border-b border-line p-3.5">
+                <div className="rounded-md border border-line bg-surface-2 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[12.5px] font-semibold text-ink">
                       {currentService.fields.length} Kolom Terdeteksi
-                    </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Cocok dengan data profil: <strong>{currentProfile.name.split(' ')[0]}</strong>
-                    </div>
+                    </p>
+                    <FontAwesome name="bolt" className="shrink-0 text-[11px] text-accent-text" />
                   </div>
-                  <span className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-black shadow-xs">
-                    ⚡
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
+                    Cocok dengan data profil:{' '}
+                    <span className="font-semibold text-ink-2">{currentProfile.name.split(' ')[0]}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Checklist kolom */}
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                  <span className="eyebrow">Kolom Siap Diisi</span>
+                  <span className="shrink-0 text-[11px] tabular-nums text-ink-3">
+                    {activeFieldsCount} dari {currentService.fields.length} dipilih
                   </span>
                 </div>
-              </div>
 
-              {/* Interactive Field Checklist inside Extension */}
-              <div className="p-4 space-y-2 max-h-[340px] overflow-y-auto text-xs">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span>Kolom Siap Diisi:</span>
-                  <span>{activeFieldsCount} dari {currentService.fields.length} dipilih</span>
-                </div>
-
-                {currentService.fields.map(field => {
-                  const isChecked = selectedFieldKeys[field.valueKey] !== false;
-                  return (
-                    <label
-                      key={field.id}
-                      onClick={() => toggleField(field.valueKey)}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none ${
-                        isChecked
-                          ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700'
-                          : 'bg-transparent border-slate-200/50 dark:border-slate-800 opacity-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate mr-2">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className="truncate font-semibold text-slate-800 dark:text-slate-200">
-                          {field.label}
+                <div className="space-y-1">
+                  {currentService.fields.map(field => {
+                    const isChecked = selectedFieldKeys[field.valueKey] !== false;
+                    return (
+                      <label
+                        key={field.id}
+                        onClick={() => toggleField(field.valueKey)}
+                        className={`flex cursor-pointer select-none items-center justify-between gap-2 rounded-md border px-2.5 py-2 transition-colors ${
+                          isChecked
+                            ? 'border-line bg-surface-2 hover:border-line-2'
+                            : 'border-transparent opacity-60'
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded accent-accent"
+                          />
+                          <span className="truncate text-[12px] font-medium text-ink-2">{field.label}</span>
                         </span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0">
-                        Cocok
-                      </span>
-                    </label>
-                  );
-                })}
+                        <span
+                          className={`shrink-0 text-[10.5px] font-semibold ${
+                            isChecked ? 'text-ok' : 'text-ink-3'
+                          }`}
+                        >
+                          {isChecked ? 'Cocok' : 'Lewati'}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* Sidepanel Bottom Sticky Action */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
-              <button
-                onClick={handleAutofill}
-                disabled={isFilling}
-                className="group w-full py-3.5 px-4 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white text-xs sm:text-sm font-bold transition-all duration-300 ease-out shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isFilling ? (
-                  <>
-                    <FontAwesome name="spinner" spin className="text-sm" />
-                    <span>Mengeksekusi Autofill...</span>
-                  </>
-                ) : (
-                  <>
-                    <FontAwesome
-                      name="caret-right"
-                      className="text-sm text-sky-300 transition-transform duration-300 ease-out group-hover:translate-x-1 group-hover:scale-110"
-                    />
-                    <span>Isi {activeFieldsCount} Kolom Formulir (1 Klik)</span>
-                  </>
-                )}
-              </button>
-            </div>
+              {/* Aksi utama */}
+              <div className="shrink-0 border-t border-line bg-surface-2 p-3">
+                <Button
+                  onClick={handleAutofill}
+                  disabled={isFilling}
+                  loading={isFilling}
+                  className="w-full"
+                  icon={!isFilling && <FontAwesome name="bolt" className="text-[11px]" />}
+                >
+                  {isFilling
+                    ? 'Mengeksekusi Autofill...'
+                    : `Isi ${activeFieldsCount} Kolom Formulir (1 Klik)`}
+                </Button>
+              </div>
+            </aside>
           </div>
         </div>
       </main>
     </div>
   );
 }
-

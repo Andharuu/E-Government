@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { authApi, type User } from '../services/api';
+import { FontAwesome } from '../components/ui';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isExtensionConnected: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+    register: (email: string, password: string) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -122,17 +123,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me.data);
 
     // Broadcast ke extension content script (one-time in-memory relay untuk sinkronisasi instan)
-    window.postMessage({
-      type: 'GOVCONNECT_WEB_AUTH_SYNC',
-      token: access_token,
-      email: email
-    }, WEB_ORIGIN);
-  };
+        window.postMessage({
+          type: 'GOVCONNECT_WEB_AUTH_SYNC',
+          token: access_token,
+          email: email
+        }, WEB_ORIGIN);
 
-  const register = async (email: string, password: string) => {
-    await authApi.register(email, password);
-    await login(email, password);
-  };
+        return me.data;
+      };
+
+      const register = async (email: string, password: string) => {
+        await authApi.register(email, password);
+        return await login(email, password);
+      };
 
   const logout = async () => {
     try {
@@ -167,14 +170,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       {/* Grace period / Session Expiry Modal (F-M1) */}
       {sessionExpired && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-[#243048]">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center mb-4 text-xl">
-              <i className="fa-solid fa-clock-rotate-left"></i>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="card w-full max-w-[400px] p-6 shadow-lg">
+            <div className="w-9 h-9 rounded-md bg-warn-soft border border-warn-line text-warn flex items-center justify-center mb-4 text-[14px]">
+              <FontAwesome name="clock" />
             </div>
-            <h3 className="text-lg font-bold mb-2">Sesi Masuk Berakhir</h3>
-            <p className="text-sm text-slate-600 dark:text-[#BDD8E9]/80 mb-6 leading-relaxed">
-              Sesi autentikasi Anda telah kedaluwarsa demi menjaga keamanan akun. Silakan masuk kembali untuk melanjutkan aktivitas.
+            <h3 className="text-[15px] font-semibold text-ink">Sesi masuk berakhir</h3>
+            <p className="text-[12.5px] text-ink-2 mt-1.5 mb-5 leading-relaxed">
+              Sesi autentikasi Anda telah kedaluwarsa demi menjaga keamanan akun. Silakan masuk
+              kembali untuk melanjutkan aktivitas.
             </p>
             <button
               type="button"
@@ -184,9 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   window.location.href = '/login';
                 }
               }}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer text-sm"
+              className="btn btn-primary w-full"
             >
-              Masuk Kembali
+              Masuk kembali
             </button>
           </div>
         </div>

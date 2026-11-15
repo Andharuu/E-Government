@@ -5,8 +5,6 @@ export * from './Input';
 export * from './Tabs';
 export * from './Table';
 export * from './EmptyState';
-export * from './SectionHeader';
 export * from './StatCard';
-export * from './Flaticon';
 export * from './FontAwesome';
 export * from './CustomSelect';

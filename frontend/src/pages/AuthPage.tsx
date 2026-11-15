@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { FontAwesome } from '../components/ui';
-import { AuthShowcasePreview } from '../components/auth/AuthShowcasePreview';
+import { Button, FormField, Input, FontAwesome } from '../components/ui';
 import { AuthHelpModal } from '../components/auth/AuthHelpModal';
 import { AuthTermsModal } from '../components/auth/AuthTermsModal';
 import logoDark from '../assets/logo dark.png';
@@ -11,6 +10,41 @@ import logoLight from '../assets/logo light.png';
 
 interface AuthPageProps {
   defaultMode?: 'login' | 'register';
+}
+
+/* -------------------------------------------------------------------------
+   Baris checkbox — presentasi saja, state tetap dipegang halaman
+   ------------------------------------------------------------------------- */
+
+function CheckRow({
+  checked,
+  onChange,
+  children,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="group flex items-start gap-2.5 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        className="sr-only"
+      />
+      <span
+        className={`mt-[1px] flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors duration-150 ${
+          checked
+            ? 'border-accent bg-accent text-accent-fg'
+            : 'border-line-2 bg-surface text-transparent group-hover:border-ink-3'
+        }`}
+      >
+        <FontAwesome name="check-pure" className="text-[8px]" />
+      </span>
+      <span className="text-[12px] leading-relaxed text-ink-2">{children}</span>
+    </label>
+  );
 }
 
 export function AuthPage({ defaultMode }: AuthPageProps) {
@@ -60,14 +94,11 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
     e.preventDefault();
     setError('');
 
-    if (!agreedTerms) {
-      setError('Harap setujui Syarat & Ketentuan serta Kebijakan Privasi GovConnect untuk melanjutkan.');
-      return;
-    }
-
+    // Persetujuan syarat hanya diwajibkan saat pendaftaran akun baru.
+    // Login tidak boleh diblokir oleh checkbox yang mungkin belum dicentang.
     setLoading(true);
     try {
-      await login(email, password);
+      const loggedIn = await login(email, password);
 
       if (rememberMe) {
         localStorage.setItem('govconnect_remember_email', email);
@@ -75,7 +106,8 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
         localStorage.removeItem('govconnect_remember_email');
       }
 
-      navigate('/dashboard');
+      // Admin langsung ke panel admin, pengguna biasa ke dasbor.
+      navigate(loggedIn.is_admin ? '/admin' : '/dashboard');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Gagal masuk ke akun';
       setError(errorMessage.includes('401') ? 'Alamat email atau kata sandi tidak sesuai' : errorMessage);
@@ -106,8 +138,9 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
 
     setLoading(true);
     try {
-      await register(email, password);
-      navigate('/dashboard');
+      const created = await register(email, password);
+      // Akun baru: masuk ke tur pengenalan sebelum dashboard.
+      navigate(created.is_admin ? '/admin' : '/welcome', { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401 || status === 400) {
@@ -134,315 +167,247 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F8FAFC] dark:bg-[#070D18] text-slate-900 dark:text-slate-100 transition-colors duration-200 overflow-x-hidden selection:bg-blue-600 selection:text-white font-sans">
-      {/* ================= SISI KIRI: FORM CONTAINER RESMI GOVCONNECT ================= */}
-      <div className="w-full lg:w-[48%] xl:w-[45%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 relative bg-white dark:bg-[#0A101D] border-r border-slate-200/80 dark:border-slate-800/80 z-10">
-        {/* Header Bar: Logo di Kiri, Toggle Tema di Kanan Pojok */}
-        <div className="flex items-center justify-between w-full mb-6 sm:mb-8 shrink-0">
-          {/* Logo GovConnect Unwrapped */}
-          <Link to="/" className="flex items-center gap-2.5 group focus:outline-none">
+    <div className="flex min-h-screen w-full flex-col bg-canvas text-ink lg:flex-row">
+      {/* ================= PANEL KIRI: EDITORIAL ================= */}
+      <aside className="hidden shrink-0 flex-col justify-between border-r border-line bg-surface-2 p-10 lg:flex lg:w-[44%] xl:w-[46%] xl:p-12">
+        <Link to="/" className="inline-flex w-fit items-center gap-2.5">
+          <img
+            src={theme === 'dark' ? logoDark : logoLight}
+            alt=""
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+          <span className="text-[15px] font-bold tracking-[-0.02em] text-ink">GovConnect</span>
+        </Link>
+
+        <div className="max-w-[420px]">
+          <p className="eyebrow">Layanan publik terpadu</p>
+          <h2 className="mt-3 text-[30px] font-bold leading-[1.15] tracking-[-0.03em] text-ink xl:text-[34px]">
+            Satu identitas digital untuk seluruh layanan pemerintah.
+          </h2>
+          <p className="mt-4 text-[13.5px] leading-relaxed text-ink-2">
+            Data kependudukan Anda tersimpan satu kali, lalu dipakai untuk mengisi formulir instansi mana pun
+            tanpa mengetik ulang.
+          </p>
+
+          <ul className="mt-8 border-y border-line">
+            {[
+              {
+                icon: 'id-card',
+                title: 'Brankas profil kependudukan',
+                desc: 'NIK, KK, dan kontak tersimpan pada satu profil terverifikasi.',
+              },
+              {
+                icon: 'bolt',
+                title: 'Pengisian formulir otomatis',
+                desc: 'Satu tindakan untuk setiap kolom yang terdeteksi.',
+              },
+              {
+                icon: 'clock',
+                title: 'Riwayat pengisian',
+                desc: 'Setiap eksekusi autofill tercatat dan dapat ditinjau.',
+              },
+            ].map((item, index) => (
+              <li
+                key={item.title}
+                className={`flex items-start gap-3 py-3.5 ${index > 0 ? 'border-t border-line' : ''}`}
+              >
+                <FontAwesome name={item.icon} className="mt-0.5 shrink-0 text-[13px] text-accent-text" />
+                <div>
+                  <p className="text-[12.5px] font-semibold text-ink">{item.title}</p>
+                  <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-3">{item.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-[11px] text-ink-3">
+          Akses terenkripsi — data tidak dibagikan tanpa persetujuan Anda.
+        </p>
+      </aside>
+
+      {/* ================= PANEL KANAN: FORMULIR ================= */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Bar atas */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-10">
+          <Link to="/" className="inline-flex items-center gap-2.5 lg:hidden">
             <img
               src={theme === 'dark' ? logoDark : logoLight}
-              alt="GovConnect Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-sm transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 shrink-0"
+              alt=""
+              className="h-8 w-8 shrink-0 object-contain"
             />
-            <span className="font-extrabold text-xl sm:text-2xl text-slate-900 dark:text-white tracking-tight">
-              GovConnect
-            </span>
+            <span className="text-[15px] font-bold tracking-[-0.02em] text-ink">GovConnect</span>
           </Link>
-
-          {/* Toggle Dark / Light Mode (Gaya Dashboard) */}
+          <div className="hidden flex-1 lg:block" />
           <button
             type="button"
             onClick={toggleTheme}
-            className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-slate-200 dark:border-[#243048] bg-slate-50 dark:bg-[#171F2F] text-slate-600 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] hover:text-slate-900 dark:hover:text-white transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer shadow-xs group"
+            className="btn btn-ghost btn-icon btn-sm shrink-0 text-ink-2"
             title={theme === 'dark' ? 'Beralih ke mode terang (Light mode)' : 'Beralih ke mode gelap (Dark mode)'}
             aria-label="Toggle mode gelap atau terang"
           >
-            {theme === 'dark' ? (
-              <FontAwesome
-                name="sun"
-                className="text-base text-amber-400 group-hover:rotate-45 transition-transform duration-300"
-              />
-            ) : (
-              <FontAwesome
-                name="moon"
-                className="text-base text-[#0A4174] group-hover:-rotate-12 transition-transform duration-300"
-              />
-            )}
+            <FontAwesome name={theme === 'dark' ? 'sun' : 'moon'} className="text-[13px]" />
           </button>
         </div>
 
-        {/* ================= KONTEN FORMULIR (MUNCUL LANGSUNG TANPA GESER) ================= */}
-        <div className="w-full max-w-md mx-auto my-auto py-2">
-          <div
-            key={isRegister ? 'auth-register' : 'auth-login'}
-            className="animate-in fade-in duration-200"
-          >
-            {/* Judul Formulir */}
-            <div className="mb-6 sm:mb-8">
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
+        {/* Formulir */}
+        <div className="flex flex-1 items-center justify-center px-5 pb-10 sm:px-10">
+          <div className="w-full max-w-[384px]">
+            <div key={isRegister ? 'auth-register' : 'auth-login'} className="page-enter">
+              <h1 className="text-[26px] font-bold leading-tight tracking-[-0.03em] text-ink">
                 {isRegister ? 'Daftar Akun Baru' : 'Masuk ke Akun Anda'}
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
                 {isRegister
                   ? 'Mulai isi formulir instansi pemerintah lebih cepat dan otomatis bersama GovConnect.'
                   : 'Akses brankas profil kependudukan digital dan asisten pengisian formulir instan Anda.'}
               </p>
-            </div>
 
-            {/* Alert Error */}
-            {error && (
-              <div className="mb-5 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs sm:text-sm flex items-start gap-3 animate-in fade-in duration-200 shadow-xs">
-                <FontAwesome name="circle-xmark" className="text-base text-rose-500 shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* FORM LOGIN */}
-            {!isRegister ? (
-              <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5">
-                {/* Email Field */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="login-email"
-                    className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"
-                  >
-                    Alamat Email
-                  </label>
-                  <input
-                    id="login-email"
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-[#121A2B] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-sky-400 transition-all text-sm font-semibold"
-                    placeholder="nama@email.com"
-                    required
-                    autoComplete="email"
-                  />
+              {/* Alert Error */}
+              {error && (
+                <div
+                  role="alert"
+                  className="mt-5 flex items-start gap-2.5 rounded-md border border-danger-line bg-danger-soft px-3 py-2.5"
+                >
+                  <FontAwesome name="circle-xmark" className="mt-[1px] shrink-0 text-[13px] text-danger" />
+                  <span className="text-[12px] leading-relaxed text-danger">{error}</span>
                 </div>
+              )}
 
-                {/* Password Field */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="login-password"
-                    className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"
-                  >
-                    Kata Sandi
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="login-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-4 pr-12 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-[#121A2B] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-sky-400 transition-all text-sm font-semibold"
-                      placeholder="••••••••••••"
+              {/* FORM LOGIN */}
+              {!isRegister ? (
+                <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
+                  <FormField label="Alamat Email" htmlFor="login-email">
+                    <Input
+                      id="login-email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="nama@email.com"
                       required
-                      autoComplete="current-password"
+                      autoComplete="email"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 transition-colors cursor-pointer"
-                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                    >
-                      <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} className="text-sm" />
-                    </button>
-                  </div>
-                </div>
+                  </FormField>
 
-                {/* Ingat Saya & Lupa Kata Sandi */}
-                <div className="flex items-center justify-between text-xs sm:text-sm pt-1">
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none group">
-                    <div className="relative flex items-center justify-center">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={e => setRememberMe(e.target.checked)}
-                        className="sr-only"
+                  <FormField label="Kata Sandi" htmlFor="login-password">
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="pr-10"
+                        placeholder="••••••••••••"
+                        required
+                        autoComplete="current-password"
                       />
-                      <div
-                        className={`w-5 h-5 rounded-md border transition-all duration-200 flex items-center justify-center ${
-                          rememberMe
-                            ? 'bg-[#0A4174] border-[#0A4174] text-white shadow-xs'
-                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-blue-500'
-                        }`}
-                      >
-                        {rememberMe && <FontAwesome name="check-pure" className="text-[10px]" />}
-                      </div>
-                    </div>
-                    <span className="text-slate-600 dark:text-slate-300 font-semibold group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                      Ingat Saya
-                    </span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-xs font-bold text-[#0A4174] dark:text-sky-400 hover:underline transition-colors cursor-pointer"
-                  >
-                    Lupa Kata Sandi?
-                  </button>
-                </div>
-
-                {/* Checkbox Syarat & Ketentuan */}
-                <div className="pt-1 pb-1">
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none group">
-                    <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={agreedTerms}
-                        onChange={e => setAgreedTerms(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-5 h-5 rounded-md border transition-all duration-200 flex items-center justify-center ${
-                          agreedTerms
-                            ? 'bg-[#0A4174] border-[#0A4174] text-white shadow-xs'
-                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-blue-500'
-                        }`}
-                      >
-                        {agreedTerms && <FontAwesome name="check-pure" className="text-[10px]" />}
-                      </div>
-                    </div>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                      Saya telah membaca dan menyetujui{' '}
                       <button
                         type="button"
-                        onClick={e => {
-                          e.preventDefault();
-                          setShowTermsModal(true);
-                        }}
-                        className="font-bold text-[#0A4174] dark:text-sky-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-sky-300"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="btn btn-ghost btn-icon btn-sm absolute right-1 top-1/2 -translate-y-1/2 text-ink-3"
+                        aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
                       >
-                        Syarat & Ketentuan serta Panduan Privasi
-                      </button>{' '}
-                      GovConnect.
-                    </span>
-                  </label>
-                </div>
+                        <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} className="text-[12px]" />
+                      </button>
+                    </div>
+                  </FormField>
 
-                {/* Tombol Masuk */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 px-6 rounded-2xl bg-[#0A4174] hover:bg-[#001D39] text-white font-black text-sm sm:text-base shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ease-out flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group mt-2"
-                >
-                  {loading ? (
-                    <>
-                      <FontAwesome name="spinner" spin className="text-sm" />
-                      <span>Memproses Masuk...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesome
-                        name="right-to-bracket"
-                        className="text-sm transition-transform duration-300 ease-out group-hover:translate-x-1"
-                      />
-                      <span>Masuk ke Akun</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              /* FORM REGISTER */
-              <form onSubmit={handleRegisterSubmit} className="space-y-3.5 sm:space-y-4">
-                {/* Email Field */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="register-email"
-                    className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"
-                  >
-                    Alamat Email
-                  </label>
-                  <input
-                    id="register-email"
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-[#121A2B] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-sky-400 transition-all text-sm font-semibold"
-                    placeholder="nama@email.com"
-                    required
-                    autoComplete="email"
-                  />
-                </div>
+                  {/* Ingat Saya & Lupa Kata Sandi */}
+                  <div className="flex items-center justify-between gap-3 pt-0.5">
+                    <CheckRow checked={rememberMe} onChange={setRememberMe}>
+                      <span className="font-medium text-ink-2">Ingat Saya</span>
+                    </CheckRow>
 
-                {/* Password Field */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="register-password"
-                    className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"
-                  >
-                    Kata Sandi (Minimal 8 Karakter)
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="register-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-4 pr-12 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-[#121A2B] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-sky-400 transition-all text-sm font-semibold"
-                      placeholder="Minimal 8 karakter..."
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                    />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 transition-colors cursor-pointer"
-                      aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                      onClick={() => setShowForgotModal(true)}
+                      className="link shrink-0 text-[12px]"
                     >
-                      <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} className="text-sm" />
+                      Lupa Kata Sandi?
                     </button>
                   </div>
-                </div>
 
-                {/* Confirm Password Field */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="register-confirm-password"
-                    className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"
+                  {/* Syarat & Ketentuan */}
+                  <CheckRow checked={agreedTerms} onChange={setAgreedTerms}>
+                    Saya telah membaca dan menyetujui{' '}
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.preventDefault();
+                        setShowTermsModal(true);
+                      }}
+                      className="link font-semibold"
+                    >
+                      Syarat & Ketentuan serta Panduan Privasi
+                    </button>{' '}
+                    GovConnect.
+                  </CheckRow>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    loading={loading}
+                    className="mt-1 w-full"
+                    icon={!loading && <FontAwesome name="right-to-bracket" className="text-[12px]" />}
                   >
-                    Konfirmasi Kata Sandi
-                  </label>
-                  <div className="relative">
-                    <input
+                    {loading ? 'Memproses Masuk...' : 'Masuk ke Akun'}
+                  </Button>
+                </form>
+              ) : (
+                /* FORM REGISTER */
+                <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-4">
+                  <FormField label="Alamat Email" htmlFor="register-email">
+                    <Input
+                      id="register-email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="nama@email.com"
+                      required
+                      autoComplete="email"
+                    />
+                  </FormField>
+
+                  <FormField label="Kata Sandi (Minimal 8 Karakter)" htmlFor="register-password">
+                    <div className="relative">
+                      <Input
+                        id="register-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="pr-10"
+                        placeholder="Minimal 8 karakter..."
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="btn btn-ghost btn-icon btn-sm absolute right-1 top-1/2 -translate-y-1/2 text-ink-3"
+                        aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                      >
+                        <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} className="text-[12px]" />
+                      </button>
+                    </div>
+                  </FormField>
+
+                  <FormField label="Konfirmasi Kata Sandi" htmlFor="register-confirm-password">
+                    <Input
                       id="register-confirm-password"
                       type={showPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full pl-4 pr-12 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-[#121A2B] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 dark:focus:border-sky-400 transition-all text-sm font-semibold"
                       placeholder="Ulangi kata sandi Anda..."
                       required
                       minLength={8}
                       autoComplete="new-password"
                     />
-                  </div>
-                </div>
+                  </FormField>
 
-                {/* Checkbox Syarat & Ketentuan */}
-                <div className="pt-1 pb-1">
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none group">
-                    <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={agreedTerms}
-                        onChange={e => setAgreedTerms(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-5 h-5 rounded-md border transition-all duration-200 flex items-center justify-center ${
-                          agreedTerms
-                            ? 'bg-[#0A4174] border-[#0A4174] text-white shadow-xs'
-                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-blue-500'
-                        }`}
-                      >
-                        {agreedTerms && <FontAwesome name="check-pure" className="text-[10px]" />}
-                      </div>
-                    </div>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                  {/* Syarat & Ketentuan */}
+                  <div className="pt-1">
+                    <CheckRow checked={agreedTerms} onChange={setAgreedTerms}>
                       Saya telah membaca dan menyetujui{' '}
                       <button
                         type="button"
@@ -450,133 +415,122 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
                           e.preventDefault();
                           setShowTermsModal(true);
                         }}
-                        className="font-bold text-[#0A4174] dark:text-sky-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-sky-300"
+                        className="link font-semibold"
                       >
                         Syarat & Ketentuan serta Panduan Privasi
                       </button>{' '}
                       GovConnect.
-                    </span>
-                  </label>
-                </div>
+                    </CheckRow>
+                  </div>
 
-                {/* Tombol Daftar */}
+                  <Button
+                    type="submit"
+                    size="lg"
+                    loading={loading}
+                    className="mt-1 w-full"
+                    icon={!loading && <FontAwesome name="user-plus" className="text-[12px]" />}
+                  >
+                    {loading ? 'Mendaftarkan Akun...' : 'Daftar Akun Pengguna'}
+                  </Button>
+                </form>
+              )}
+
+              {/* Switcher Login <-> Register */}
+              <div className="mt-6 text-[12.5px] text-ink-2">
+                <span>{isRegister ? 'Sudah memiliki akun pengguna? ' : 'Belum memiliki akun pengguna? '}</span>
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 px-6 rounded-2xl bg-[#0A4174] hover:bg-[#001D39] text-white font-black text-sm sm:text-base shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ease-out flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group mt-2"
+                  type="button"
+                  onClick={() => {
+                    navigate(isRegister ? '/login' : '/register');
+                  }}
+                  className="link font-semibold"
                 >
-                  {loading ? (
-                    <>
-                      <FontAwesome name="spinner" spin className="text-sm" />
-                      <span>Mendaftarkan Akun...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesome
-                        name="user-plus"
-                        className="text-sm transition-transform duration-300 ease-out group-hover:scale-110"
-                      />
-                      <span>Daftar Akun Warga</span>
-                    </>
-                  )}
+                  {isRegister ? 'Masuk Sekarang' : 'Daftar Sekarang'}
                 </button>
-              </form>
-            )}
-
-            {/* Link Switcher Login <-> Register dengan Animasi Navigasi Halus */}
-            <div className="mt-6 sm:mt-8 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              <span>{isRegister ? 'Sudah memiliki akun warga? ' : 'Belum memiliki akun warga? '}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate(isRegister ? '/login' : '/register');
-                }}
-                className="font-bold text-[#0A4174] dark:text-sky-400 underline underline-offset-4 hover:text-blue-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
-              >
-                {isRegister ? 'Masuk Sekarang' : 'Daftar Sekarang'}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section Bawah: Bantuan & Copyright */}
-        <div className="pt-6 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+        {/* Footer: bantuan & copyright */}
+        <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3.5 sm:px-10">
           <button
             type="button"
             onClick={() => setShowHelpModal(true)}
-            className="group inline-flex items-center gap-2 py-2 px-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer font-bold shadow-2xs"
+            className="btn btn-ghost btn-sm -ml-2 text-ink-2"
             title="Buka Formulir Pusat Bantuan Terpadu"
           >
-            <FontAwesome
-              name="circle-info"
-              className="text-sm text-blue-600 dark:text-sky-400 group-hover:rotate-12 transition-transform duration-300"
-            />
+            <FontAwesome name="circle-info" className="text-[11px]" />
             <span>Pusat Bantuan</span>
           </button>
 
-          <span className="text-[11px] text-slate-400 font-medium">
-            © 2026 GovConnect Indonesia
-          </span>
+          <span className="text-[11px] font-medium text-ink-3">© 2026 GovConnect Indonesia</span>
         </div>
       </div>
 
-      {/* ================= SISI KANAN: PRATINJAU GOVCONNECT (ADAPTIF LIGHT & DARK MODE) ================= */}
-      <AuthShowcasePreview />
-
       {/* ================= MODAL LUPA KATA SANDI ================= */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-[#131C2E] rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-2xl relative">
-            <button
-              onClick={() => {
-                setShowForgotModal(false);
-                setForgotSent(false);
-              }}
-              className="absolute right-5 top-5 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              aria-label="Tutup"
-            >
-              <FontAwesome name="cross-small" className="text-base" />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-sky-400 flex items-center justify-center text-xl mb-4">
-              <FontAwesome name="lock-keyhole" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="card page-enter w-full max-w-[420px]">
+            <div className="card-head">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-accent-line bg-accent-soft text-accent-text">
+                  <FontAwesome name="key" className="text-[11px]" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="card-title truncate">Pemulihan Kata Sandi</h3>
+                  <p className="card-desc truncate">Tautan verifikasi dikirim ke email terdaftar</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setForgotSent(false);
+                }}
+                className="btn btn-ghost btn-icon btn-sm shrink-0 text-ink-3"
+                aria-label="Tutup"
+              >
+                <FontAwesome name="cross-small" className="text-[12px]" />
+              </button>
             </div>
 
-            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-1.5">
-              Pemulihan Kata Sandi
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-              Masukkan alamat email Anda yang terdaftar. Tautan verifikasi dan instruksi pemulihan akan dikirimkan ke kotak masuk Anda.
-            </p>
+            <div className="card-body">
+              <p className="mb-4 text-[12px] leading-relaxed text-ink-2">
+                Masukkan alamat email Anda yang terdaftar. Tautan verifikasi dan instruksi pemulihan akan
+                dikirimkan ke kotak masuk Anda.
+              </p>
 
-            {forgotSent ? (
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm flex items-center gap-3">
-                <FontAwesome name="circle-check" className="text-lg text-emerald-500 shrink-0" />
-                <span>Instruksi pemulihan berhasil dikirimkan ke email Anda.</span>
-              </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit} className="space-y-4">
-                <input
-                  type="email"
-                  value={forgotEmail}
-                  onChange={e => setForgotEmail(e.target.value)}
-                  placeholder="nama@email.com"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="w-full py-3.5 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white font-bold text-sm transition-all shadow-md cursor-pointer"
-                >
-                  Kirim Tautan Pemulihan
-                </button>
-              </form>
-            )}
+              {forgotSent ? (
+                <div className="flex items-center gap-2.5 rounded-md border border-ok-line bg-ok-soft px-3 py-2.5">
+                  <FontAwesome name="circle-check" className="shrink-0 text-[13px] text-ok" />
+                  <span className="text-[12px] leading-relaxed text-ink-2">
+                    Instruksi pemulihan berhasil dikirimkan ke email Anda.
+                  </span>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotSubmit} className="space-y-3">
+                  <FormField label="Alamat Email" htmlFor="forgot-email">
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="nama@email.com"
+                      required
+                    />
+                  </FormField>
+                  <Button type="submit" className="w-full">
+                    Kirim Tautan Pemulihan
+                  </Button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ================= MODAL SYARAT & KETENTUAN SANGAT DETAIL ================= */}
+      {/* ================= MODAL SYARAT & KETENTUAN ================= */}
       <AuthTermsModal
         isOpen={showTermsModal}
         onClose={() => setShowTermsModal(false)}
@@ -586,7 +540,7 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
         }}
       />
 
-      {/* ================= MODAL PUSAT BANTUAN TERHUBUNG DATABASE ADMIN ================= */}
+      {/* ================= MODAL PUSAT BANTUAN ================= */}
       <AuthHelpModal
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
@@ -595,4 +549,3 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
     </div>
   );
 }
-

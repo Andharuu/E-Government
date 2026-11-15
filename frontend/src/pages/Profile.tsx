@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { profileApi, type Profile } from '../services/api';
-import { FontAwesome } from '../components/ui';
+import { FontAwesome, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, EmptyState, Input, Textarea, Select, FormField } from '../components/ui';
 
 const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
   identity: [
@@ -50,6 +50,36 @@ export type {
   DocumentPhotosMap,
   RichPreset,
 };
+const CATEGORY_ICON: Record<string, string> = {
+  identity: 'user',
+  address: 'map-pin',
+  contact: 'phone',
+  education: 'graduation-cap',
+  career: 'building',
+  family: 'heart',
+  documents: 'file-lines',
+};
+
+// Anchor global yang dipakai indeks pencarian (Layout) — jangan diubah
+const SECTION_ANCHOR_BY_CATEGORY: Record<string, string> = {
+  identity: 'section-identity',
+  address: 'section-address',
+  contact: 'section-contact',
+  documents: 'section-documents',
+  education: 'section-education',
+  career: 'section-occupation',
+};
+
+const CATEGORY_BY_ANCHOR: Record<string, string> = {
+  'section-identity': 'identity',
+  'section-address': 'address',
+  'section-contact': 'contact',
+  'section-documents': 'documents',
+  'section-education': 'education',
+  'section-occupation': 'career',
+};
+
+const sectionIdFor = (catId: string) => SECTION_ANCHOR_BY_CATEGORY[catId] ?? `section-${catId}`;
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -651,6 +681,23 @@ export function ProfilePage() {
     );
   }, [allCategories, categorySearchQuery]);
 
+  // Sinkronisasi anchor global (#section-identity, #section-address, ...) ke kategori aktif
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash) return;
+      const catId = CATEGORY_BY_ANCHOR[hash] ?? (hash.startsWith('section-') ? hash.slice(8) : '');
+      if (!catId) return;
+      setActiveCategoryId(catId);
+      window.setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    };
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, [loading]);
+
   // Render input field reusable dengan copy button dan PII masking
   const renderField = (
     label: string,
@@ -666,27 +713,37 @@ export function ProfilePage() {
     }
   ) => {
     const type = options?.type ?? 'text';
+    const fieldId = `field-${key}`;
+    const placeholder = options?.placeholder || `Masukkan ${label.toLowerCase()}...`;
 
     return (
-      <div className="space-y-2" key={key}>
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] flex items-center gap-2">
-            <span>{label}</span>
-          </label>
+      <div className="min-w-0" key={key}>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <label htmlFor={fieldId} className="label mb-0 leading-snug">
+              {label}
+            </label>
+            {options?.badge && (
+              <Badge variant="neutral" size="sm" className="shrink-0">
+                {options.badge}
+              </Badge>
+            )}
+          </div>
           {value && (
             <button
               type="button"
               onClick={() => handleCopy(value, key)}
               title="Salin nilai"
-              className="inline-flex items-center gap-1 text-xs text-[#6EA2B3] hover:text-[#7BBDE8] transition-colors cursor-pointer"
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-ink-3 transition-colors hover:text-accent-text"
             >
               {copiedKey === key ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <FontAwesome name="check" className="text-[11px]" /> Tersalin
-                </span>
+                <>
+                  <FontAwesome name="check" className="text-[10px] text-ok" />
+                  <span className="text-ok">Tersalin</span>
+                </>
               ) : (
                 <>
-                  <FontAwesome name="copy" className="text-[11px]" />
+                  <FontAwesome name="copy" className="text-[10px]" />
                   <span>Salin</span>
                 </>
               )}
@@ -695,43 +752,36 @@ export function ProfilePage() {
         </div>
 
         {type === 'select' ? (
-          <div className="relative">
-            <select
-              value={value}
-              onChange={e => onValueChange(e.target.value)}
-              className="w-full h-11 pl-4 pr-10 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all appearance-none cursor-pointer"
-            >
-              <option value="" className="bg-[#101828] text-[#6EA2B3]">Pilih opsi...</option>
-              {options?.selectOptions?.map(opt => (
-                <option key={opt} value={opt} className="bg-[#101828] text-white py-1">{opt}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6EA2B3]">
-              <FontAwesome name="chevron-down" className="text-xs" />
-            </div>
-          </div>
+          <Select id={fieldId} value={value} onChange={e => onValueChange(e.target.value)}>
+            <option value="">Pilih opsi...</option>
+            {options?.selectOptions?.map(opt => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </Select>
         ) : type === 'date' ? (
-          <input
+          <Input
+            id={fieldId}
             type="date"
             value={value}
             onChange={e => onValueChange(e.target.value)}
-            className="w-full h-11 px-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-75 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
           />
         ) : type === 'textarea' ? (
-          <textarea
+          <Textarea
+            id={fieldId}
             value={value}
             onChange={e => onValueChange(e.target.value)}
-            placeholder={options?.placeholder || `Masukkan ${label.toLowerCase()}...`}
+            placeholder={placeholder}
             rows={3}
-            className="w-full p-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all resize-none placeholder:text-[#6EA2B3]"
           />
         ) : (
-          <input
+          <Input
+            id={fieldId}
             type={type}
             value={value}
             onChange={e => onValueChange(e.target.value)}
-            placeholder={options?.placeholder || `Masukkan ${label.toLowerCase()}...`}
-            className="w-full h-11 px-4 text-[13.5px] rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/20 outline-none bg-[#101828] text-white transition-all placeholder:text-[#6EA2B3]"
+            placeholder={placeholder}
           />
         )}
       </div>
@@ -740,9 +790,17 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="w-10 h-10 border-4 border-[#7BBDE8] border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm font-semibold text-[#6EA2B3]">Memuat profil kependudukan...</span>
+      <div className="page">
+        <div className="space-y-2">
+          <div className="skeleton h-6 w-44" />
+          <div className="skeleton h-3.5 w-[320px] max-w-full" />
+        </div>
+        <div className="skeleton h-[74px] w-full" />
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
+          <div className="skeleton h-[280px] lg:col-span-4 xl:col-span-3" />
+          <div className="skeleton h-[420px] lg:col-span-8 xl:col-span-9" />
+        </div>
+        <p className="text-[12px] font-medium text-ink-3">Memuat profil kependudukan...</p>
       </div>
     );
   }
@@ -752,10 +810,10 @@ export function ProfilePage() {
     const fieldsInCat = customFields.filter(f => f.category === catId);
 
     return (
-      <div className="space-y-6" key={catId}>
+      <div className="space-y-5" key={catId}>
         {/* Konten Standar berdasarkan ID */}
         {catId === 'identity' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {renderField('Nama Lengkap (Sesuai KTP)', 'full_name', profile?.full_name || '', v => handleChange('full_name', v), { badge: 'Wajib KTP' })}
             {renderField('NIK (Nomor Induk Kependudukan)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
             {renderField('Tempat Lahir', 'birth_place', profile?.birth_place || '', v => handleChange('birth_place', v))}
@@ -785,8 +843,8 @@ export function ProfilePage() {
         )}
 
         {catId === 'address' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="md:col-span-2 lg:col-span-3">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="min-w-0 sm:col-span-2 xl:col-span-3">
               {renderField('Alamat Domisili Utama', 'address', profile?.address || '', v => handleChange('address', v), { isPii: true, type: 'textarea' })}
             </div>
             {renderField('Alamat Baris 2 (Gedung/Kavling)', 'address_line_2', getExtendedField('address_line_2'), v => handleExtendedChange('address_line_2', v, 'address', 'Address Line 2'))}
@@ -801,7 +859,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'contact' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {renderField('Nomor HP / WhatsApp Utama', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
             {renderField('Alamat Surel / Email', 'email', profile?.email || '', v => handleChange('email', v))}
             {renderField('Telepon Rumah', 'home_phone', profile?.home_phone ?? getExtendedField('home_phone'), v => { handleChange('home_phone', v); handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'); }, { isPii: true })}
@@ -812,7 +870,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'education' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {renderField('Jenjang Pendidikan Terakhir', 'education_level', profile?.education_level || '', v => handleChange('education_level', v), {
               type: 'select',
               selectOptions: ['SD/Sederajat', 'SMP/Sederajat', 'SMA/SMK/Sederajat', 'D1/D2/D3', 'D4/S1', 'S2', 'S3', 'Lainnya']
@@ -826,7 +884,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'career' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {renderField('Profesi / Pekerjaan Saat Ini', 'occupation', profile?.occupation || '', v => handleChange('occupation', v))}
             {renderField('Nama Lembaga / Perusahaan', 'organization', profile?.organization || '', v => handleChange('organization', v))}
             {renderField('Alamat Kantor / Tempat Kerja', 'work_address', profile?.work_address || '', v => handleChange('work_address', v))}
@@ -835,7 +893,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'family' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {renderField('Nama Ibu Kandung', 'mother_name', profile?.mother_name || '', v => handleChange('mother_name', v), { isPii: true, badge: 'Validasi Bank/Dukcapil' })}
             {renderField('Nama Ayah Kandung', 'father_name', profile?.father_name || '', v => handleChange('father_name', v))}
             {renderField('Nama Kontak Darurat', 'emergency_contact_name', profile?.emergency_contact_name || '', v => handleChange('emergency_contact_name', v))}
@@ -845,24 +903,26 @@ export function ProfilePage() {
         )}
 
         {catId === 'documents' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Nomor Dokumen Resmi */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
               {renderField('Nomor Pokok Wajib Pajak (NPWP)', 'npwp', profile?.npwp || '', v => handleChange('npwp', v), { isPii: true, badge: '16/15 Digit' })}
               {renderField('Nomor BPJS Kesehatan', 'bpjs_number', profile?.bpjs_number || '', v => handleChange('bpjs_number', v), { isPii: true, badge: '13 Digit' })}
               {renderField('Nomor SIM (Surat Izin Mengemudi)', 'driver_license', getExtendedField('driver_license'), v => handleExtendedChange('driver_license', v, 'documents', 'Nomor SIM'), { isPii: true })}
             </div>
 
+            <div className="divider" />
+
             {/* Berkas Foto Dokumen Resmi */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <h3 className="text-sm font-bold text-white">Berkas Foto Resmi &amp; Lampiran Autofill</h3>
-                <p className="text-xs text-[#6EA2B3] mt-0.5">
+                <h3 className="text-[13px] font-semibold text-ink">Berkas Foto Resmi &amp; Lampiran Autofill</h3>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-3">
                   Foto dienkripsi secara lokal dan otomatis diunggah oleh ekstensi GovConnect pada formulir pendaftaran.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
                 {PHOTO_DOCUMENT_SLOTS.map(slot => {
                   const photo = documentPhotos[slot.id];
                   const hasPhoto = !!photo?.data;
@@ -870,10 +930,10 @@ export function ProfilePage() {
                   return (
                     <div
                       key={slot.id}
-                      className={`rounded-2xl border transition-colors p-4 flex flex-col justify-between ${
+                      className={`flex flex-col justify-between rounded-lg border p-3 transition-colors ${
                         hasPhoto
-                          ? 'bg-[#101828] border-[#243048]'
-                          : 'bg-[#101828] border-dashed border-[#243048] hover:border-[#7BBDE8]'
+                          ? 'border-line bg-surface'
+                          : 'border-dashed border-line-2 bg-surface-2'
                       }`}
                     >
                       <input
@@ -888,60 +948,57 @@ export function ProfilePage() {
                       />
 
                       <div>
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2.5">
-                            <FontAwesome name="camera" className="text-sm text-[#7BBDE8] shrink-0" />
-                            <div>
-                              <div className="text-xs font-bold text-white leading-tight">{slot.title}</div>
-                            </div>
-                          </div>
+                        <div className="mb-2 flex items-center gap-2">
+                          <FontAwesome name="camera" className="shrink-0 text-[11px] text-ink-3" />
+                          <span className="text-[12px] font-semibold leading-tight text-ink">{slot.title}</span>
                         </div>
 
                         {hasPhoto ? (
-                          <div className="relative group rounded-xl overflow-hidden border border-[#243048] bg-[#101828] aspect-[16/10] mb-3 flex items-center justify-center">
-                            <img src={photo.data} alt={slot.title} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-[#101828]/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <button
-                                type="button"
+                          <div className="group relative mb-2 aspect-[16/10] overflow-hidden rounded-md border border-line bg-surface-2">
+                            <img src={photo.data} alt={slot.title} className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-canvas/85 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                icon={<FontAwesome name="eye" className="text-[10px]" />}
                                 onClick={() => setPreviewPhoto({ title: slot.title, data: photo.data, name: photo.name })}
-                                className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
                               >
-                                <FontAwesome name="eye" className="text-xs text-[#7BBDE8]" />
-                                <span>Lihat</span>
-                              </button>
-                              <button
-                                type="button"
+                                Lihat
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                icon={<FontAwesome name="arrow-up-from-bracket" className="text-[10px]" />}
                                 onClick={() => fileInputRefs.current[slot.id]?.click()}
-                                className="px-3 py-1.5 rounded-lg bg-[#171F2F] text-white hover:bg-[#243048] text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-[#243048]"
                               >
-                                <FontAwesome name="arrow-up-from-bracket" className="text-xs text-[#7BBDE8]" />
-                                <span>Ganti</span>
-                              </button>
+                                Ganti
+                              </Button>
                             </div>
                           </div>
                         ) : (
-                          <div
+                          <button
+                            type="button"
                             onClick={() => fileInputRefs.current[slot.id]?.click()}
-                            className="rounded-xl border border-dashed border-[#243048] aspect-[16/10] mb-3 flex flex-col items-center justify-center p-3 text-center cursor-pointer hover:bg-[#171F2F] transition-colors"
+                            className="mb-2 flex aspect-[16/10] w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-2 bg-surface p-3 text-center transition-colors hover:border-accent-line hover:bg-surface-3"
                           >
-                            <FontAwesome name="arrow-up-from-bracket" className="text-xl text-[#6EA2B3] mb-1.5" />
-                            <span className="text-xs font-semibold text-[#7BBDE8]">Unggah Foto Berkas</span>
-                            <span className="text-[10px] text-[#6EA2B3] mt-0.5">JPG / PNG maksimal 5MB</span>
-                          </div>
+                            <FontAwesome name="arrow-up-from-bracket" className="text-[14px] text-ink-3" />
+                            <span className="text-[11.5px] font-semibold text-accent-text">Unggah Foto Berkas</span>
+                            <span className="text-[10.5px] text-ink-3">JPG / PNG maksimal 5MB</span>
+                          </button>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between text-xs pt-2">
-                        <span className="text-[#6EA2B3] truncate text-[11px]">
+                      <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+                        <span className="truncate text-[11px] text-ink-3">
                           {hasPhoto ? photo.name : slot.desc}
                         </span>
                         {hasPhoto && (
                           <button
                             type="button"
                             onClick={() => handleRemoveStandardPhoto(slot.id)}
-                            className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold cursor-pointer shrink-0 ml-2 text-xs"
+                            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
                           >
-                            <FontAwesome name="trash" className="text-[11px]" />
+                            <FontAwesome name="trash" className="text-[10px]" />
                             <span>Hapus</span>
                           </button>
                         )}
@@ -955,23 +1012,23 @@ export function ProfilePage() {
         )}
 
         {/* Custom Fields pada Kategori ini */}
-        <div className="pt-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white uppercase tracking-wider">
+        <div className="space-y-2.5 border-t border-line pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">
               Kolom Kustom Tambahan ({fieldsInCat.length})
             </span>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<FontAwesome name="plus" className="text-[10px]" />}
               onClick={() => openAddFieldModal(catId)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
             >
-              <FontAwesome name="plus" className="text-xs" />
-              <span>Tambah Kolom</span>
-            </button>
+              Tambah Kolom
+            </Button>
           </div>
 
           {fieldsInCat.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
               {fieldsInCat.map(field => {
                 const isEditing = editingFieldId === field.id;
                 const isImage = field.type === 'image';
@@ -980,34 +1037,36 @@ export function ProfilePage() {
                   return (
                     <div
                       key={field.id}
-                      className="p-4 bg-[#101828] rounded-xl border border-[#243048] flex items-center justify-between gap-3"
+                      className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface-2 p-2.5"
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
                         {field.photoData ? (
-                          <div
+                          <button
+                            type="button"
                             onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-                            className="w-12 h-12 rounded-lg bg-[#171F2F] border border-[#243048] overflow-hidden cursor-pointer shrink-0"
+                            className="h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line bg-surface"
                           >
-                            <img src={field.photoData} alt={field.label} className="w-full h-full object-cover" />
-                          </div>
+                            <img src={field.photoData} alt={field.label} className="h-full w-full object-cover" />
+                          </button>
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-[#171F2F] border border-[#243048] flex items-center justify-center shrink-0 text-[#6EA2B3]">
-                            <FontAwesome name="camera" className="text-base" />
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-ink-3">
+                            <FontAwesome name="camera" className="text-[12px]" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{field.label}</p>
-                          <p className="text-[11px] text-[#6EA2B3] font-mono truncate">{field.key}</p>
+                          <p className="truncate text-[12px] font-semibold text-ink">{field.label}</p>
+                          <p className="mono truncate text-ink-3">{field.key}</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0 text-danger hover:text-danger"
+                        icon={<FontAwesome name="trash" className="text-[10px]" />}
                         onClick={() => handleDeleteField(field.id, field.key)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-800/40 transition-colors cursor-pointer"
                       >
-                        <FontAwesome name="trash" className="text-[11px]" />
-                        <span>Hapus</span>
-                      </button>
+                        Hapus
+                      </Button>
                     </div>
                   );
                 }
@@ -1015,73 +1074,66 @@ export function ProfilePage() {
                 return (
                   <div
                     key={field.id}
-                    className="p-4 bg-[#101828] rounded-xl border border-[#243048] space-y-3"
+                    className="rounded-md border border-line bg-surface-2 p-2.5"
                   >
                     {isEditing ? (
-                      <div className="space-y-3">
-                        <input
-                          className="w-full h-10 px-3 text-xs rounded-lg border border-[#7BBDE8] bg-[#171F2F] text-white outline-none"
+                      <div className="space-y-2">
+                        <Input
+                          className="h-8 text-[12.5px]"
                           value={editLabel}
                           onChange={e => setEditLabel(e.target.value)}
                           placeholder="Label data"
                         />
-                        <input
-                          className="w-full h-10 px-3 text-xs rounded-lg border border-[#243048] bg-[#171F2F] text-white outline-none"
+                        <Input
+                          className="h-8 text-[12.5px]"
                           value={editValue}
                           onChange={e => setEditValue(e.target.value)}
                           placeholder="Nilai data"
                         />
-                        <div className="flex justify-end gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setEditingFieldId(null)}
-                            className="px-3 py-1.5 text-xs text-[#6EA2B3] hover:text-white hover:bg-[#171F2F] rounded-lg"
-                          >
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingFieldId(null)}>
                             Batal
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => saveEditField(field.id)}
-                            className="px-3.5 py-1.5 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-lg"
-                          >
+                          </Button>
+                          <Button size="sm" variant="primary" onClick={() => saveEditField(field.id)}>
                             Simpan
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-white truncate">{field.label}</span>
-                            <span className="text-[11px] text-[#6EA2B3] font-mono">({field.key})</span>
+                          <div className="flex min-w-0 items-baseline gap-1.5">
+                            <span className="truncate text-[12px] font-semibold text-ink">{field.label}</span>
+                            <span className="mono shrink-0 text-ink-3">({field.key})</span>
                           </div>
-                          <p className="text-xs text-[#6EA2B3] truncate mt-1 font-medium">{field.value || '-'}</p>
+                          <p className="mt-0.5 truncate text-[11.5px] text-ink-2">{field.value || '-'}</p>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(field.value, field.key)}
-                            className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            iconOnly
                             title="Salin nilai"
-                          >
-                            {copiedKey === field.key ? <FontAwesome name="check" className="text-xs text-emerald-400" /> : <FontAwesome name="copy" className="text-xs" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => startEditField(field)}
-                            className="p-1.5 text-[#6EA2B3] hover:text-[#7BBDE8] rounded-lg transition-colors cursor-pointer"
+                            icon={<FontAwesome name={copiedKey === field.key ? 'check' : 'copy'} className={`text-[11px] ${copiedKey === field.key ? 'text-ok' : ''}`} />}
+                            onClick={() => handleCopy(field.value, field.key)}
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            iconOnly
                             title="Edit data"
-                          >
-                            <FontAwesome name="pen" className="text-xs" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteField(field.id, field.key)}
-                            className="p-1.5 text-rose-400 hover:text-rose-300 rounded-lg transition-colors cursor-pointer"
+                            icon={<FontAwesome name="pen" className="text-[11px]" />}
+                            onClick={() => startEditField(field)}
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            iconOnly
                             title="Hapus data"
-                          >
-                            <FontAwesome name="trash" className="text-xs" />
-                          </button>
+                            className="text-danger hover:text-danger"
+                            icon={<FontAwesome name="trash" className="text-[11px]" />}
+                            onClick={() => handleDeleteField(field.id, field.key)}
+                          />
                         </div>
                       </div>
                     )}
@@ -1090,9 +1142,11 @@ export function ProfilePage() {
               })}
             </div>
           ) : (
-            <p className="text-xs text-[#6EA2B3] italic">
-              Belum ada kolom kustom tambahan pada kategori ini.
-            </p>
+            <EmptyState
+              icon={<FontAwesome name="folder-open" className="text-[15px]" />}
+              title="Belum ada kolom kustom tambahan pada kategori ini."
+              className="py-8"
+            />
           )}
         </div>
       </div>
@@ -1100,102 +1154,101 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="w-full space-y-6 pb-24">
-      {/* ── Page Header (F-Shape: Title Top-Left, CTAs Top-Right) ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Profil Saya
-          </h1>
-          <p className="text-sm text-[#6EA2B3] mt-1">
+    <div className="page page-enter pb-24">
+      {/* ── Page Header ── */}
+      <div className="page-head">
+        <div className="min-w-0">
+          <h1 className="page-title">Profil Saya</h1>
+          <p className="page-sub max-w-[70ch]">
             Kelola data identitas kependudukan, kontak, berkas foto resmi, dan kolom kustom untuk autofill resmi.
           </p>
         </div>
 
-        {/* Action Toolbar with clear text labels */}
-        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          {/* Add Category Trigger */}
-          <button
-            type="button"
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            icon={<FontAwesome name="folder-plus" className="text-[12px]" />}
             onClick={() => setShowAddCategoryModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
-            <FontAwesome name="folder-plus" className="text-sm" />
-            <span>Kategori Baru</span>
-          </button>
+            Kategori Baru
+          </Button>
         </div>
       </div>
 
-      {/* ── Profile Completeness Bar (Strict 8px Grid) ── */}
-      <div className="bg-[#171F2F] rounded-2xl border border-[#243048] p-4 space-y-2 shadow-sm">
-        <div className="flex items-center justify-between text-xs font-semibold">
-          <span className="text-white flex items-center gap-2">
-            <span>Kelengkapan Profil &amp; Berkas</span>
-            <span className="text-[#6EA2B3] font-normal">
-              ({completeness.filled} dari {completeness.total} data terisi)
+      {/* ── Profile Completeness ── */}
+      <Card>
+        <div className="card-body space-y-2.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-[12.5px] font-semibold text-ink">Kelengkapan Profil &amp; Berkas</span>
+              <span className="tabular-nums text-[11.5px] text-ink-3">
+                ({completeness.filled} dari {completeness.total} data terisi)
+              </span>
+            </div>
+            <span className="tabular-nums text-[12.5px] font-semibold text-accent-text">
+              {completeness.percentage}% Lengkap
             </span>
-          </span>
-          <span className="text-[#7BBDE8] font-bold tabular-nums">
-            {completeness.percentage}% Lengkap
-          </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{ width: `${completeness.percentage}%` }}
+            />
+          </div>
         </div>
-        <div className="w-full h-2 bg-[#101828] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#7BBDE8] rounded-full transition-all duration-500"
-            style={{ width: `${completeness.percentage}%` }}
-          />
-        </div>
-      </div>
+      </Card>
 
-      {/* ── Main Profile Workspace (Focused Category Navigation) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Sidebar / Category Navigator (3 cols on lg) - STICKY FOLLOWING USER SCROLL */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-4 sticky top-6 self-start z-10">
-          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm overflow-hidden">
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#6EA2B3] flex items-center gap-2">
-                  <FontAwesome name="layer-group" className="text-sm text-[#7BBDE8]" />
-                  <span>Kategori Data</span>
-                </span>
+      {/* ── Main Workspace ── */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
+        {/* Category Navigator */}
+        <aside className="space-y-3 lg:sticky lg:top-6 lg:col-span-4 xl:col-span-3">
+          <Card className="overflow-hidden">
+            <div className="card-head">
+              <div className="flex items-center gap-2">
+                <FontAwesome name="layer-group" className="text-[11px] text-ink-3" />
+                <h2 className="card-title">Kategori Data</h2>
               </div>
+            </div>
 
-              {/* Category Search */}
+            <div className="px-3 pt-3">
               <div className="relative">
-                <input
+                <FontAwesome
+                  name="search"
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-ink-3"
+                />
+                <Input
                   type="text"
                   value={categorySearchQuery}
                   onChange={e => setCategorySearchQuery(e.target.value)}
                   placeholder="Cari kategori..."
-                  className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none transition-colors placeholder:text-[#6EA2B3]"
+                  className="h-8 pl-8 text-[12.5px]"
                 />
-                <FontAwesome name="search" className="text-xs text-[#6EA2B3] absolute left-2.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
-            {/* Category Navigation List */}
-            <div className="p-2 space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto no-scrollbar">
+            <nav className="max-h-[calc(100vh-280px)] space-y-0.5 overflow-y-auto p-2">
               <button
                 type="button"
                 onClick={() => setActiveCategoryId('all')}
-                className={`w-full text-left p-3 rounded-xl transition-colors flex items-center justify-between cursor-pointer ${
+                data-active={activeCategoryId === 'all'}
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${
                   activeCategoryId === 'all'
-                    ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                    : 'text-[#6EA2B3] hover:bg-[#101828] hover:text-white'
+                    ? 'border-accent-line bg-accent-soft'
+                    : 'border-transparent hover:bg-surface-3'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FontAwesome
-                    name="layer-group"
-                    className={`text-base shrink-0 ${activeCategoryId === 'all' ? 'text-[#101828]' : 'text-[#7BBDE8]'}`}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold truncate">Semua Kategori</p>
-                    <p className={`text-[11px] truncate ${activeCategoryId === 'all' ? 'text-[#101828]/80' : 'text-[#6EA2B3]'}`}>
-                      Tampilan penuh
-                    </p>
-                  </div>
-                </div>
+                <FontAwesome
+                  name="layer-group"
+                  className={`w-4 shrink-0 text-center text-[12px] ${
+                    activeCategoryId === 'all' ? 'text-accent-text' : 'text-ink-3'
+                  }`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-[12.5px] ${activeCategoryId === 'all' ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
+                    Semua Kategori
+                  </span>
+                  <span className="block truncate text-[11px] text-ink-3">Tampilan penuh</span>
+                </span>
               </button>
 
               {filteredCategories.map(cat => {
@@ -1207,344 +1260,319 @@ export function ProfilePage() {
                     key={cat.id}
                     type="button"
                     onClick={() => setActiveCategoryId(cat.id)}
-                    className={`w-full text-left p-3 rounded-xl transition-colors flex items-center justify-between cursor-pointer ${
+                    data-active={isActive}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${
                       isActive
-                        ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                        : 'text-[#6EA2B3] hover:bg-[#101828] hover:text-white'
+                        ? 'border-accent-line bg-accent-soft'
+                        : 'border-transparent hover:bg-surface-3'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Icon without wrapper */}
-                      {cat.id === 'identity' && <FontAwesome name="user" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'address' && <FontAwesome name="map-pin" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'contact' && <FontAwesome name="phone" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'education' && <FontAwesome name="graduation-cap" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'career' && <FontAwesome name="briefcase" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'family' && <FontAwesome name="users" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.id === 'documents' && <FontAwesome name="file-lines" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-                      {cat.isCustom && <FontAwesome name="folder" className={`text-base shrink-0 ${isActive ? 'text-[#101828]' : 'text-[#7BBDE8]'}`} />}
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold truncate">{cat.title}</p>
-                        <p className={`text-[11px] truncate ${isActive ? 'text-[#101828]/80' : 'text-[#6EA2B3]'}`}>
-                          {cat.desc}
-                        </p>
-                      </div>
-
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                        isActive ? 'bg-[#101828]/20 text-[#101828]' : 'bg-[#101828] text-[#6EA2B3]'
-                      }`}>
-                        {catStats.filled}/{catStats.total}
+                    <FontAwesome
+                      name={cat.isCustom ? 'folder' : (CATEGORY_ICON[cat.id] ?? 'folder')}
+                      className={`w-4 shrink-0 text-center text-[12px] ${isActive ? 'text-accent-text' : 'text-ink-3'}`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-[12.5px] ${isActive ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
+                        {cat.title}
                       </span>
-                    </div>
+                      <span className="block truncate text-[11px] text-ink-3">{cat.desc}</span>
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full border px-1.5 py-0.5 tabular-nums text-[10.5px] font-semibold ${
+                        isActive
+                          ? 'border-accent-line bg-surface text-accent-text'
+                          : 'border-line bg-surface-3 text-ink-3'
+                      }`}
+                    >
+                      {catStats.filled}/{catStats.total}
+                    </span>
                   </button>
                 );
               })}
-            </div>
-          </div>
-        </div>
+            </nav>
+          </Card>
+        </aside>
 
-        {/* Right Content Area: Active Category Editor (9 cols on lg) */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+        {/* Active Category Editor */}
+        <div className="space-y-4 lg:col-span-8 xl:col-span-9">
           {activeCategoryId === 'all' ? (
-            <div className="space-y-6">
-              {allCategories.map(cat => (
-                <div key={cat.id} className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 space-y-6">
-                  <div className="flex items-start justify-between gap-4 pb-2">
-                    <div>
-                      <h2 className="text-base font-bold text-white">{cat.title}</h2>
-                      <p className="text-xs text-[#6EA2B3] mt-0.5">{cat.desc}</p>
-                    </div>
-                    {cat.isCustom && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <FontAwesome name="trash" className="text-[11px]" />
-                        <span>Hapus Kategori</span>
-                      </button>
-                    )}
+            allCategories.map(cat => (
+              <Card key={cat.id} id={sectionIdFor(cat.id)}>
+                <CardHeader>
+                  <div className="min-w-0">
+                    <CardTitle>{cat.title}</CardTitle>
+                    <CardDescription>{cat.desc}</CardDescription>
                   </div>
-                  {renderCategoryContent(cat.id)}
-                </div>
-              ))}
-            </div>
+                  {cat.isCustom && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0 text-danger hover:text-danger"
+                      icon={<FontAwesome name="trash" className="text-[10px]" />}
+                      onClick={() => handleDeleteCategory(cat.id)}
+                    >
+                      Hapus Kategori
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>{renderCategoryContent(cat.id)}</CardContent>
+              </Card>
+            ))
           ) : (
             (() => {
               const currentCat = allCategories.find(c => c.id === activeCategoryId) || allCategories[0];
               return (
-                <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 sm:p-8 space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-                    <div>
-                      <h2 className="text-lg font-bold text-white">{currentCat.title}</h2>
-                      <p className="text-xs text-[#6EA2B3] mt-0.5">{currentCat.desc}</p>
+                <Card id={sectionIdFor(currentCat.id)}>
+                  <CardHeader>
+                    <div className="min-w-0">
+                      <CardTitle>{currentCat.title}</CardTitle>
+                      <CardDescription>{currentCat.desc}</CardDescription>
                     </div>
-                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                    <div className="flex shrink-0 items-center gap-2">
                       {currentCat.isCustom && (
-                        <button
-                          type="button"
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-danger hover:text-danger"
+                          icon={<FontAwesome name="trash" className="text-[10px]" />}
                           onClick={() => handleDeleteCategory(currentCat.id)}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600 px-3 py-1.5 bg-rose-950/30 border border-rose-800/40 rounded-xl transition-colors cursor-pointer"
                         >
-                          <FontAwesome name="trash" className="text-xs" />
-                          <span>Hapus Kategori</span>
-                        </button>
+                          Hapus Kategori
+                        </Button>
                       )}
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        icon={<FontAwesome name="plus" className="text-[10px]" />}
                         onClick={() => openAddFieldModal(currentCat.id)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
                       >
-                        <FontAwesome name="plus" className="text-xs" />
-                        <span>Tambah Data</span>
-                      </button>
+                        Tambah Data
+                      </Button>
                     </div>
-                  </div>
-
-                  {renderCategoryContent(currentCat.id)}
-                </div>
+                  </CardHeader>
+                  <CardContent>{renderCategoryContent(currentCat.id)}</CardContent>
+                </Card>
               );
             })()
           )}
         </div>
       </div>
 
-      {/* ── Toast Notification Popup ── */}
+      {/* ── Toast Notification ── */}
       {message && (
-        <div className="fixed top-6 right-6 z-50 pointer-events-auto">
-          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-md p-4 flex items-center gap-3 max-w-sm sm:max-w-md">
-            {message.type === 'success' ? (
-              <div className="w-8 h-8 rounded-full bg-emerald-950/40 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-800/40">
-                <FontAwesome name="check" className="text-xs" />
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-rose-950/40 text-rose-400 flex items-center justify-center shrink-0 border border-rose-800/40">
-                <FontAwesome name="circle-exclamation" className="text-sm" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-white leading-tight">
-                {message.type === 'success' ? 'Berhasil Disimpan' : 'Gagal Menyimpan'}
-              </h4>
-              <p className="text-xs text-[#6EA2B3] mt-0.5 line-clamp-2">{message.text}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMessage(null)}
-              className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
-              title="Tutup notifikasi"
+        <div className="pointer-events-auto fixed right-4 top-4 z-50 w-full max-w-sm">
+          <div className="card flex items-start gap-2.5 p-3">
+            <span
+              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
+                message.type === 'success'
+                  ? 'border-ok-line bg-ok-soft text-ok'
+                  : 'border-danger-line bg-danger-soft text-danger'
+              }`}
             >
-              <FontAwesome name="xmark" className="text-sm" />
-            </button>
+              <FontAwesome name={message.type === 'success' ? 'check' : 'circle-exclamation'} className="text-[10px]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold leading-tight text-ink">
+                {message.type === 'success' ? 'Berhasil Disimpan' : 'Gagal Menyimpan'}
+              </p>
+              <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink-2">{message.text}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              iconOnly
+              title="Tutup notifikasi"
+              className="h-6 w-6"
+              icon={<FontAwesome name="xmark" className="text-[11px]" />}
+              onClick={() => setMessage(null)}
+            />
           </div>
         </div>
       )}
 
-      {/* ── Floating Unsaved Changes Dock Bar ── */}
+      {/* ── Sticky Action Bar: Unsaved Changes ── */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl bg-white dark:bg-[#171F2F] text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-[#243048] shadow-2xl px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#0A4174] dark:bg-[#7BBDE8] animate-pulse shrink-0" />
-            <p className="text-xs font-semibold truncate text-slate-600 dark:text-[#6EA2B3]">
-              Ada perubahan data profil yang belum disimpan
-            </p>
-          </div>
+        <div className="fixed bottom-4 left-1/2 z-40 w-[94%] max-w-2xl -translate-x-1/2">
+          <div className="card flex items-center justify-between gap-3 px-3 py-2.5 shadow-lg">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+              <p className="truncate text-[12px] font-medium text-ink-2">
+                Ada perubahan data profil yang belum disimpan
+              </p>
+            </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={handleResetChanges}
-              className="px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-[#6EA2B3] dark:hover:text-white rounded-xl transition-colors cursor-pointer"
-            >
-              Batalkan
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
-            >
-              {saving ? <FontAwesome name="rotate" spin className="text-xs" /> : <FontAwesome name="floppy-disk" className="text-xs" />}
-              <span>{saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}</span>
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={handleResetChanges}>
+                Batalkan
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                loading={saving}
+                icon={<FontAwesome name="floppy-disk" className="text-[11px]" />}
+                onClick={handleSave}
+              >
+                {saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Modal Tambah Custom Field ── */}
       {showAddFieldModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-xl max-w-md w-full overflow-hidden">
-            <div className="p-6 border-b border-[#243048] flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-white">Tambah Kolom Kustom</h3>
-                <p className="text-xs text-[#6EA2B3] mt-0.5">Tambahkan data spesifik untuk kebutuhan pengisian form</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="card w-full max-w-md overflow-hidden">
+            <div className="card-head">
+              <div className="min-w-0">
+                <h3 className="card-title">Tambah Kolom Kustom</h3>
+                <p className="card-desc">Tambahkan data spesifik untuk kebutuhan pengisian form</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddFieldModal(false)}
-                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+              <Button
+                size="sm"
+                variant="ghost"
+                iconOnly
                 title="Tutup dialog"
-              >
-                <FontAwesome name="xmark" className="text-base" />
-              </button>
+                className="h-7 w-7"
+                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+                onClick={() => setShowAddFieldModal(false)}
+              />
             </div>
 
-            <form onSubmit={handleSaveNewField} className="p-6 space-y-4">
-              {/* Presets Quick Selector */}
-              {RICH_CATEGORY_PRESETS[targetCategory]?.length > 0 && (
+            <form onSubmit={handleSaveNewField}>
+              <div className="card-body max-h-[68vh] space-y-4 overflow-y-auto">
+                {/* Presets Quick Selector */}
+                {RICH_CATEGORY_PRESETS[targetCategory]?.length > 0 && (
+                  <div>
+                    <label className="label">Rekomendasi Kolom Cepat</label>
+                    <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-line bg-surface-2 p-2">
+                      {RICH_CATEGORY_PRESETS[targetCategory].slice(0, 8).map(preset => (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => applyPresetToModal(preset)}
+                          className="cursor-pointer rounded-sm border border-line bg-surface px-2 py-1 text-[11.5px] font-medium text-ink-2 transition-colors hover:border-accent-line hover:text-ink"
+                        >
+                          + {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tipe Data */}
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                    Rekomendasi Kolom Cepat
-                  </label>
-                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2 bg-[#101828] rounded-xl border border-[#243048]">
-                    {RICH_CATEGORY_PRESETS[targetCategory].slice(0, 8).map(preset => (
+                  <span className="label">Tipe Data</span>
+                  <div className="segmented w-full">
+                    {(['text', 'date', 'textarea', 'image'] as const).map(t => (
                       <button
-                        key={preset.key}
+                        key={t}
                         type="button"
-                        onClick={() => applyPresetToModal(preset)}
-                        className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#171F2F] border border-[#243048] hover:border-[#7BBDE8] text-[#6EA2B3] hover:text-white transition-colors cursor-pointer"
+                        onClick={() => setNewFieldType(t)}
+                        data-active={newFieldType === t}
+                        className="segmented-item flex-1 justify-center capitalize"
                       >
-                        + {preset.label}
+                        {t === 'image' ? 'Berkas' : t}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Tipe Data */}
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                  Tipe Data
-                </label>
-                <div className="grid grid-cols-4 gap-2 p-1 bg-[#101828] rounded-xl border border-[#243048] text-center text-xs font-semibold">
-                  {(['text', 'date', 'textarea', 'image'] as const).map(t => (
+                {/* Label */}
+                <FormField label="Label Data" required htmlFor="new-field-label">
+                  <Input
+                    id="new-field-label"
+                    value={newLabel}
+                    onChange={e => handleLabelChange(e.target.value)}
+                    placeholder="Contoh: Nomor Paspor, Foto Ijazah"
+                    required
+                  />
+                </FormField>
+
+                {/* Key */}
+                <FormField
+                  label="Kunci Atribut Autofill"
+                  required
+                  htmlFor="new-field-key"
+                >
+                  <Input
+                    id="new-field-key"
+                    value={newKey}
+                    onChange={e => setNewKey(slugify(e.target.value))}
+                    placeholder="contoh: nomor_paspor"
+                    className="mono"
+                    required
+                  />
+                </FormField>
+
+                {/* Value or Photo Upload */}
+                {newFieldType === 'image' ? (
+                  <div>
+                    <span className="label">
+                      Unggah Berkas Gambar <span className="text-danger">*</span>
+                    </span>
+                    <input
+                      type="file"
+                      ref={modalPhotoInputRef}
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleModalPhotoSelected(file);
+                      }}
+                      className="hidden"
+                    />
                     <button
-                      key={t}
                       type="button"
-                      onClick={() => setNewFieldType(t)}
-                      className={`py-1.5 rounded-lg capitalize transition-colors cursor-pointer ${
-                        newFieldType === t
-                          ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                          : 'text-[#6EA2B3] hover:text-white'
-                      }`}
+                      onClick={() => modalPhotoInputRef.current?.click()}
+                      className="flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-2 bg-surface-2 px-4 py-5 text-center transition-colors hover:border-accent-line hover:bg-surface-3"
                     >
-                      {t === 'image' ? 'Berkas' : t}
+                      {newPhotoData ? (
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ok">
+                          <FontAwesome name="check" className="text-[10px]" />
+                          <span className="max-w-[220px] truncate">{newPhotoData.name}</span>
+                        </span>
+                      ) : (
+                        <>
+                          <FontAwesome name="arrow-up-from-bracket" className="text-[14px] text-ink-3" />
+                          <span className="text-[12px] font-semibold text-accent-text">Pilih berkas foto</span>
+                        </>
+                      )}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Label */}
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                  Label Data <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  value={newLabel}
-                  onChange={e => handleLabelChange(e.target.value)}
-                  placeholder="Contoh: Nomor Paspor, Foto Ijazah"
-                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
-                  required
-                />
-              </div>
-
-              {/* Key */}
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                  Kunci Atribut Autofill <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  value={newKey}
-                  onChange={e => setNewKey(slugify(e.target.value))}
-                  placeholder="contoh: nomor_paspor"
-                  className="w-full h-11 px-4 text-xs font-mono rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
-                  required
-                />
-              </div>
-
-              {/* Value or Photo Upload */}
-              {newFieldType === 'image' ? (
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                    Unggah Berkas Gambar <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="file"
-                    ref={modalPhotoInputRef}
-                    accept="image/*"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleModalPhotoSelected(file);
-                    }}
-                    className="hidden"
-                  />
-                  <div
-                    onClick={() => modalPhotoInputRef.current?.click()}
-                    className="p-5 rounded-xl border border-dashed border-[#243048] hover:border-[#7BBDE8] bg-[#101828] hover:bg-[#171F2F] text-center cursor-pointer transition-colors"
-                  >
-                    {newPhotoData ? (
-                      <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
-                        <FontAwesome name="check" className="text-xs" />
-                        <span className="truncate max-w-[200px]">{newPhotoData.name}</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <FontAwesome name="arrow-up-from-bracket" className="text-lg text-[#6EA2B3] mx-auto" />
-                        <p className="text-xs font-semibold text-[#7BBDE8]">Pilih berkas foto</p>
-                      </div>
-                    )}
                   </div>
-                </div>
-              ) : newFieldType === 'textarea' ? (
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                    Nilai Data <span className="text-rose-400">*</span>
-                  </label>
-                  <textarea
-                    value={newValue}
-                    onChange={e => setNewValue(e.target.value)}
-                    rows={3}
-                    placeholder="Isi catatan data..."
-                    className="w-full p-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none resize-none placeholder:text-[#6EA2B3]"
-                    required
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                    Nilai Data <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type={newFieldType === 'date' ? 'date' : 'text'}
-                    value={newValue}
-                    onChange={e => setNewValue(e.target.value)}
-                    placeholder="Isi nilai data..."
-                    className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
-                    required
-                  />
-                </div>
-              )}
+                ) : newFieldType === 'textarea' ? (
+                  <FormField label="Nilai Data" required htmlFor="new-field-value">
+                    <Textarea
+                      id="new-field-value"
+                      value={newValue}
+                      onChange={e => setNewValue(e.target.value)}
+                      rows={3}
+                      placeholder="Isi catatan data..."
+                      required
+                    />
+                  </FormField>
+                ) : (
+                  <FormField label="Nilai Data" required htmlFor="new-field-value">
+                    <Input
+                      id="new-field-value"
+                      type={newFieldType === 'date' ? 'date' : 'text'}
+                      value={newValue}
+                      onChange={e => setNewValue(e.target.value)}
+                      placeholder="Isi nilai data..."
+                      required
+                    />
+                  </FormField>
+                )}
 
-              {fieldError && (
-                <p className="text-xs text-rose-400 font-semibold">{fieldError}</p>
-              )}
+                {fieldError && <p className="err">{fieldError}</p>}
+              </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#243048]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddFieldModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-xl"
-                >
+              <div className="card-foot justify-end">
+                <Button variant="ghost" onClick={() => setShowAddFieldModal(false)}>
                   Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl shadow-xs"
-                >
+                </Button>
+                <Button type="submit" variant="primary">
                   Tambahkan Kolom
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -1553,99 +1581,92 @@ export function ProfilePage() {
 
       {/* ── Modal Tambah Kategori Baru ── */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-xl max-w-md w-full overflow-hidden">
-            <div className="p-6 border-b border-[#243048] flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-white">Buat Kategori Kustom Baru</h3>
-                <p className="text-xs text-[#6EA2B3] mt-0.5">Kelompokkan data khusus sesuai kebutuhan pengisian form</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="card w-full max-w-md overflow-hidden">
+            <div className="card-head">
+              <div className="min-w-0">
+                <h3 className="card-title">Buat Kategori Kustom Baru</h3>
+                <p className="card-desc">Kelompokkan data khusus sesuai kebutuhan pengisian form</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddCategoryModal(false)}
-                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+              <Button
+                size="sm"
+                variant="ghost"
+                iconOnly
                 title="Tutup dialog"
-              >
-                <FontAwesome name="xmark" className="text-base" />
-              </button>
+                className="h-7 w-7"
+                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+                onClick={() => setShowAddCategoryModal(false)}
+              />
             </div>
 
-            <form onSubmit={handleCreateCategoryStandalone} className="p-6 space-y-4">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                  Nama Kategori <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  value={newCategoryTitle}
-                  onChange={e => setNewCategoryTitle(e.target.value)}
-                  placeholder="Contoh: Dokumen Kendaraan, Rekening Bank"
-                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
-                  required
-                />
+            <form onSubmit={handleCreateCategoryStandalone}>
+              <div className="card-body space-y-4">
+                <FormField label="Nama Kategori" required htmlFor="new-category-title">
+                  <Input
+                    id="new-category-title"
+                    value={newCategoryTitle}
+                    onChange={e => setNewCategoryTitle(e.target.value)}
+                    placeholder="Contoh: Dokumen Kendaraan, Rekening Bank"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Deskripsi Kategori (Opsional)" htmlFor="new-category-desc">
+                  <Input
+                    id="new-category-desc"
+                    value={newCategoryDesc}
+                    onChange={e => setNewCategoryDesc(e.target.value)}
+                    placeholder="Contoh: STNK, BPKB, dan nomor plat kendaraan"
+                  />
+                </FormField>
+
+                {categoryError && <p className="err">{categoryError}</p>}
               </div>
 
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6EA2B3] block mb-2">
-                  Deskripsi Kategori (Opsional)
-                </label>
-                <input
-                  value={newCategoryDesc}
-                  onChange={e => setNewCategoryDesc(e.target.value)}
-                  placeholder="Contoh: STNK, BPKB, dan nomor plat kendaraan"
-                  className="w-full h-11 px-4 text-sm rounded-xl border border-[#243048] bg-[#101828] text-white focus:border-[#7BBDE8] outline-none placeholder:text-[#6EA2B3]"
-                />
-              </div>
-
-              {categoryError && (
-                <p className="text-xs text-rose-400 font-semibold">{categoryError}</p>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#243048]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddCategoryModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-xl"
-                >
+              <div className="card-foot justify-end">
+                <Button variant="ghost" onClick={() => setShowAddCategoryModal(false)}>
                   Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl shadow-xs"
-                >
+                </Button>
+                <Button type="submit" variant="primary">
                   Buat Kategori
-                </button>
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ── Lightbox Image Preview Modal ── */}
+      {/* ── Lightbox Image Preview ── */}
       {previewPhoto && (
         <div
           onClick={() => setPreviewPhoto(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 p-4"
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="bg-[#171F2F] rounded-2xl border border-[#243048] max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl flex flex-col cursor-default"
+            className="card flex max-h-[90vh] w-full max-w-3xl cursor-default flex-col overflow-hidden"
           >
-            <div className="p-4 border-b border-[#243048] flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-white">{previewPhoto.title}</h4>
-                <p className="text-xs text-[#6EA2B3]">{previewPhoto.name}</p>
+            <div className="card-head">
+              <div className="min-w-0">
+                <h4 className="card-title truncate">{previewPhoto.title}</h4>
+                <p className="card-desc truncate">{previewPhoto.name}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewPhoto(null)}
-                className="p-1 rounded-lg text-[#6EA2B3] hover:text-white cursor-pointer"
+              <Button
+                size="sm"
+                variant="ghost"
+                iconOnly
                 title="Tutup pratinjau"
-              >
-                <FontAwesome name="xmark" className="text-base" />
-              </button>
+                className="h-7 w-7 shrink-0"
+                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+                onClick={() => setPreviewPhoto(null)}
+              />
             </div>
-            <div className="p-4 bg-[#101828] flex items-center justify-center overflow-auto max-h-[75vh]">
-              <img src={previewPhoto.data} alt={previewPhoto.title} className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+            <div className="flex max-h-[75vh] items-center justify-center overflow-auto bg-surface-2 p-3">
+              <img
+                src={previewPhoto.data}
+                alt={previewPhoto.title}
+                className="max-h-[70vh] max-w-full rounded-md object-contain"
+              />
             </div>
           </div>
         </div>

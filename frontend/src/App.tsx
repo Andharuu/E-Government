@@ -19,6 +19,7 @@ import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminAudit } from './pages/admin/AdminAudit';
 import { AdminAnnouncements } from './pages/admin/AdminAnnouncements';
 import { UserComplaintsPage } from './pages/UserComplaints';
+import { Onboarding } from './pages/Onboarding';
 import { FontAwesome } from './components/ui';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -26,13 +27,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  // Akun admin tidak pernah masuk ke halaman pengguna — selalu panel admin.
+  if (user.is_admin) return <Navigate to="/admin" replace />;
+  return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -40,8 +44,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }
@@ -51,13 +55,27 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AuthOnly({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
+      </div>
+    );
+  }
+
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }
@@ -70,6 +88,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/welcome" element={<AuthOnly><Onboarding /></AuthOnly>} />
       <Route element={<PublicRoute><AuthPage /></PublicRoute>}>
         <Route path="/login" element={null} />
         <Route path="/register" element={null} />

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useId, useMemo } from 'react';
 import { FontAwesome } from './FontAwesome';
 
 export interface CustomSelectOption {
@@ -13,6 +13,8 @@ export interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Tampilkan kotak pencarian di dalam popover (berguna untuk daftar panjang) */
+  searchable?: boolean;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -22,31 +24,41 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   placeholder = 'Pilih opsi...',
   className = '',
   disabled = false,
+  searchable,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const selectId = useId();
 
   const selectedOption = options.find((opt) => opt.value === value);
+  const showSearch = searchable ?? options.length > 10;
 
-  // Close when clicking outside
+  const visibleOptions = useMemo(() => {
+    if (!query.trim()) return options;
+    const q = query.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setQuery('');
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Keyboard navigation
+  useEffect(() => {
+    if (isOpen && showSearch) {
+      const t = setTimeout(() => searchRef.current?.focus(), 30);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, showSearch]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
 
@@ -55,18 +67,19 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       if (!isOpen) {
         setIsOpen(true);
       } else if (e.key === 'ArrowDown') {
-        const currentIndex = options.findIndex((opt) => opt.value === value);
-        const nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
-        onChange(options[nextIndex].value);
+        const idx = visibleOptions.findIndex((opt) => opt.value === value);
+        const next = idx < visibleOptions.length - 1 ? idx + 1 : 0;
+        if (visibleOptions[next]) onChange(visibleOptions[next].value);
       }
     } else if (e.key === 'ArrowUp' && isOpen) {
       e.preventDefault();
-      const currentIndex = options.findIndex((opt) => opt.value === value);
-      const prevIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
-      onChange(options[prevIndex].value);
+      const idx = visibleOptions.findIndex((opt) => opt.value === value);
+      const prev = idx > 0 ? idx - 1 : visibleOptions.length - 1;
+      if (visibleOptions[prev]) onChange(visibleOptions[prev].value);
     } else if (e.key === 'Escape' && isOpen) {
       e.preventDefault();
       setIsOpen(false);
+      setQuery('');
     } else if (e.key === 'Tab') {
       setIsOpen(false);
     }
@@ -80,57 +93,71 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         disabled={disabled}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         onKeyDown={handleKeyDown}
-        className={`w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border rounded-xl outline-none transition-all duration-150 flex items-center justify-between text-left cursor-pointer select-none ${
-          isOpen
-            ? 'border-blue-500 dark:border-[#7BBDE8] ring-4 ring-blue-500/15 dark:ring-[#7BBDE8]/15 text-slate-900 dark:text-white'
-            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 text-slate-900 dark:text-white'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`input flex items-center justify-between text-left select-none ${
+          isOpen ? 'border-accent ring-2 ring-accent/15' : ''
+        } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className={`truncate text-sm font-medium ${selectedOption ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-[#6EA2B3]'}`}>
+        <span className={`truncate ${selectedOption ? 'text-ink' : 'text-ink-3'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <FontAwesome
           name="chevron-down"
-          className={`text-[11px] text-slate-400 dark:text-[#6EA2B3] transition-transform duration-200 shrink-0 ml-2 ${
-            isOpen ? 'rotate-180 text-blue-600 dark:text-[#7BBDE8]' : ''
+          className={`text-[10px] text-ink-3 transition-transform duration-150 shrink-0 ml-2 ${
+            isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {isOpen && (
         <div
-          ref={listRef}
           role="listbox"
           tabIndex={-1}
           aria-labelledby={selectId}
-          className="absolute z-50 left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] rounded-xl shadow-2xl overflow-y-auto max-h-60 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100"
+          className="absolute z-50 left-0 right-0 mt-1.5 bg-surface border border-line rounded-lg shadow-lg overflow-hidden"
         >
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <div
-                key={option.value}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm cursor-pointer transition-colors duration-100 select-none ${
-                  isSelected
-                    ? 'bg-blue-50 dark:bg-[#7BBDE8]/15 text-blue-600 dark:text-[#7BBDE8] font-semibold'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#171F2F] hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <span className="truncate">{option.label}</span>
-                {isSelected && (
-                  <FontAwesome name="check" className="text-xs text-blue-600 dark:text-[#7BBDE8] shrink-0 ml-2" />
-                )}
-              </div>
-            );
-          })}
+          {showSearch && (
+            <div className="p-2 border-b border-line">
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cari..."
+                className="input h-8 text-[12.5px]"
+              />
+            </div>
+          )}
+
+          <div className="overflow-y-auto max-h-60 p-1">
+            {visibleOptions.length === 0 ? (
+              <p className="px-3 py-4 text-[12.5px] text-ink-3 text-center">Tidak ada hasil</p>
+            ) : (
+              visibleOptions.map((option) => {
+                const isSelected = option.value === value;
+                return (
+                  <div
+                    key={option.value}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                      setQuery('');
+                    }}
+                    className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-[13px] cursor-pointer select-none transition-colors ${
+                      isSelected
+                        ? 'bg-accent-soft text-accent-text font-medium'
+                        : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
+                    }`}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {isSelected && <FontAwesome name="check-pure" className="text-[10px] shrink-0" />}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>
