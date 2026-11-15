@@ -8,7 +8,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
-    strictPort: false,
+    // strictPort: true -> kalau 5173 dipakai proses lain, Vite GAGAL dengan jelas
+    // alih-alih diam-diam pindah ke port lain (penyebab "refresh tapi tidak berubah").
+    strictPort: true,
   },
   resolve: {
     alias: {
