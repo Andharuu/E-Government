@@ -65,69 +65,69 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white dark:bg-[#131C2E] rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="card page-enter relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden">
         {/* Close Button */}
         <button
           onClick={handleReset}
-          className="absolute right-5 top-5 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          className="btn btn-ghost btn-icon btn-sm absolute right-3 top-3 text-ink-3"
           aria-label="Tutup"
         >
-          <FontAwesome name="cross-small" className="text-base" />
+          <FontAwesome name="cross-small" className="text-[12px]" />
         </button>
 
-        <div className="flex items-center gap-3 mb-4 shrink-0">
-          <div className="w-11 h-11 rounded-2xl bg-blue-500/10 text-[#0A4174] dark:text-sky-400 flex items-center justify-center text-xl shrink-0">
-            <FontAwesome name="circle-info" />
+        <div className="flex shrink-0 items-center gap-3 border-b border-line px-5 py-4 pr-12">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent-line bg-accent-soft text-accent-text">
+            <FontAwesome name="circle-info" className="text-[13px]" />
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold text-ink">
               Pusat Bantuan & Layanan Warga
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-3">
               Pesan terhubung langsung ke database dan ditinjau oleh Admin GovConnect
             </p>
           </div>
         </div>
 
         {successRef ? (
-          <div className="py-6 space-y-4 text-center my-auto">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center text-3xl shadow-xs">
-              <FontAwesome name="circle-check" />
+          <div className="my-auto space-y-4 px-5 py-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-ok-line bg-ok-soft text-ok">
+              <FontAwesome name="circle-check" className="text-[18px]" />
             </div>
             <div>
-              <h4 className="text-lg font-black text-slate-900 dark:text-white">
+              <h4 className="text-[15px] font-semibold text-ink">
                 Tiket Bantuan Berhasil Dibuat!
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+              <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-ink-3">
                 Laporan kendala Anda telah disimpan ke sistem pengaduan dan akan segera ditindaklanjuti oleh petugas administrator.
               </p>
             </div>
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs inline-block">
-              <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Nomor Tiket Pengaduan:</span>
-              <strong className="text-blue-600 dark:text-sky-400 font-mono text-sm tracking-wider">{successRef}</strong>
+            <div className="inline-block rounded-md border border-line bg-surface-2 px-3.5 py-2.5 text-[11px]">
+              <span className="block text-[10px] font-semibold uppercase tracking-wider text-ink-3">Nomor Tiket Pengaduan:</span>
+              <strong className="mono text-[13px] font-semibold tracking-wider text-accent-text">{successRef}</strong>
             </div>
             <div className="pt-2">
               <button
                 onClick={handleReset}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
+                className="btn btn-primary w-full sm:w-auto"
               >
                 Selesai & Tutup
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="overflow-y-auto space-y-3.5 pr-1 flex-1">
+          <form onSubmit={handleSubmit} className="flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
             {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                <FontAwesome name="circle-xmark" className="text-sm shrink-0" />
+              <div className="flex items-center gap-2 rounded-md border border-danger-line bg-danger-soft px-3 py-2.5 text-[12px] text-danger">
+                <FontAwesome name="circle-xmark" className="shrink-0 text-[13px]" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">
                   Nama Lengkap
                 </label>
                 <input
@@ -136,12 +136,12 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Nama pemohon/warga..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="input"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+              <div>
+                <label className="label">
                   Alamat Email
                 </label>
                 <input
@@ -150,19 +150,19 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="Email untuk tindak lanjut..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="input"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div>
+              <label className="label">
                 Kategori Bantuan
               </label>
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                className="select cursor-pointer"
               >
                 <option value="login">Kendala Login & Akses Akun</option>
                 <option value="ekstensi">Masalah Ekstensi Autofill</option>
@@ -172,8 +172,8 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div>
+              <label className="label">
                 Subjek / Judul Kendala
               </label>
               <input
@@ -182,12 +182,12 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
                 placeholder="Contoh: Tidak dapat menerima email verifikasi"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="input"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div>
+              <label className="label">
                 Uraian Kendala
               </label>
               <textarea
@@ -196,27 +196,27 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 placeholder="Jelaskan secara singkat kendala yang Anda alami..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                className="textarea resize-none"
               />
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-              <span className="text-[10px] text-slate-400">
+            <div className="flex items-center justify-between gap-3 border-t border-line pt-3.5">
+              <span className="text-[11px] text-ink-3">
                 Data akan tersimpan di sistem pengaduan resmi GovConnect.
               </span>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2.5 rounded-xl bg-[#0A4174] hover:bg-[#001D39] text-white font-bold text-xs transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-2 cursor-pointer shrink-0"
+                className="btn btn-primary shrink-0"
               >
                 {loading ? (
                   <>
-                    <FontAwesome name="spinner" spin className="text-xs" />
+                    <FontAwesome name="spinner" spin className="text-[12px]" />
                     <span>Mengirim...</span>
                   </>
                 ) : (
                   <>
-                    <FontAwesome name="paper-plane" className="text-xs" />
+                    <FontAwesome name="paper-plane" className="text-[12px]" />
                     <span>Kirim Pesan Bantuan</span>
                   </>
                 )}
@@ -228,4 +228,3 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
     </div>
   );
 }
-

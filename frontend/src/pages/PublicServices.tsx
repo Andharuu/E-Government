@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { publicServicesApi, profileApi, type PublicServicesResponse, type PublicServiceAgenda, type Profile } from '../services/api';
-import { Card, EmptyState, FontAwesome } from '../components/ui';
+import { Card, EmptyState, Badge, FontAwesome } from '../components/ui';
 
 // ─── MAPPING LOGO RESMI ASLI DARI INSTANSI PEMERINTAH ──────────
 const AGENCY_LOGO_MAP: Record<string, string> = {
@@ -434,25 +434,27 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
 };
 
 // ─── KOMPONEN LOGO ASLI DARI INSTANSI ─────────────────────────
-function LogoDisplay({ src, alt, size = 'w-12 h-12' }: { src?: string; alt: string; size?: string }) {
+function LogoDisplay({ src, alt, size = 'w-11 h-11' }: { src?: string; alt: string; size?: string }) {
   const [hasError, setHasError] = useState(false);
   const targetLogo = resolveAgencyLogo(alt, src);
 
   if (hasError) {
     return (
-      <div className={`shrink-0 ${size} flex items-center justify-center text-[#7BBDE8]`}>
-        <FontAwesome name="landmark" variant="solid" className="text-2xl" />
+      <div className={`shrink-0 ${size} flex items-center justify-center rounded-md border border-line bg-surface-2 text-ink-3`}>
+        <FontAwesome name="landmark" variant="solid" className="text-[15px]" />
       </div>
     );
   }
 
   return (
-    <img
-      src={targetLogo}
-      alt={alt}
-      className={`shrink-0 ${size} object-contain transition-transform duration-200 group-hover:scale-105`}
-      onError={() => setHasError(true)}
-    />
+    <div className={`shrink-0 ${size} flex items-center justify-center rounded-md border border-line bg-surface-2 p-1.5`}>
+      <img
+        src={targetLogo}
+        alt={alt}
+        className="w-full h-full object-contain"
+        onError={() => setHasError(true)}
+      />
+    </div>
   );
 }
 
@@ -482,19 +484,29 @@ export function PublicServiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <FontAwesome name="spinner" className="w-8 h-8 text-[#7BBDE8] animate-spin" />
-        <span className="text-sm font-medium text-[#6EA2B3]">Memuat informasi layanan publik...</span>
+      <div className="page max-w-6xl mx-auto w-full">
+        <div className="skeleton h-4 w-44" />
+        <div className="card p-5 md:p-6 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="skeleton w-16 h-16" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton h-5 w-2/3" />
+              <div className="skeleton h-3.5 w-1/3" />
+            </div>
+          </div>
+          <div className="skeleton h-3.5 w-full" />
+          <div className="skeleton h-3.5 w-5/6" />
+        </div>
       </div>
     );
   }
 
   if (!item) {
     return (
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="page max-w-6xl mx-auto">
         <EmptyState title="Layanan tidak ditemukan" description="Layanan yang Anda cari tidak tersedia atau telah dipindahkan." />
-        <Link to="/public-services" className="text-[#7BBDE8] hover:underline inline-flex items-center gap-2 text-sm font-semibold">
-          <FontAwesome name="arrow-left" className="w-4 h-4" />
+        <Link to="/public-services" className="link inline-flex items-center gap-2 text-[12.5px] self-start">
+          <FontAwesome name="arrow-left" className="text-[11px]" />
           Kembali ke Katalog Layanan Publik
         </Link>
       </div>
@@ -502,127 +514,125 @@ export function PublicServiceDetailPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto w-full pb-12">
+    <div className="page max-w-6xl mx-auto w-full pb-12 page-enter">
       {/* Back link */}
       <Link
         to="/public-services"
-        className="inline-flex items-center gap-2 text-[#6EA2B3] hover:text-white transition-colors text-sm font-semibold"
+        className="link inline-flex items-center gap-2 text-[12.5px] self-start"
       >
-        <FontAwesome name="arrow-left" className="w-4 h-4" />
+        <FontAwesome name="arrow-left" className="text-[11px]" />
         Kembali ke Katalog Layanan Publik
       </Link>
 
-      <Card className="overflow-hidden border border-[#243048] rounded-[22px] shadow-sm bg-[#171F2F]">
+      <Card className="overflow-hidden">
         {/* Header Hero: Logo Asli & Judul Sejajar, Kategori di Pojok Kanan Atas */}
-        <div className="bg-gradient-to-r from-[#101828] via-[#171F2F] to-[#101828] p-6 md:p-8 border-b border-[#243048] text-white">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+        <div className="p-5 md:p-6 border-b border-line bg-surface-2">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             {/* Logo Asli Instansi Sejajar dengan Judul Layanan */}
-            <div className="flex items-center gap-5 min-w-0 flex-1">
-              <LogoDisplay src={item.logo_url} alt={item.agency} size="w-18 h-18 sm:w-20 sm:h-20" />
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              <LogoDisplay src={item.logo_url} alt={item.agency} size="w-16 h-16 sm:w-18 sm:h-18" />
               <div className="min-w-0">
-                <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">{item.title}</h1>
-                <p className="text-[#6EA2B3] text-sm font-medium mt-1.5 flex items-center gap-2">
-                  <FontAwesome name="building-columns" className="text-xs text-[#7BBDE8]" />
-                  <span>{item.agency}</span>
+                <h1 className="text-[20px] md:text-[22px] font-bold text-ink leading-tight tracking-[-0.025em]">{item.title}</h1>
+                <p className="text-[12.5px] text-ink-3 font-medium mt-1 flex items-center gap-1.5 min-w-0">
+                  <FontAwesome name="building-columns" className="text-[11px] shrink-0" />
+                  <span className="truncate">{item.agency}</span>
                 </p>
               </div>
             </div>
 
             {/* Kategori di Pojok Kanan Atas */}
-            <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-[#7BBDE8]/15 text-[#7BBDE8] border border-[#7BBDE8]/30 uppercase tracking-wider shrink-0 self-start">
+            <Badge variant="info" className="uppercase tracking-wider shrink-0 self-start">
               Sektor {item.category}
-            </span>
+            </Badge>
           </div>
         </div>
 
         {/* Body Informasi Terstruktur */}
-        <div className="p-6 md:p-8 space-y-7 bg-[#171F2F]">
+        <div className="card-body space-y-6">
           {/* Info Grid 3 Kolom Terstruktur */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#101828] rounded-xl p-4 border border-[#243048]">
-              <p className="text-[11px] text-[#6EA2B3] font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="layer-group" className="text-xs text-[#7BBDE8]" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
+              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <FontAwesome name="layer-group" className="text-[10px]" />
                 Sektor Layanan
               </p>
-              <p className="font-bold text-white capitalize text-sm">{item.category}</p>
+              <p className="font-semibold text-ink capitalize text-[13px]">{item.category}</p>
             </div>
 
-            <div className="bg-[#101828] rounded-xl p-4 border border-[#243048]">
-              <p className="text-[11px] text-[#6EA2B3] font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="calendar-days" className="text-xs text-[#7BBDE8]" />
+            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
+              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <FontAwesome name="calendar-days" className="text-[10px]" />
                 Jadwal &amp; Periode
               </p>
-              <p className="font-bold text-white text-sm">
+              <p className="font-semibold text-ink text-[13px]">
                 {formatDeadlineText(item.deadline, item.category, item.title)}
               </p>
             </div>
 
-            <div className="bg-[#101828] rounded-xl p-4 border border-[#243048]">
-              <p className="text-[11px] text-[#6EA2B3] font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="building-columns" className="text-xs text-[#7BBDE8]" />
+            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
+              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <FontAwesome name="building-columns" className="text-[10px]" />
                 Instansi Penyelenggara
               </p>
-              <p className="font-bold text-white text-sm truncate">{item.agency}</p>
+              <p className="font-semibold text-ink text-[13px] truncate">{item.agency}</p>
             </div>
           </div>
 
           {/* Deskripsi Layanan */}
           <div>
-            <h3 className="font-bold text-[15px] text-white mb-2.5 flex items-center gap-2">
-              <FontAwesome name="circle-info" className="text-base text-[#7BBDE8]" />
+            <h3 className="font-semibold text-[13px] text-ink mb-2 flex items-center gap-2">
+              <FontAwesome name="circle-info" className="text-[12px] text-ink-3" />
               Deskripsi Layanan Resmi
             </h3>
-            <p className="text-[#89b3c4] leading-relaxed text-[13.5px] bg-[#101828] p-4.5 rounded-xl border border-[#243048]">
+            <p className="text-ink-2 leading-relaxed text-[13px] bg-surface-2 p-4 rounded-md border border-line">
               {item.description}
             </p>
           </div>
 
           {/* Persyaratan & Kelengkapan Data */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <h3 className="font-bold text-[15px] text-white flex items-center gap-2">
-                <FontAwesome name="file-lines" className="text-base text-[#7BBDE8]" />
+              <h3 className="font-semibold text-[13px] text-ink flex items-center gap-2">
+                <FontAwesome name="file-lines" className="text-[12px] text-ink-3" />
                 Persyaratan &amp; Kelengkapan Data
               </h3>
-              <p className="text-xs text-[#6EA2B3] mt-1">
+              <p className="text-[12px] text-ink-3 mt-1">
                 Status kelengkapan data profil Anda untuk keperluan pengisian formulir {item.agency}.
               </p>
             </div>
 
             {/* Grid Kartu Persyaratan */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger">
               {requirements.map((req) => {
                 const filled = isFieldFilled(req.fieldCode, profile);
                 return (
                   <div
                     key={req.fieldCode}
-                    className="bg-[#101828] border border-[#243048] rounded-xl p-4 transition-colors hover:border-[#7BBDE8]/30 flex flex-col justify-between"
+                    className="bg-surface rounded-md border border-line p-3.5 transition-colors hover:border-line-2 flex flex-col justify-between"
                   >
                     <div>
                       {/* Baris Atas: Icon FontAwesome tanpa pembungkus, Nama Informasi, dan Badge Terisi / Belum Terisi */}
-                      <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <FontAwesome name={req.icon} className="text-lg text-[#7BBDE8] shrink-0" />
-                          <h4 className="text-[13.5px] font-bold text-white leading-snug">
+                          <FontAwesome name={req.icon} className="text-[13px] text-ink-3 shrink-0" />
+                          <h4 className="text-[12.5px] font-semibold text-ink leading-snug">
                             {req.name}
                           </h4>
                         </div>
 
                         {filled ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/50 text-emerald-300 border border-emerald-800/50 shrink-0 self-start">
-                            <FontAwesome name="check-pure" className="text-[9px]" />
+                          <Badge variant="ok" dot className="shrink-0">
                             <span>Terisi</span>
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-950/40 text-rose-300 border border-rose-800/40 shrink-0 self-start">
-                            <FontAwesome name="x" className="text-[9px]" />
+                          <Badge variant="danger" dot className="shrink-0">
                             <span>Belum Terisi</span>
-                          </span>
+                          </Badge>
                         )}
                       </div>
 
                       {/* Deskripsi Keperluan */}
-                      <p className="text-xs text-[#8ab4c8] leading-relaxed pl-7">
+                      <p className="text-[12px] text-ink-3 leading-relaxed pl-7 mt-1.5">
                         {req.desc}
                       </p>
                     </div>
@@ -633,23 +643,23 @@ export function PublicServiceDetailPage() {
           </div>
 
           {/* CTA Akses Portal Resmi */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#243048]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-5 border-t border-line">
             <a
               href={item.agency_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-xl bg-[#101828] text-white hover:bg-[#243048] border border-[#243048] font-semibold text-sm transition-colors cursor-pointer"
+              className="btn btn-secondary btn-lg"
             >
-              <FontAwesome name="globe" className="text-sm" />
+              <FontAwesome name="globe" className="text-[12px]" />
               <span>Website Portal Resmi</span>
             </a>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-xl bg-[#7BBDE8] text-[#101828] hover:bg-[#92cbef] font-bold text-sm transition-colors cursor-pointer shadow-xs"
+              className="btn btn-primary btn-lg"
             >
-              <FontAwesome name="arrow-up-right-from-square" className="text-sm" />
+              <FontAwesome name="arrow-up-right-from-square" className="text-[12px]" />
               <span>Akses Formulir Layanan</span>
             </a>
           </div>
@@ -688,9 +698,24 @@ export function PublicServicesPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <FontAwesome name="spinner" className="w-8 h-8 text-[#7BBDE8] animate-spin" />
-        <p className="text-[#6EA2B3] text-sm font-medium">Memuat katalog layanan publik...</p>
+      <div className="page pb-12 w-full max-w-6xl mx-auto">
+        <div className="space-y-2">
+          <div className="skeleton h-6 w-72" />
+          <div className="skeleton h-3.5 w-full max-w-2xl" />
+        </div>
+        <div className="skeleton h-9 w-full max-w-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="card p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="skeleton w-11 h-11" />
+                <div className="skeleton h-4 flex-1" />
+              </div>
+              <div className="skeleton h-3 w-2/3" />
+              <div className="skeleton h-3 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -700,63 +725,54 @@ export function PublicServicesPage() {
   }
 
   return (
-    <div className="space-y-6 pb-12 w-full max-w-6xl mx-auto">
+    <div className="page pb-12 w-full max-w-6xl mx-auto page-enter">
       {/* Header Halaman */}
-      <div>
-        <h1 className="text-[28px] leading-[36px] font-bold text-white tracking-[-0.02em]">
-          Portal Layanan Publik Terpadu
-        </h1>
-        <p className="text-[14px] leading-[22px] font-normal text-[#6EA2B3] mt-1 max-w-3xl">
-          Katalog resmi agenda, perizinan, dan portal administrasi kementerian &amp; lembaga negara Republik Indonesia yang terintegrasi dengan ekstensi autofill GovConnect.
-        </p>
+      <div className="page-head">
+        <div className="min-w-0">
+          <h1 className="page-title">
+            Portal Layanan Publik Terpadu
+          </h1>
+          <p className="page-sub max-w-3xl">
+            Katalog resmi agenda, perizinan, dan portal administrasi kementerian &amp; lembaga negara Republik Indonesia yang terintegrasi dengan ekstensi autofill GovConnect.
+          </p>
+        </div>
       </div>
 
       {/* Kategori Filter Pills & Counter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="segmented no-scrollbar max-w-full">
           <button
+            type="button"
             onClick={() => setSelectedCategory('all')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
-              selectedCategory === 'all'
-                ? 'bg-blue-600 dark:bg-[#7BBDE8] text-white dark:text-[#101828] font-bold shadow-xs'
-                : 'bg-white dark:bg-[#171F2F] text-slate-600 dark:text-[#6EA2B3] border border-slate-200 dark:border-[#243048] hover:border-blue-500 dark:hover:border-[#7BBDE8] hover:text-slate-900 dark:hover:text-white'
-            }`}
+            data-active={selectedCategory === 'all'}
+            className="segmented-item"
           >
-            <FontAwesome name="layer-group" className="text-xs" />
+            <FontAwesome name="layer-group" className="text-[11px] opacity-70" />
             <span>Semua Sektor</span>
-            <span className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
-              selectedCategory === 'all' ? 'bg-white/20 dark:bg-[#101828]/20 text-white dark:text-[#101828]' : 'bg-slate-100 dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3]'
-            }`}>
+            <span className="tabular-nums text-[11px] opacity-60">
               {data.agendas.length}
             </span>
           </button>
 
-          {data.categories.map((cat) => {
-            const isAct = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  isAct
-                    ? 'bg-blue-600 dark:bg-[#7BBDE8] text-white dark:text-[#101828] font-bold shadow-xs'
-                    : 'bg-white dark:bg-[#171F2F] text-slate-600 dark:text-[#6EA2B3] border border-slate-200 dark:border-[#243048] hover:border-blue-500 dark:hover:border-[#7BBDE8] hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <FontAwesome name={cat.icon || 'landmark'} className="text-xs" />
-                <span>{cat.label}</span>
-                <span className={`inline-flex items-center justify-center min-w-[20px] h-5 text-[11px] font-bold rounded-full px-1.5 ${
-                  isAct ? 'bg-white/20 dark:bg-[#101828]/20 text-white dark:text-[#101828]' : 'bg-slate-100 dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3]'
-                }`}>
-                  {cat.count}
-                </span>
-              </button>
-            );
-          })}
+          {data.categories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.id)}
+              data-active={selectedCategory === cat.id}
+              className="segmented-item"
+            >
+              <FontAwesome name={cat.icon || 'landmark'} className="text-[11px] opacity-70" />
+              <span>{cat.label}</span>
+              <span className="tabular-nums text-[11px] opacity-60">
+                {cat.count}
+              </span>
+            </button>
+          ))}
         </div>
 
-        <div className="text-[13px] font-medium text-[#6EA2B3] shrink-0">
-          Menampilkan <span className="font-bold text-white">{filteredAgendas.length}</span> layanan
+        <div className="text-[12px] text-ink-3 shrink-0">
+          Menampilkan <span className="font-semibold text-ink tabular-nums">{filteredAgendas.length}</span> layanan
         </div>
       </div>
 
@@ -764,51 +780,51 @@ export function PublicServicesPage() {
       {filteredAgendas.length === 0 ? (
         <EmptyState title="Tidak ada layanan yang sesuai" description="Tidak ada agenda yang terdaftar pada sektor ini saat ini." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
           {filteredAgendas.map((item) => (
             <Link
               key={item.id}
               to={`/public-services/${item.id}`}
-              className="group bg-[#171F2F] border border-[#243048] hover:border-[#7BBDE8] rounded-[20px] p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer relative overflow-hidden"
+              className="group card card-hover flex flex-col justify-between overflow-hidden"
             >
-              <div>
+              <div className="card-body space-y-3">
                 {/* Header Card: Logo Asli & Judul Sejajar, Kategori di Pojok Kanan Atas */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                    <LogoDisplay src={item.logo_url} alt={item.agency} size="w-12 h-12" />
-                    <h3 className="font-bold text-[15px] leading-[22px] text-white group-hover:text-[#7BBDE8] transition-colors line-clamp-2">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <LogoDisplay src={item.logo_url} alt={item.agency} size="w-11 h-11" />
+                    <h3 className="font-semibold text-[13.5px] leading-snug text-ink group-hover:text-accent-text transition-colors line-clamp-2">
                       {item.title}
                     </h3>
                   </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#101828] text-[#7BBDE8] border border-[#243048] capitalize shrink-0 self-start">
+                  <Badge variant="neutral" size="sm" className="capitalize shrink-0 self-start">
                     {item.category}
-                  </span>
+                  </Badge>
                 </div>
 
                 {/* Nama Instansi Resmi */}
-                <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-[#6EA2B3] mt-3.5 truncate">
-                  <FontAwesome name="building-columns" className="text-xs text-[#7BBDE8] shrink-0" />
+                <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink-3 min-w-0">
+                  <FontAwesome name="building-columns" className="text-[10px] shrink-0" />
                   <span className="truncate">{item.agency}</span>
                 </div>
 
                 {/* Deskripsi Ringkas */}
-                <p className="text-[13px] leading-[20px] text-[#6EA2B3] mt-2 line-clamp-2 font-normal">
+                <p className="text-[12.5px] leading-relaxed text-ink-2 line-clamp-2 font-normal">
                   {item.description}
                 </p>
               </div>
 
               {/* Footer Terstruktur: Jadwal / Periode Realtime & Tombol Aksi */}
-              <div className="pt-3.5 mt-4 border-t border-[#243048] flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#6EA2B3] min-w-0">
-                  <FontAwesome name="calendar-days" className="text-xs text-[#7BBDE8] shrink-0" />
+              <div className="card-foot">
+                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-ink-3 min-w-0">
+                  <FontAwesome name="calendar-days" className="text-[10px] shrink-0" />
                   <span className="truncate" title={formatDeadlineText(item.deadline, item.category, item.title)}>
                     {formatDeadlineText(item.deadline, item.category, item.title)}
                   </span>
                 </div>
 
-                <div className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#7BBDE8] group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0">
+                <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-accent-text shrink-0">
                   <span>Detail</span>
-                  <FontAwesome name="chevron-right" className="text-[10px]" />
+                  <FontAwesome name="chevron-right" className="text-[9px]" />
                 </div>
               </div>
             </Link>

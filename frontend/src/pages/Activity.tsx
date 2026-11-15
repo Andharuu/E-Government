@@ -1,6 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { activityApi, type Activity } from '../services/api';
-import { Card, EmptyState, FontAwesome } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  FontAwesome,
+  StatCard,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui';
 
 export function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -119,110 +132,103 @@ export function ActivityPage() {
     }
   };
 
+  // Ringkasan tampilan - diturunkan dari data yang sudah dimuat, tanpa state baru
+  const totalFields = activities.reduce((sum, a) => sum + a.fields_filled, 0);
+  const successCount = activities.filter((a) => a.status === 'success').length;
+  const attentionCount = activities.length - successCount;
+
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 pb-12">
-      {/* Header Title & Top Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Riwayat Aktivitas
-          </h1>
-          <p className="text-sm text-[#6EA2B3] mt-1">
-            Audit log dan jejak privasi pengisian formulir autofill
-          </p>
+    <div className="page page-enter w-full max-w-5xl mx-auto pb-12">
+      <div className="page-head">
+        <div className="min-w-0">
+          <h1 className="page-title">Riwayat Aktivitas</h1>
+          <p className="page-sub">Audit log dan jejak privasi pengisian formulir autofill</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="group relative inline-flex items-center gap-2.5 h-10 px-4.5 text-[13px] font-semibold text-white bg-gradient-to-r from-[#172338] via-[#1a2942] to-[#1c2e4a] hover:from-[#1b2b45] hover:via-[#203454] hover:to-[#243c61] border border-[#2e476b]/70 hover:border-[#7BBDE8] rounded-xl shadow-xs hover:shadow-[0_0_18px_rgba(123,189,232,0.22)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+            loading={refreshing}
+            icon={<FontAwesome name="rotate-right" />}
           >
-            <FontAwesome
-              name="rotate-right"
-              className={`text-xs text-[#7BBDE8] transition-transform duration-500 ${
-                refreshing ? 'animate-spin' : 'group-hover:rotate-180'
-              }`}
-            />
-            <span className="tracking-wide">
-              {refreshing ? 'Memperbarui...' : 'Perbarui data'}
-            </span>
-          </button>
+            {refreshing ? 'Memperbarui...' : 'Perbarui data'}
+          </Button>
+
           {activities.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={handleClearAll}
               disabled={clearingAll}
-              className="group relative inline-flex items-center gap-2.5 h-10 px-4.5 text-[13px] font-semibold text-rose-300 bg-gradient-to-r from-rose-950/40 via-rose-900/30 to-rose-950/40 hover:from-rose-900/60 hover:via-rose-800/40 hover:to-rose-900/60 border border-rose-800/50 hover:border-rose-500/80 rounded-xl shadow-xs hover:shadow-[0_0_18px_rgba(244,63,94,0.25)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+              loading={clearingAll}
+              icon={<FontAwesome name="trash" />}
+              className="text-danger"
             >
-              {clearingAll ? (
-                <FontAwesome name="spinner" className="text-xs animate-spin text-rose-400" />
-              ) : (
-                <FontAwesome
-                  name="trash"
-                  className="text-xs text-rose-400 group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-200"
-                />
-              )}
-              <span className="tracking-wide">
-                {clearingAll ? 'Membersihkan...' : 'Bersihkan riwayat'}
-              </span>
-            </button>
+              {clearingAll ? 'Membersihkan...' : 'Bersihkan riwayat'}
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Feedback Alert Toast */}
       {actionFeedback && (
         <div
-          className={`p-4 rounded-2xl border shadow-xs flex items-center gap-2.5 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-md border text-[12.5px] font-medium ${
             actionFeedback.type === 'success'
-              ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60'
-              : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
+              ? 'bg-ok-soft text-ok border-ok-line'
+              : 'bg-danger-soft text-danger border-danger-line'
           }`}
         >
-          {actionFeedback.type === 'success' ? (
-            <FontAwesome name="check-pure" className="text-xs text-emerald-400 shrink-0" />
-          ) : (
-            <FontAwesome name="info" className="text-xs text-rose-400 shrink-0" />
-          )}
+          <FontAwesome
+            name={actionFeedback.type === 'success' ? 'check-pure' : 'info'}
+            className="text-[12px] shrink-0"
+          />
           <span>{actionFeedback.text}</span>
         </div>
       )}
 
-      {/* Table Container */}
-      <Card className="overflow-hidden border border-[#243048] bg-[#171F2F] shadow-sm">
+      {!loading && activities.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Total catatan" value={activities.length} />
+          <StatCard title="Field terisi" value={totalFields} />
+          <StatCard title="Sukses" value={successCount} />
+          <StatCard title="Perlu perhatian" value={attentionCount} />
+        </div>
+      )}
+
+      <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <FontAwesome name="spinner" className="text-3xl text-[#7BBDE8] animate-spin" />
-            <p className="text-xs text-[#6EA2B3] font-medium">Memuat riwayat aktivitas autofill...</p>
+          <div className="p-4 space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="skeleton h-9" />
+            ))}
           </div>
         ) : activities.length === 0 ? (
-          <div className="p-12 text-center">
-            <EmptyState
-              icon={<FontAwesome name="inbox" className="text-3xl text-[#6EA2B3]" />}
-              title="Tidak ada riwayat aktivitas"
-              description="Gunakan ekstensi GovConnect di formulir layanan publik untuk merekam riwayat pengisian."
-            />
-          </div>
+          <EmptyState
+            icon={<FontAwesome name="inbox" />}
+            title="Tidak ada riwayat aktivitas"
+            description="Gunakan ekstensi GovConnect di formulir layanan publik untuk merekam riwayat pengisian."
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="h-12 bg-[#101828] text-[12px] leading-[16px] font-semibold text-[#6EA2B3]">
-                  <th className="py-3 px-5 font-semibold">Tanggal</th>
-                  <th className="py-3 px-5 font-semibold">Website Target</th>
-                  <th className="py-3 px-5 font-semibold">Field Terisi</th>
-                  <th className="py-3 px-5 font-semibold">Status</th>
-                  <th className="py-3 px-5 font-semibold text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Website Target</TableHead>
+                  <TableHead>Field Terisi</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {activities.map((activity) => (
-                  <tr
-                    key={activity.id}
-                    className="h-14 hover:bg-[#101828]/50 transition-colors duration-150"
-                  >
-                    <td className="py-3 px-5 text-[14px] leading-[20px] font-normal text-[#6EA2B3] whitespace-nowrap tabular-nums">
+                  <TableRow key={activity.id}>
+                    <TableCell className="cell-mono">
                       {new Date(activity.created_at).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -230,120 +236,111 @@ export function ActivityPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
-                    </td>
-                    <td className="py-3 px-5">
-                      <div className="flex items-center gap-2.5">
-                        <FontAwesome name="globe" className="text-[16px] text-[#7BBDE8] shrink-0" />
-                        <span className="text-[14px] leading-[20px] font-medium text-white lowercase truncate max-w-[260px]">
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FontAwesome name="globe" className="text-[11px] text-ink-3 shrink-0" />
+                        <span className="cell-strong lowercase truncate max-w-[240px]">
                           {activity.website_domain ||
                             (activity.target_url
                               ? new URL(activity.target_url).hostname
                               : 'formulir web')}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-3 px-5 text-[14px] leading-[20px] font-normal text-[#6EA2B3]">
-                      <span className="font-semibold text-white tabular-nums">
-                        {activity.fields_filled}
-                      </span>{' '}
-                      dari{' '}
-                      <span className="tabular-nums text-[#BDD8E9]">{activity.fields_detected}</span> field
-                    </td>
-                    <td className="py-3 px-5">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[12px] leading-[16px] font-semibold border ${
+                    </TableCell>
+
+                    <TableCell className="tabular-nums whitespace-nowrap">
+                      <span className="cell-strong">{activity.fields_filled}</span>
+                      <span className="text-ink-3"> dari </span>
+                      <span>{activity.fields_detected}</span>
+                      <span className="text-ink-3"> field</span>
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant={
                           activity.status === 'success'
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                            ? 'ok'
                             : activity.status === 'partial'
-                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                            : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-                        }`}
+                            ? 'warn'
+                            : 'danger'
+                        }
+                        dot
                       >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            activity.status === 'success'
-                              ? 'bg-emerald-400'
-                              : activity.status === 'partial'
-                              ? 'bg-amber-400'
-                              : 'bg-rose-400'
-                          }`}
-                        />
-                        <span>
-                          {activity.status === 'success'
-                            ? 'Sukses'
-                            : activity.status === 'partial'
-                            ? 'Parsial'
-                            : 'Gagal'}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-5 text-center">
-                      <div className="inline-flex items-center justify-center gap-1.5">
+                        {activity.status === 'success'
+                          ? 'Sukses'
+                          : activity.status === 'partial'
+                          ? 'Parsial'
+                          : 'Gagal'}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center gap-1">
                         {activity.target_url && !activity.target_url.startsWith('file:') && (
                           <a
                             href={activity.target_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="group/visit w-8 h-8 flex items-center justify-center text-[#6EA2B3] hover:text-[#7BBDE8] hover:bg-[#7BBDE8]/10 rounded-lg active:scale-90 transition-all duration-150"
+                            className="btn btn-ghost btn-icon btn-sm"
                             title="Buka situs formulir sasaran"
                             aria-label="Buka situs formulir sasaran"
                           >
-                            <FontAwesome name="paper-plane" className="text-[13px] group-hover/visit:translate-x-0.5 group-hover/visit:-translate-y-0.5 transition-transform" />
+                            <FontAwesome name="paper-plane" className="text-[11px]" />
                           </a>
                         )}
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          icon={<FontAwesome name="trash" className="text-[11px]" />}
                           onClick={() => handleDeleteItem(activity.id)}
                           disabled={deletingId === activity.id}
-                          className="group/del w-8 h-8 flex items-center justify-center text-[#6EA2B3] hover:text-rose-300 hover:bg-rose-500/20 rounded-lg active:scale-90 transition-all duration-150 cursor-pointer disabled:opacity-50"
+                          loading={deletingId === activity.id}
+                          className="hover:text-danger"
                           title="Hapus catatan riwayat aktivitas"
                           aria-label="Hapus catatan riwayat aktivitas"
-                        >
-                          {deletingId === activity.id ? (
-                            <FontAwesome
-                              name="spinner"
-                              className="text-[13px] animate-spin text-rose-400"
-                            />
-                          ) : (
-                            <FontAwesome name="trash" className="text-[13px] group-hover/del:scale-110 group-hover/del:-rotate-6 transition-transform" />
-                          )}
-                        </button>
+                        />
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+
+            <div className="card-foot">
+              <span className="text-[12px] text-ink-3">
+                Menampilkan{' '}
+                <span className="text-ink font-semibold tabular-nums">{activities.length}</span> catatan
+              </span>
+              <span className="text-[12px] text-ink-3 tabular-nums">{totalFields} field terisi</span>
+            </div>
+          </>
         )}
       </Card>
 
-      {/* Confirmation Modal */}
       {confirmModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#171F2F] border border-slate-200 dark:border-[#243048] rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-900 dark:text-white animate-in zoom-in-95 duration-150">
-            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
-              <FontAwesome name="triangle-exclamation" className="text-xl" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="card w-full max-w-[420px] p-5" role="dialog" aria-modal="true">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-md bg-danger-soft border border-danger-line text-danger flex items-center justify-center shrink-0">
+                <FontAwesome name="triangle-exclamation" className="text-[12px]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[14px] font-semibold text-ink">{confirmModal.title}</h3>
+                <p className="text-[12.5px] text-ink-2 leading-relaxed mt-1">{confirmModal.message}</p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold mb-1.5">{confirmModal.title}</h3>
-            <p className="text-sm text-slate-600 dark:text-[#6EA2B3] mb-6 leading-relaxed">
-              {confirmModal.message}
-            </p>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmModal(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#243048] text-sm font-semibold text-slate-700 dark:text-[#BDD8E9] hover:bg-slate-100 dark:hover:bg-[#243048] transition-colors cursor-pointer"
-              >
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmModal(null)}>
                 Batal
-              </button>
-              <button
-                type="button"
-                onClick={executeConfirmedAction}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold shadow-sm transition-colors cursor-pointer"
-              >
+              </Button>
+              <Button type="button" variant="danger" size="sm" onClick={executeConfirmedAction}>
                 Ya, Hapus
-              </button>
+              </Button>
             </div>
           </div>
         </div>

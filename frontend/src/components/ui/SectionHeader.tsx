@@ -12,36 +12,36 @@ export interface SectionHeaderProps {
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
   icon,
-  iconBg = 'bg-[#BDD8E9]/35 text-[#0A4174] border border-[#BDD8E9]',
+  iconBg,
   title,
   description,
   action,
   badge,
   className = '',
-}) => {
-  return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#BDD8E9]/50 ${className}`}>
-      <div className="flex items-center gap-3 min-w-0">
-        {icon && (
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${iconBg}`}>
-            {icon}
-          </div>
-        )}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base font-bold text-[#001D39] tracking-tight leading-snug">
-              {title}
-            </h2>
-            {badge && <span>{badge}</span>}
-          </div>
-          {description && (
-            <p className="text-xs text-[#49769F] mt-0.5 truncate leading-relaxed">
-              {description}
-            </p>
-          )}
+}) => (
+  <div
+    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-line ${className}`}
+  >
+    <div className="flex items-center gap-3 min-w-0">
+      {icon && (
+        <div
+          className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-[13px] ${
+            iconBg || 'bg-surface-3 text-ink-2 border border-line'
+          }`}
+        >
+          {icon}
         </div>
+      )}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-[14px] font-semibold text-ink tracking-[-0.01em] leading-snug">
+            {title}
+          </h2>
+          {badge}
+        </div>
+        {description && <p className="text-[12px] text-ink-3 mt-0.5 leading-relaxed">{description}</p>}
       </div>
-      {action && <div className="self-start sm:self-auto shrink-0">{action}</div>}
     </div>
-  );
-};
+    {action && <div className="self-start sm:self-auto shrink-0">{action}</div>}
+  </div>
+);

@@ -18,47 +18,38 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   subLabel,
   icon,
-  iconBg: _iconBg = 'bg-[#BDD8E9]/30 text-[#0A4174]',
+  iconBg,
   trend,
   className = '',
-}) => {
-  return (
-    <div
-      className={`group bg-white dark:bg-[#171F2F] rounded-[16px] border border-slate-200 dark:border-[#243048] p-5 shadow-sm flex items-start justify-between gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${className}`}
-    >
-      <div className="min-w-0">
-        <p className="text-[13px] leading-[20px] font-medium text-slate-500 dark:text-[#6EA2B3] truncate">
-          {title}
-        </p>
-        <div className="flex items-baseline gap-2 mt-2">
-          <span className="text-[28px] leading-[34px] font-semibold text-slate-900 dark:text-white tracking-[-0.02em] tabular-nums">
-            {value}
-          </span>
-          {trend && (
-            <span
-              className={`text-[12px] leading-[16px] font-medium px-2 py-0.5 rounded-full ${
-                trend.positive
-                  ? 'bg-blue-50 dark:bg-[#BDD8E9]/20 text-blue-700 dark:text-[#7BBDE8]'
-                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {trend.positive ? '+' : ''}
-              {trend.value}
-            </span>
-          )}
-        </div>
-        {subLabel && (
-          <p className="text-[12px] leading-[18px] font-normal text-slate-400 dark:text-[#6EA2B3] truncate mt-1">
-            {subLabel}
-          </p>
-        )}
-      </div>
-
+}) => (
+  <div className={`kpi ${className}`}>
+    <div className="kpi-label">
+      <span className="truncate">{title}</span>
       {icon && (
-        <div className="shrink-0 flex items-center justify-center text-[20px] text-blue-600 dark:text-[#7BBDE8] pt-0.5 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6">
+        <span
+          className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-[12px] ${
+            iconBg || 'bg-accent-soft text-accent-text'
+          }`}
+        >
           {icon}
-        </div>
+        </span>
       )}
     </div>
-  );
-};
+
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="kpi-value truncate">{value}</span>
+      {trend && (
+        <span
+          className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+            trend.positive ? 'text-ok bg-ok-soft' : 'text-danger bg-danger-soft'
+          }`}
+        >
+          {trend.positive ? '+' : ''}
+          {trend.value}
+        </span>
+      )}
+    </div>
+
+    {subLabel && <p className="kpi-foot truncate">{subLabel}</p>}
+  </div>
+);

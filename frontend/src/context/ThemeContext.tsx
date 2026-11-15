@@ -16,8 +16,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem('govconnect_theme');
       if (stored === 'light' || stored === 'dark') return stored;
     } catch {}
-    // Default is 'dark' because existing application theme is dark mode
-    return 'dark';
+    // Default terang: tampilan institusional yang bersih. Preferensi tersimpan tetap dihormati.
+    return 'light';
   });
 
   useEffect(() => {

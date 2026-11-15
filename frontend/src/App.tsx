@@ -26,8 +26,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }
@@ -40,8 +40,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }
@@ -56,8 +56,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <FontAwesome name="spinner" spin className="text-3xl text-[#0A4174]" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <FontAwesome name="spinner" spin className="text-2xl text-accent-text" />
       </div>
     );
   }

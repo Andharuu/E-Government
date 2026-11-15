@@ -1,7 +1,7 @@
 import React from 'react';
 import { FontAwesome } from './FontAwesome';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'soft';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,7 +9,24 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: ButtonSize;
   loading?: boolean;
   icon?: React.ReactNode;
+  /** Hanya ikon, tanpa teks */
+  iconOnly?: boolean;
 }
+
+const VARIANT_CLASS: Record<ButtonVariant, string> = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  soft: 'btn-soft',
+  ghost: 'btn-ghost',
+  danger: 'btn-danger',
+  outline: 'btn-secondary',
+};
+
+const SIZE_CLASS: Record<ButtonSize, string> = {
+  sm: 'btn-sm',
+  md: '',
+  lg: 'btn-lg',
+};
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -19,44 +36,28 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       disabled,
       icon,
+      iconOnly = false,
       className = '',
       children,
+      type = 'button',
       ...props
     },
     ref
   ) => {
-    const variantStyles: Record<ButtonVariant, string> = {
-      primary:
-        'bg-[#0A4174] hover:bg-[#001D39] active:bg-[#001D39] text-white shadow-xs disabled:bg-slate-200 disabled:text-slate-400',
-      secondary:
-        'bg-[#BDD8E9]/30 hover:bg-[#BDD8E9]/60 active:bg-[#BDD8E9]/80 text-[#0A4174] border border-[#BDD8E9] disabled:opacity-50',
-      ghost:
-        'bg-transparent hover:bg-slate-100 active:bg-slate-200 text-[#49769F] hover:text-[#001D39] disabled:opacity-40',
-      danger:
-        'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs disabled:bg-rose-200 disabled:text-rose-400',
-      outline:
-        'bg-white hover:bg-slate-50 active:bg-slate-100 text-[#001D39] border border-[#BDD8E9] hover:border-[#49769F] disabled:opacity-50',
-    };
-
-    const sizeStyles: Record<ButtonSize, string> = {
-      sm: 'text-xs px-3 py-1.5 rounded-lg gap-2 font-medium min-h-[32px]',
-      md: 'text-sm px-4 py-2 rounded-xl gap-2 font-semibold min-h-[40px]',
-      lg: 'text-sm px-6 py-3 rounded-xl gap-2 font-bold min-h-[48px]',
-    };
-
     return (
       <button
         ref={ref}
+        type={type}
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-center transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer select-none disabled:cursor-not-allowed group ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+        className={`btn ${VARIANT_CLASS[variant]} ${SIZE_CLASS[size]} ${iconOnly ? 'btn-icon' : ''} ${className}`}
         {...props}
       >
         {loading ? (
-          <FontAwesome name="spinner" spin className="text-sm shrink-0" />
+          <FontAwesome name="spinner" spin className="text-[13px] shrink-0" />
         ) : icon ? (
-          <span className="shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-3">{icon}</span>
+          <span className="shrink-0 text-[13px] leading-none">{icon}</span>
         ) : null}
-        {children}
+        {!iconOnly && children}
       </button>
     );
   }

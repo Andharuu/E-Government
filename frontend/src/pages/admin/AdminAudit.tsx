@@ -1,20 +1,23 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { adminApi, type AuditLog } from '../../services/api';
-import { Button, FontAwesome } from '../../components/ui';
-import { usePolling } from '../../hooks/usePolling';
 import {
-  AdminCard, SectionTitle, KpiCard, EmptyState, LoadingBlock, formatDateTime, LiveSyncBar,
-} from '../../components/admin/adminUi';
+  Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
+  EmptyState, StatCard, Tabs,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from '../../components/ui';
+import type { BadgeVariant } from '../../components/ui';
+import { usePolling } from '../../hooks/usePolling';
+import { formatDateTime } from '../../components/admin/adminUi';
 
-const ACTION_LABEL: Record<string, { label: string; tone: string }> = {
-  view_dashboard: { label: 'Lihat Dashboard', tone: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700' },
-  view_complaint_detail: { label: 'Lihat Detail Pengaduan', tone: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60' },
-  update_complaint_status: { label: 'Ubah Status Pengaduan', tone: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60' },
-  toggle_user_active: { label: 'Ubah Status Akun', tone: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60' },
-  view_audit_logs: { label: 'Lihat Audit Log', tone: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700' },
-  broadcast_announcement: { label: 'Kirim Pengumuman', tone: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60' },
-  export_complaints: { label: 'Export Data', tone: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60' },
-  view_user_profile: { label: 'Lihat Profil Warga', tone: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60' },
+const ACTION_LABEL: Record<string, { label: string; variant: BadgeVariant }> = {
+  view_dashboard: { label: 'Lihat Dashboard', variant: 'neutral' },
+  view_complaint_detail: { label: 'Lihat Detail Pengaduan', variant: 'warn' },
+  update_complaint_status: { label: 'Ubah Status Pengaduan', variant: 'info' },
+  toggle_user_active: { label: 'Ubah Status Akun', variant: 'info' },
+  view_audit_logs: { label: 'Lihat Audit Log', variant: 'neutral' },
+  broadcast_announcement: { label: 'Kirim Pengumuman', variant: 'ok' },
+  export_complaints: { label: 'Export Data', variant: 'danger' },
+  view_user_profile: { label: 'Lihat Profil Warga', variant: 'warn' },
 };
 
 export function AdminAudit() {
@@ -79,26 +82,27 @@ export function AdminAudit() {
   };
 
   return (
-    <div className="w-full space-y-5 pb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Audit Log</h1>
-          <p className="text-sm text-slate-500 dark:text-[#6EA2B3] mt-1.5 font-medium">
-            Jejak semua aksi admin — transparansi & akuntabilitas akses data
+          <p className="eyebrow">Kepatuhan</p>
+          <h1 className="page-title">Audit Log</h1>
+          <p className="page-sub">
+            Jejak semua aksi admin — transparansi &amp; akuntabilitas akses data
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={exportCsv}
             disabled={!logs.length}
-            icon={<FontAwesome name="download" className="text-xs" />}
+            icon={<FontAwesome name="download" className="text-[12px]" />}
           >
             Export CSV
           </Button>
           <Button
-            variant="outline"
-            icon={<FontAwesome name="rotate-right" className="text-xs" />}
+            variant="secondary"
+            icon={<FontAwesome name="rotate-right" className="text-[12px]" />}
             onClick={() => load(false)}
           >
             Muat ulang
@@ -106,99 +110,114 @@ export function AdminAudit() {
         </div>
       </div>
 
-      <LiveSyncBar lastUpdated={lastUpdated} onRefresh={refresh} />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Total Aktivitas" value={logs.length} icon="list-check" tone="blue" hint={`${limit} terakhir`} />
-        <KpiCard label="Akses PII" value={piiCount} icon="shield-halved" tone={piiCount > 0 ? 'amber' : 'emerald'} hint="Aksi menyentuh PII" />
-        <KpiCard label="Admin Aktif" value={new Set(logs.map(l => l.admin_id)).size} icon="users" tone="indigo" />
-        <KpiCard label="Export Data" value={logs.filter(l => l.action === 'export_complaints').length} icon="file-arrow-up" tone="rose" />
+      <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-ink-3">
+        <span className="dot text-ok" />
+        <span>{lastUpdated ? `Tersinkron ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Menghubungkan...'}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          iconOnly
+          onClick={refresh}
+          aria-label="Sinkronkan sekarang"
+          title="Sinkronkan sekarang"
+          icon={<FontAwesome name="rotate-right" className="text-[11px]" />}
+        />
       </div>
 
-      <AdminCard>
-        <SectionTitle
-          icon="clock-rotate-left"
-          title="Riwayat Aksi Admin"
-          subtitle={`${filtered.length} catatan ditampilkan`}
-          action={
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  filter === 'all'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3] border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('pii')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  filter === 'pii'
-                    ? 'bg-amber-600 dark:bg-amber-500 text-white border-amber-600 dark:border-amber-500 shadow-sm'
-                    : 'bg-white dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3] border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                Hanya PII
-              </button>
-            </div>
-          }
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Aktivitas"
+          value={logs.length}
+          subLabel={`${limit} terakhir`}
+          icon={<FontAwesome name="list-check" className="text-[12px]" />}
         />
+        <StatCard
+          title="Akses PII"
+          value={piiCount}
+          subLabel="Aksi menyentuh PII"
+          icon={<FontAwesome name="shield-halved" className="text-[12px]" />}
+          iconBg={piiCount > 0 ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'}
+        />
+        <StatCard
+          title="Admin Aktif"
+          value={new Set(logs.map(l => l.admin_id)).size}
+          icon={<FontAwesome name="users" className="text-[12px]" />}
+        />
+        <StatCard
+          title="Export Data"
+          value={logs.filter(l => l.action === 'export_complaints').length}
+          icon={<FontAwesome name="file-arrow-up" className="text-[12px]" />}
+          iconBg="bg-surface-3 text-ink-2"
+        />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Riwayat Aksi Admin</CardTitle>
+            <CardDescription>{filtered.length} catatan ditampilkan</CardDescription>
+          </div>
+          <Tabs
+            items={[
+              { id: 'all', label: 'Semua' },
+              { id: 'pii', label: 'Hanya PII' },
+            ]}
+            activeTab={filter}
+            onChange={id => setFilter(id as 'all' | 'pii')}
+          />
+        </CardHeader>
 
         {loading ? (
-          <LoadingBlock />
-        ) : filtered.length === 0 ? (
-          <EmptyState icon="clock-rotate-left" title="Belum ada aktivitas" desc="Aksi admin akan tercatat di sini secara otomatis." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] border-b border-slate-200 dark:border-[#243048]">
-                  <th className="px-5 py-3 font-bold">Waktu</th>
-                  <th className="px-5 py-3 font-bold">Admin</th>
-                  <th className="px-5 py-3 font-bold">Aksi</th>
-                  <th className="px-5 py-3 font-bold">Sumber Daya</th>
-                  <th className="px-5 py-3 font-bold">Detail</th>
-                  <th className="px-5 py-3 font-bold">IP</th>
-                  <th className="px-5 py-3 font-bold">PII</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(l => {
-                  const meta = ACTION_LABEL[l.action] || {
-                    label: l.action,
-                    tone: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                  };
-                  return (
-                    <tr key={l.id} className="border-b border-slate-100 dark:border-[#1E293B] hover:bg-slate-50/80 dark:hover:bg-[#1E293B]/50 transition-colors">
-                      <td className="px-5 py-3 text-slate-500 dark:text-[#6EA2B3] text-xs whitespace-nowrap font-mono">{formatDateTime(l.created_at)}</td>
-                      <td className="px-5 py-3 text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap">{l.admin_email}</td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${meta.tone}`}>
-                          {meta.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-slate-500 dark:text-[#6EA2B3] text-xs">
-                        {l.resource_type}{l.resource_id != null ? ` #${l.resource_id}` : ''}
-                      </td>
-                      <td className="px-5 py-3 text-slate-600 dark:text-slate-300 max-w-[260px] truncate">{l.detail || '-'}</td>
-                      <td className="px-5 py-3 text-slate-400 dark:text-[#6EA2B3] text-xs font-mono">{l.ip_address || '-'}</td>
-                      <td className="px-5 py-3">
-                        {l.was_pii_exposed
-                          ? <span className="text-[10px] px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800/60">PII</span>
-                          : <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="empty">
+            <FontAwesome name="spinner" spin className="text-[15px] text-ink-3 mb-3" />
+            <p className="text-[12.5px] text-ink-3">Memuat data...</p>
           </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<FontAwesome name="clock" />}
+            title="Belum ada aktivitas"
+            description="Aksi admin akan tercatat di sini secara otomatis."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Waktu</TableHead>
+                <TableHead>Admin</TableHead>
+                <TableHead>Aksi</TableHead>
+                <TableHead>Sumber Daya</TableHead>
+                <TableHead>Detail</TableHead>
+                <TableHead>IP</TableHead>
+                <TableHead>PII</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(l => {
+                const meta = ACTION_LABEL[l.action] || { label: l.action, variant: 'neutral' as BadgeVariant };
+                return (
+                  <TableRow key={l.id}>
+                    <TableCell className="cell-mono text-ink-3">{formatDateTime(l.created_at)}</TableCell>
+                    <TableCell className="cell-strong whitespace-nowrap">{l.admin_email}</TableCell>
+                    <TableCell>
+                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-[12px] text-ink-3">
+                      {l.resource_type}{l.resource_id != null ? ` #${l.resource_id}` : ''}
+                    </TableCell>
+                    <TableCell className="max-w-[260px] truncate">{l.detail || '-'}</TableCell>
+                    <TableCell className="cell-mono text-ink-3">{l.ip_address || '-'}</TableCell>
+                    <TableCell>
+                      {l.was_pii_exposed
+                        ? <Badge variant="warn" dot>PII</Badge>
+                        : <span className="text-[12px] text-ink-3">—</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
-      </AdminCard>
+      </Card>
     </div>
   );
 }
