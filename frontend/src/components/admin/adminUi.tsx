@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FontAwesome } from '../ui';
 
 /* ─── Shared admin UI primitives — Design System v3 (token semantik) ─── */
@@ -244,5 +244,33 @@ export function LiveSyncBar({ lastUpdated, onRefresh, refreshing }: {
         <FontAwesome name="rotate-right" spin={refreshing} className="text-[12px]" />
       </button>
     </div>
+  );
+}
+
+/**
+ * Indikator sinkronisasi yang benar-benar berdetak: menampilkan berapa detik
+ * sejak data terakhir diambil, bukan hanya jam statis.
+ */
+export function LiveStamp({ at }: { at: Date | null }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!at) return <span>Menghubungkan…</span>;
+
+  const seconds = Math.max(0, Math.round((Date.now() - at.getTime()) / 1000));
+  const label = seconds < 5 ? 'baru saja' : seconds < 60 ? `${seconds} detik lalu` : `${Math.round(seconds / 60)} menit lalu`;
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="relative flex w-1.5 h-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ok opacity-60" />
+        <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-ok" />
+      </span>
+      Diperbarui {label}
+    </span>
   );
 }

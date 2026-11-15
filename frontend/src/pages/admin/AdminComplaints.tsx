@@ -9,6 +9,7 @@ import type { BadgeVariant } from '../../components/ui';
 import { usePolling } from '../../hooks/usePolling';
 import {
   CATEGORY_LABEL, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL, formatDateTime,
+  LiveStamp,
 } from '../../components/admin/adminUi';
 
 const STATUS_FILTERS = [
@@ -85,7 +86,7 @@ export function AdminComplaints() {
   useEffect(() => { load(firstLoad.current ? false : true); firstLoad.current = false; }, [load]);
   useEffect(() => { setPage(1); }, [status, reportType, category, priority, sort, search]);
 
-  // Live sync: pull new warga reports every 15s (silent — no loading flash).
+  // Live sync: pull new pengguna reports every 15s (silent — no loading flash).
   const { refresh, lastUpdated } = usePolling(() => load(true), {
     interval: 15000,
     enabled: !selected,
@@ -128,7 +129,7 @@ export function AdminComplaints() {
           <p className="eyebrow">Operasional</p>
           <h1 className="page-title">Pengaduan &amp; Laporan Keamanan</h1>
           <p className="page-sub">
-            Kelola pengaduan layanan serta laporan bug/kebocoran data — identitas warga hanya email
+            Kelola pengaduan layanan serta laporan bug/kebocoran data — identitas pengguna hanya email
           </p>
         </div>
         <Button
@@ -143,7 +144,7 @@ export function AdminComplaints() {
 
       <div className="flex items-center gap-2 text-[11.5px] text-ink-3">
         <span className="dot text-ok" />
-        <span>{lastUpdated ? `Tersinkron ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Menghubungkan...'}</span>
+        <LiveStamp at={lastUpdated} />
         <Button
           size="sm"
           variant="ghost"
@@ -390,7 +391,7 @@ function ComplaintDetailModal({ complaint, onClose, onUpdated }: {
           <div className="flex items-start gap-2.5 rounded-md border border-line bg-surface-2 px-3 py-2.5">
             <FontAwesome name="lock" className="text-[12px] text-ink-3 mt-0.5 shrink-0" />
             <p className="text-[11.5px] text-ink-2 leading-relaxed">
-              Data pribadi warga (NIK, telepon, alamat) tidak ditampilkan &amp; tetap terenkripsi. Hanya email pelapor yang terlihat.
+              Data pribadi pengguna (NIK, telepon, alamat) tidak ditampilkan &amp; tetap terenkripsi. Hanya email pelapor yang terlihat.
             </p>
           </div>
 
@@ -486,7 +487,7 @@ function ComplaintDetailModal({ complaint, onClose, onUpdated }: {
               value={resolution}
               onChange={e => setResolution(e.target.value)}
               rows={3}
-              placeholder={isSec ? 'Tindakan mitigasi, hasil investigasi, atau status perbaikan...' : 'Tuliskan tindak lanjut atau tanggapan untuk warga...'}
+              placeholder={isSec ? 'Tindakan mitigasi, hasil investigasi, atau status perbaikan...' : 'Tuliskan tindak lanjut atau tanggapan untuk pengguna...'}
             />
           </div>
         </div>

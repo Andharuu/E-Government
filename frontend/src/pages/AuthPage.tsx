@@ -94,14 +94,11 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
     e.preventDefault();
     setError('');
 
-    if (!agreedTerms) {
-      setError('Harap setujui Syarat & Ketentuan serta Kebijakan Privasi GovConnect untuk melanjutkan.');
-      return;
-    }
-
+    // Persetujuan syarat hanya diwajibkan saat pendaftaran akun baru.
+    // Login tidak boleh diblokir oleh checkbox yang mungkin belum dicentang.
     setLoading(true);
     try {
-      await login(email, password);
+      const loggedIn = await login(email, password);
 
       if (rememberMe) {
         localStorage.setItem('govconnect_remember_email', email);
@@ -109,7 +106,8 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
         localStorage.removeItem('govconnect_remember_email');
       }
 
-      navigate('/dashboard');
+      // Admin langsung ke panel admin, pengguna biasa ke dasbor.
+      navigate(loggedIn.is_admin ? '/admin' : '/dashboard');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Gagal masuk ke akun';
       setError(errorMessage.includes('401') ? 'Alamat email atau kata sandi tidak sesuai' : errorMessage);
@@ -140,8 +138,9 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
 
     setLoading(true);
     try {
-      await register(email, password);
-      navigate('/dashboard');
+      const created = await register(email, password);
+      // Akun baru: masuk ke tur pengenalan sebelum dashboard.
+      navigate(created.is_admin ? '/admin' : '/welcome', { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401 || status === 400) {
@@ -431,14 +430,14 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
                     className="mt-1 w-full"
                     icon={!loading && <FontAwesome name="user-plus" className="text-[12px]" />}
                   >
-                    {loading ? 'Mendaftarkan Akun...' : 'Daftar Akun Warga'}
+                    {loading ? 'Mendaftarkan Akun...' : 'Daftar Akun Pengguna'}
                   </Button>
                 </form>
               )}
 
               {/* Switcher Login <-> Register */}
               <div className="mt-6 text-[12.5px] text-ink-2">
-                <span>{isRegister ? 'Sudah memiliki akun warga? ' : 'Belum memiliki akun warga? '}</span>
+                <span>{isRegister ? 'Sudah memiliki akun pengguna? ' : 'Belum memiliki akun pengguna? '}</span>
                 <button
                   type="button"
                   onClick={() => {

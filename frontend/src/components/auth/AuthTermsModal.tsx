@@ -54,7 +54,7 @@ export function AuthTermsModal({ isOpen, onClose, onAccept }: AuthTermsModalProp
                 <strong className="font-semibold text-ink">Undang-Undang No. 27 Tahun 2022</strong> tentang Pelindungan Data Pribadi (UU PDP) pasal 20 s.d. pasal 28 terkait kewajiban pengendali data pribadi.
               </li>
               <li>
-                <strong className="font-semibold text-ink">Undang-Undang No. 24 Tahun 2013 jo. UU No. 23 Tahun 2006</strong> tentang Administrasi Kependudukan (UU Adminduk) mengenai validitas NIK dan identitas resmi warga.
+                <strong className="font-semibold text-ink">Undang-Undang No. 24 Tahun 2013 jo. UU No. 23 Tahun 2006</strong> tentang Administrasi Kependudukan (UU Adminduk) mengenai validitas NIK dan identitas resmi pengguna.
               </li>
               <li>
                 <strong className="font-semibold text-ink">Undang-Undang No. 1 Tahun 2024</strong> tentang Perubahan Kedua UU ITE No. 11 Tahun 2008 mengenai keamanan sistem elektronik dan otentikasi data.
@@ -94,17 +94,17 @@ export function AuthTermsModal({ isOpen, onClose, onAccept }: AuthTermsModalProp
           <div className="rounded-md border border-line bg-surface-2 p-4">
             <h4 className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-ink">
               <FontAwesome name="shield-halved" className="text-[11px] text-accent-text" />
-              <span>3. Keamanan, Enkripsi Lokal & Privasi Warga</span>
+              <span>3. Keamanan, Enkripsi Lokal & Privasi Pengguna</span>
             </h4>
             <ul className="list-inside list-disc space-y-1.5 text-[12.5px] text-ink-2">
               <li>
                 <strong className="font-semibold text-ink">Enkripsi Tingkat Tinggi:</strong> Seluruh data kependudukan diproteksi enkripsi berbasis peramban lokal dan token JWT bersandi kuat.
               </li>
               <li>
-                <strong className="font-semibold text-ink">Otorisasi Eksplisit 1-Klik:</strong> Ekstensi GovConnect tidak pernah mengisi atau mengirim data secara diam-diam. Eksekusi pengisian hanya terjadi saat warga menekan tombol konfirmasi.
+                <strong className="font-semibold text-ink">Otorisasi Eksplisit 1-Klik:</strong> Ekstensi GovConnect tidak pernah mengisi atau mengirim data secara diam-diam. Eksekusi pengisian hanya terjadi saat pengguna menekan tombol konfirmasi.
               </li>
               <li>
-                <strong className="font-semibold text-ink">Nir-Pihak Ketiga (Zero Third-Party):</strong> Kami tidak menjual, menyewakan, atau membagikan data identitas warga kepada pihak ketiga, analitik periklanan, atau pengiklan komersial mana pun.
+                <strong className="font-semibold text-ink">Nir-Pihak Ketiga (Zero Third-Party):</strong> Kami tidak menjual, menyewakan, atau membagikan data identitas pengguna kepada pihak ketiga, analitik periklanan, atau pengiklan komersial mana pun.
               </li>
             </ul>
           </div>
@@ -113,10 +113,10 @@ export function AuthTermsModal({ isOpen, onClose, onAccept }: AuthTermsModalProp
           <div className="rounded-md border border-line bg-surface-2 p-4">
             <h4 className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-ink">
               <FontAwesome name="user-check" className="text-[11px] text-accent-text" />
-              <span>4. Hak Subjek Data (Warga) & Penghapusan Akun</span>
+              <span>4. Hak Subjek Data (Pengguna) & Penghapusan Akun</span>
             </h4>
             <p className="text-[12.5px] leading-relaxed text-ink-2">
-              Sesuai UU PDP No. 27/2022 Pasal 5 s.d. 12, warga memiliki hak penuh untuk mengakses riwayat data, memperbarui data profil, mencabut persetujuan, serta mengajukan penghapusan akun beserta seluruh data kependudukan terkait secara permanen dari basis data GovConnect kapan saja melalui menu Pengaturan.
+              Sesuai UU PDP No. 27/2022 Pasal 5 s.d. 12, pengguna memiliki hak penuh untuk mengakses riwayat data, memperbarui data profil, mencabut persetujuan, serta mengajukan penghapusan akun beserta seluruh data kependudukan terkait secara permanen dari basis data GovConnect kapan saja melalui menu Pengaturan.
             </p>
           </div>
         </div>

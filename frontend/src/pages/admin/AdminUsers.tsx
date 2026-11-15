@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { usePolling } from '../../hooks/usePolling';
 import { adminApi, type AdminUserItem } from '../../services/api';
 import {
   Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
@@ -32,7 +33,8 @@ export function AdminUsers() {
     }).catch(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  // Data pengguna ikut diperbarui otomatis (pendaftaran baru langsung terlihat).
+  usePolling(load, { interval: 10000 });
 
   const handleToggle = async (u: AdminUserItem) => {
     setBusyId(u.id);
@@ -71,7 +73,7 @@ export function AdminUsers() {
           <p className="eyebrow">Pengguna</p>
           <h1 className="page-title">Manajemen Pengguna</h1>
           <p className="page-sub">
-            Kelola akun warga — hanya email &amp; kelengkapan profil, tanpa data pribadi
+            Kelola akun pengguna — hanya email &amp; kelengkapan profil, tanpa data pribadi
           </p>
         </div>
       </div>

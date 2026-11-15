@@ -266,7 +266,7 @@ export function Dashboard() {
       {
         id: 'account',
         title: 'Status Akun Pengguna',
-        desc: `Masuk sebagai ${user?.email || 'Warga Terdaftar'} (Profil ${profileComp}% Lengkap)`,
+        desc: `Masuk sebagai ${user?.email || 'Pengguna Terdaftar'} (Profil ${profileComp}% Lengkap)`,
         icon: 'circle-user',
       },
       {

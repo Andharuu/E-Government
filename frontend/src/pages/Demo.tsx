@@ -201,7 +201,7 @@ export function Demo() {
   // Alur simulasi: dua langkah pertama selalu punya nilai awal, langkah ketiga mengikuti eksekusi
   const steps: { label: string; state: 'done' | 'active' }[] = [
     { label: 'Pilih layanan', state: 'done' },
-    { label: 'Pilih profil warga', state: 'done' },
+    { label: 'Pilih profil pengguna', state: 'done' },
     { label: 'Isi otomatis', state: isFilled ? 'done' : 'active' },
   ];
   const completedSteps = steps.filter(step => step.state === 'done').length;

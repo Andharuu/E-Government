@@ -457,7 +457,7 @@ export function Layout() {
                   {displayName}
                 </p>
                 <p className="text-[11px] text-ink-3 truncate leading-tight mt-0.5">
-                  {isAdmin ? 'Administrator' : 'Warga'}
+                  {isAdmin ? 'Administrator' : 'Pengguna'}
                 </p>
               </div>
               <button
@@ -701,6 +701,7 @@ export function Layout() {
                   <div className="p-1">
                     {[
                       { to: '/profile', label: 'Profil Saya', icon: 'user' },
+                      { to: '/welcome', label: 'Panduan GovConnect', icon: 'book' },
                       { to: '/settings', label: 'Pengaturan & Keamanan', icon: 'shield-halved' },
                       { to: '/activity', label: 'Riwayat Aktivitas', icon: 'clock' },
                     ].map((item) => (
@@ -736,8 +737,8 @@ export function Layout() {
         </header>
 
         {/* Konten */}
-        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden page-enter">
-          <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 lg:p-7">
+        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div key={location.pathname} className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 lg:p-7 page-enter">
             <Outlet />
           </div>
         </main>

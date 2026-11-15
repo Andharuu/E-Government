@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isExtensionConnected: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+    register: (email: string, password: string) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -123,17 +123,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me.data);
 
     // Broadcast ke extension content script (one-time in-memory relay untuk sinkronisasi instan)
-    window.postMessage({
-      type: 'GOVCONNECT_WEB_AUTH_SYNC',
-      token: access_token,
-      email: email
-    }, WEB_ORIGIN);
-  };
+        window.postMessage({
+          type: 'GOVCONNECT_WEB_AUTH_SYNC',
+          token: access_token,
+          email: email
+        }, WEB_ORIGIN);
 
-  const register = async (email: string, password: string) => {
-    await authApi.register(email, password);
-    await login(email, password);
-  };
+        return me.data;
+      };
+
+      const register = async (email: string, password: string) => {
+        await authApi.register(email, password);
+        return await login(email, password);
+      };
 
   const logout = async () => {
     try {

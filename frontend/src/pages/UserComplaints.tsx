@@ -176,7 +176,7 @@ export function UserComplaintsPage() {
       {/* ── Page Header ── */}
       <div className="page-head">
         <div className="min-w-0">
-          <p className="eyebrow">Layanan Warga</p>
+          <p className="eyebrow">Layanan Pengguna</p>
           <h1 className="page-title">Pengaduan &amp; Laporan Keamanan</h1>
           <p className="page-sub">
             Sampaikan kendala layanan publik atau laporkan celah keamanan secara terenkripsi dan terpantau.
@@ -199,7 +199,7 @@ export function UserComplaintsPage() {
         <Card>
           <CardHeader>
             <div className="min-w-0">
-              <CardTitle>Formulir Pelaporan Warga</CardTitle>
+              <CardTitle>Formulir Pelaporan Pengguna</CardTitle>
               <CardDescription>
                 Pilih klasifikasi laporan, isi detail kendala secara objektif, lalu kirim ke sistem pelayanan.
               </CardDescription>

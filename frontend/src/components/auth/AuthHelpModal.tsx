@@ -82,7 +82,7 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
           </div>
           <div className="min-w-0">
             <h3 className="text-[15px] font-semibold text-ink">
-              Pusat Bantuan & Layanan Warga
+              Pusat Bantuan & Layanan Pengguna
             </h3>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-3">
               Pesan terhubung langsung ke database dan ditinjau oleh Admin GovConnect
@@ -135,7 +135,7 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Nama pemohon/warga..."
+                  placeholder="Nama pemohon/pengguna..."
                   className="input"
                 />
               </div>

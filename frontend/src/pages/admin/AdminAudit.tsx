@@ -7,7 +7,7 @@ import {
 } from '../../components/ui';
 import type { BadgeVariant } from '../../components/ui';
 import { usePolling } from '../../hooks/usePolling';
-import { formatDateTime } from '../../components/admin/adminUi';
+import { formatDateTime, LiveStamp } from '../../components/admin/adminUi';
 
 const ACTION_LABEL: Record<string, { label: string; variant: BadgeVariant }> = {
   view_dashboard: { label: 'Lihat Dashboard', variant: 'neutral' },
@@ -17,7 +17,7 @@ const ACTION_LABEL: Record<string, { label: string; variant: BadgeVariant }> = {
   view_audit_logs: { label: 'Lihat Audit Log', variant: 'neutral' },
   broadcast_announcement: { label: 'Kirim Pengumuman', variant: 'ok' },
   export_complaints: { label: 'Export Data', variant: 'danger' },
-  view_user_profile: { label: 'Lihat Profil Warga', variant: 'warn' },
+  view_user_profile: { label: 'Lihat Profil Pengguna', variant: 'warn' },
 };
 
 export function AdminAudit() {
@@ -42,7 +42,7 @@ export function AdminAudit() {
   useEffect(() => { load(firstLoad.current ? false : true); firstLoad.current = false; }, [load]);
 
   // Live sync every 30s
-  const { refresh, lastUpdated } = usePolling(() => load(true), { interval: 30000 });
+  const { refresh, lastUpdated } = usePolling(() => load(true), { interval: 10000 });
 
   const filtered = useMemo(() => {
     if (filter === 'pii') return logs.filter(l => l.was_pii_exposed);
@@ -112,7 +112,7 @@ export function AdminAudit() {
 
       <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-ink-3">
         <span className="dot text-ok" />
-        <span>{lastUpdated ? `Tersinkron ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Menghubungkan...'}</span>
+        <LiveStamp at={lastUpdated} />
         <Button
           size="sm"
           variant="ghost"

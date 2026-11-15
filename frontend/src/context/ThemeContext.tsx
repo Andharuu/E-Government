@@ -22,6 +22,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    // Animasi halus saat tema berganti (dibatasi 320ms agar tidak mengganggu input)
+    root.classList.add('theme-switching');
+    const t = setTimeout(() => root.classList.remove('theme-switching'), 340);
+
     if (theme === 'dark') {
       root.classList.remove('light');
       root.classList.add('dark');
@@ -36,6 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem('govconnect_theme', theme);
     } catch {}
+    return () => clearTimeout(t);
   }, [theme]);
 
   const toggleTheme = () => {

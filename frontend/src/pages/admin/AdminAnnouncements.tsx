@@ -72,7 +72,7 @@ export function AdminAnnouncements() {
           <CardHeader>
             <div>
               <CardTitle>Buat Pengumuman</CardTitle>
-              <CardDescription>Notifikasi akan masuk ke kotak notifikasi semua warga</CardDescription>
+              <CardDescription>Notifikasi akan masuk ke kotak notifikasi semua pengguna</CardDescription>
             </div>
           </CardHeader>
 
@@ -126,7 +126,7 @@ export function AdminAnnouncements() {
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
                 rows={4}
-                placeholder="Tuliskan isi pesan pengumuman untuk seluruh warga..."
+                placeholder="Tuliskan isi pesan pengumuman untuk seluruh pengguna..."
               />
             </div>
 
@@ -161,7 +161,7 @@ export function AdminAnnouncements() {
           <CardHeader>
             <div>
               <CardTitle>Pratinjau Langsung</CardTitle>
-              <CardDescription>Simulasi tampilan notifikasi warga</CardDescription>
+              <CardDescription>Simulasi tampilan notifikasi pengguna</CardDescription>
             </div>
           </CardHeader>
 
@@ -176,7 +176,7 @@ export function AdminAnnouncements() {
                     {title || 'Judul pengumuman Anda'}
                   </p>
                   <p className="text-[12px] text-ink-2 mt-1.5 leading-relaxed whitespace-pre-wrap">
-                    {desc || 'Isi pesan akan tampil di sini saat warga membuka notifikasi...'}
+                    {desc || 'Isi pesan akan tampil di sini saat pengguna membuka notifikasi...'}
                   </p>
                   <p className="text-[11px] text-ink-3 mt-2">baru saja</p>
                 </div>
@@ -185,7 +185,7 @@ export function AdminAnnouncements() {
 
             <div className="mt-4 flex items-start gap-2 text-[11.5px] text-ink-3 leading-relaxed">
               <FontAwesome name="lock" className="text-[11px] mt-0.5 shrink-0" />
-              <span>Pengumuman bersifat massal dan aman tanpa eksposur PII warga.</span>
+              <span>Pengumuman bersifat massal dan aman tanpa eksposur PII pengguna.</span>
             </div>
           </CardContent>
         </Card>

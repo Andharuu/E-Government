@@ -204,7 +204,7 @@ const FAQ_LIST = [
   },
   {
     q: 'Berapa biaya untuk menggunakan GovConnect?',
-    a: 'GovConnect 100% gratis untuk seluruh warga negara Indonesia guna mempercepat transformasi digital pelayanan publik yang inklusif dan bebas birokrasi berbelit.',
+    a: 'GovConnect 100% gratis untuk seluruh pengguna layanan Indonesia guna mempercepat transformasi digital pelayanan publik yang inklusif dan bebas birokrasi berbelit.',
   },
 ];
 
@@ -341,117 +341,61 @@ export function Landing() {
       </header>
 
       {/* ================= HERO ================= */}
-      <section className="border-b border-line">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-14 sm:pb-16">
-          <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-16 items-center">
-            {/* Kiri: pesan */}
-            <div>
-              <RevealOnScroll animation="fade-up">
-                <p className="eyebrow mb-4">Layanan publik digital · Indonesia</p>
-                <h1 className="text-[34px] sm:text-[46px] lg:text-[52px] font-bold tracking-[-0.035em] leading-[1.06] text-ink">
-                  Layanan publik jadi lebih cepat,{' '}
-                  <span className="text-accent-text">tanpa mengetik ulang.</span>
-                </h1>
-              </RevealOnScroll>
+      <section className="relative border-b border-line overflow-hidden">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 pt-14 sm:pt-20 pb-12 sm:pb-16">
+          <div className="mx-auto max-w-[820px] text-center">
+            <RevealOnScroll animation="fade-up">
+              <span className="inline-flex items-center gap-2 h-7 px-3 rounded-full border border-accent-line bg-accent-soft text-accent-text text-[11.5px] font-semibold mb-6">
+                <span className="dot" />
+                Rilis se-Indonesia · pencocokan semantik
+              </span>
+            </RevealOnScroll>
 
-              <RevealOnScroll animation="fade-up" delay={80}>
-                <p className="mt-5 text-[15px] sm:text-[16px] text-ink-2 leading-relaxed max-w-[540px]">
-                  Katakan selamat tinggal pada ketik ulang NIK, KK, dan data kependudukan berulang
-                  kali. GovConnect mendeteksi dan mengisi formulir dinas kependudukan, perizinan,
-                  beasiswa, hingga bansos dalam <strong className="font-semibold text-ink">0.3 detik</strong>.
-                </p>
-              </RevealOnScroll>
+            <RevealOnScroll animation="fade-up" delay={60}>
+              <h1 className="text-[34px] sm:text-[48px] lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.05] text-ink">
+                Layanan publik jadi lebih cepat
+                <span className="block text-accent-text">&amp; otomatis</span>
+              </h1>
+            </RevealOnScroll>
 
-              <RevealOnScroll animation="fade-up" delay={140}>
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <button type="button" onClick={handleDownloadExtension} className="btn btn-primary btn-lg">
-                    <FontAwesome name="download" className="text-[12px]" />
-                    Unduh ekstensi browser
-                    <span className="ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded bg-white/15">
-                      Gratis
-                    </span>
-                  </button>
-                  <Link to="/demo" className="btn btn-secondary btn-lg">
-                    Coba simulator
-                    <FontAwesome name="arrow-right" className="text-[11px]" />
-                  </Link>
-                </div>
-              </RevealOnScroll>
+            <RevealOnScroll animation="fade-up" delay={120}>
+              <p className="mt-6 text-[15px] sm:text-[17px] text-ink-2 leading-relaxed max-w-[640px] mx-auto">
+                Berhenti mengetik ulang NIK, KK, dan data kependudukan. GovConnect mendeteksi lalu
+                mengisi formulir dinas, perizinan, beasiswa, hingga bansos dalam{' '}
+                <strong className="font-semibold text-ink">0,3 detik</strong>.
+              </p>
+            </RevealOnScroll>
 
-              <RevealOnScroll animation="fade-up" delay={200}>
-                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-ink-3">
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesome name="check-circle" className="text-ok text-[11px]" />
-                    Chrome, Edge, Brave
+            <RevealOnScroll animation="fade-up" delay={180}>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button type="button" onClick={handleDownloadExtension} className="btn btn-primary btn-lg w-full sm:w-auto">
+                  <FontAwesome name="download" className="text-[12px]" />
+                  Unduh ekstensi browser
+                  <span className="ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded bg-white/15">
+                    Gratis
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesome name="shield-check" className="text-ok text-[11px]" />
-                    Data terenkripsi
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesome name="bolt" className="text-ok text-[11px]" />
-                    Akurasi 100%
-                  </span>
-                </div>
-              </RevealOnScroll>
-            </div>
+                </button>
+                <Link to="/demo" className="btn btn-secondary btn-lg w-full sm:w-auto">
+                  Coba simulator
+                  <FontAwesome name="arrow-right" className="text-[11px]" />
+                </Link>
+              </div>
+            </RevealOnScroll>
 
-            {/* Kanan: panel produk */}
-            <RevealOnScroll animation="fade-left" delay={120}>
-              <div className="card overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between px-4 h-11 border-b border-line bg-surface-2">
-                  <div className="flex items-center gap-2">
-                    <img src={theme === 'dark' ? logoDark : logoLight} alt="" className="w-5 h-5 object-contain" />
-                    <span className="text-[12px] font-semibold text-ink">GovConnect Assistant</span>
-                  </div>
-                  <span className="badge badge-ok">
-                    <span className="dot" />
-                    Siaga
-                  </span>
-                </div>
-
-                <div className="p-4 border-b border-line">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[13px] font-semibold text-ink">
-                        {currentTab.fields.length} kolom terdeteksi
-                      </p>
-                      <p className="text-[11.5px] text-ink-3 mt-0.5">
-                        100% cocok dengan profil kependudukan
-                      </p>
-                    </div>
-                    <span className="w-8 h-8 rounded-md bg-accent text-accent-fg flex items-center justify-center shrink-0">
-                      <FontAwesome name="bolt" className="text-[12px]" />
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-2">
-                  {currentTab.fields.slice(0, 4).map((f) => (
-                    <div
-                      key={f.key}
-                      className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-md hover:bg-surface-2 transition-colors"
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <FontAwesome name="check-circle" className="text-ok text-[11px] shrink-0" />
-                        <span className="text-[12px] text-ink-2 truncate">{f.label}</span>
-                      </span>
-                      <span className="text-[10.5px] font-semibold text-ok shrink-0">Cocok</span>
-                    </div>
-                  ))}
-                  {currentTab.fields.length > 4 && (
-                    <p className="px-2.5 pt-1 pb-2 text-[11px] text-ink-3">
-                      +{currentTab.fields.length - 4} kolom lain terdeteksi
-                    </p>
-                  )}
-                </div>
-
-                <div className="p-3 border-t border-line bg-surface-2">
-                  <button type="button" onClick={handleDownloadExtension} className="btn btn-primary w-full">
-                    <FontAwesome name="arrow-right" className="text-[11px]" />
-                    Isi semua kolom ({currentTab.fields.length} data)
-                  </button>
-                </div>
+            <RevealOnScroll animation="fade-up" delay={240}>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] text-ink-3">
+                <span className="flex items-center gap-1.5">
+                  <FontAwesome name="check-circle" className="text-ok text-[11px]" />
+                  Chrome, Edge, Brave
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <FontAwesome name="shield-check" className="text-ok text-[11px]" />
+                  Data terenkripsi
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <FontAwesome name="bolt" className="text-ok text-[11px]" />
+                  Akurasi 100%
+                </span>
               </div>
             </RevealOnScroll>
           </div>
@@ -459,25 +403,58 @@ export function Landing() {
       </section>
 
       {/* ================= SHOWCASE ================= */}
-      <section id="showcase" className="py-14 sm:py-16 border-b border-line">
+      <section id="showcase" className="py-12 sm:py-16 border-b border-line">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
           <RevealOnScroll animation="fade-up">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
-              <div>
-                <p className="eyebrow mb-2">Cara kerjanya</p>
-                <h2 className="text-[24px] sm:text-[28px] font-bold tracking-[-0.03em] text-ink">
-                  Formulir instansi, terisi otomatis
-                </h2>
-              </div>
-              <p className="text-[12.5px] text-ink-3 max-w-[380px] leading-relaxed">
+            <div className="mx-auto max-w-[640px] text-center mb-8">
+              <p className="eyebrow mb-2">Cara kerjanya</p>
+              <h2 className="text-[24px] sm:text-[30px] font-bold tracking-[-0.03em] text-ink">
+                Formulir instansi, terisi otomatis
+              </h2>
+              <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
                 Ekstensi membaca struktur kolom, mencocokkannya dengan profil Anda, lalu mengisi
                 hanya setelah Anda menyetujui.
               </p>
             </div>
           </RevealOnScroll>
 
-          <RevealOnScroll animation="fade-up" delay={80}>
-            <div className="card overflow-hidden">
+          <div className="relative">
+            {/* Kartu melayang — hanya di layar lebar */}
+            <RevealOnScroll animation="fade-right" delay={140}>
+              <div className="hidden xl:block absolute -left-6 top-16 z-10 w-[190px] card p-3.5 shadow-md">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 rounded-md bg-ok-soft text-ok border border-ok-line flex items-center justify-center shrink-0">
+                    <FontAwesome name="bolt" className="text-[9px]" />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-ok">
+                    Kecepatan isi
+                  </span>
+                </div>
+                <p className="text-[17px] font-bold text-ink tracking-[-0.02em] tabular-nums">0,3 detik</p>
+                <p className="text-[10.5px] text-ink-3 mt-0.5">vs 4 m 30 s mengetik manual</p>
+              </div>
+            </RevealOnScroll>
+
+            <RevealOnScroll animation="fade-left" delay={200}>
+              <div className="hidden xl:block absolute -right-6 top-24 z-10 w-[200px] card p-3.5 shadow-md">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 rounded-md bg-accent-soft text-accent-text border border-accent-line flex items-center justify-center shrink-0">
+                    <FontAwesome name="shield-check" className="text-[9px]" />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-accent-text">
+                    Data terenkripsi
+                  </span>
+                </div>
+                <p className="text-[13px] font-semibold text-ink leading-tight">Brankas kependudukan</p>
+                <p className="text-[10.5px] text-ok font-medium mt-1 flex items-center gap-1">
+                  <FontAwesome name="check-circle" className="text-[8px]" />
+                  NIK &amp; KK terverifikasi
+                </p>
+              </div>
+            </RevealOnScroll>
+
+            <RevealOnScroll animation="fade-up" delay={80}>
+              <div className="card overflow-hidden shadow-sm">
               {/* Browser chrome */}
               <div className="h-10 px-3 border-b border-line bg-surface-2 flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
@@ -590,7 +567,8 @@ export function Landing() {
                 </div>
               </div>
             </div>
-          </RevealOnScroll>
+            </RevealOnScroll>
+          </div>
         </div>
       </section>
 
@@ -601,7 +579,7 @@ export function Landing() {
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-line">
               {[
                 { value: <AnimatedCounter end={0.3} decimals={1} suffix="s" />, label: 'Waktu pengisian rata-rata' },
-                { value: <AnimatedCounter end={25000} suffix="+" />, label: 'Formulir warga terlayani' },
+                { value: <AnimatedCounter end={25000} suffix="+" />, label: 'Formulir pengguna terlayani' },
                 { value: <AnimatedCounter end={98.8} decimals={1} suffix="%" />, label: 'Efisiensi waktu terhemat' },
                 { value: <AnimatedCounter end={100} suffix="%" />, label: 'Akurasi bebas salah ketik' },
               ].map((stat, i) => (
@@ -826,7 +804,7 @@ export function Landing() {
                 ],
               },
               {
-                title: 'Layanan warga',
+                title: 'Layanan pengguna',
                 links: [
                   { label: 'Direktori layanan', to: '/public-services' },
                   { label: 'Template formulir', to: '/templates' },
@@ -874,7 +852,7 @@ export function Landing() {
               © 2026 GovConnect Indonesia. Hak cipta dilindungi undang-undang.
             </p>
             <p className="text-[11.5px] text-ink-3">
-              Dibangun untuk kemudahan pelayanan publik warga.
+              Dibangun untuk kemudahan pelayanan publik pengguna.
             </p>
           </div>
         </div>

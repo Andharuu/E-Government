@@ -15,7 +15,7 @@ import {
 } from '../../components/ui';
 import type { BadgeVariant } from '../../components/ui';
 import { usePolling } from '../../hooks/usePolling';
-import { CATEGORY_LABEL, relativeTime } from '../../components/admin/adminUi';
+import { CATEGORY_LABEL, relativeTime, LiveStamp } from '../../components/admin/adminUi';
 
 const CATEGORY_COLORS = ['var(--accent)', 'var(--ok)', 'var(--warn)', 'var(--danger)', 'var(--ink-3)'];
 const PRIORITY_COLORS: Record<string, string> = {
@@ -69,8 +69,8 @@ export function AdminDashboard() {
     }
   }, []);
 
-  // Live sync every 15s so new warga complaints appear automatically.
-  const { refresh, lastUpdated } = usePolling(load, { interval: 15000 });
+  // Live sync every 15s so new pengguna complaints appear automatically.
+  const { refresh, lastUpdated } = usePolling(load, { interval: 8000 });
 
   useEffect(() => { load(); }, [load]);
 
@@ -128,7 +128,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex items-center gap-2 text-[11.5px] text-ink-3">
           <span className="dot text-ok" />
-          <span>{lastUpdated ? `Tersinkron ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Menghubungkan...'}</span>
+          <LiveStamp at={lastUpdated} />
           <Button
             size="sm"
             variant="ghost"
@@ -277,7 +277,7 @@ export function AdminDashboard() {
           <CardHeader>
             <div>
               <CardTitle>Ringkasan Audit Privasi</CardTitle>
-              <CardDescription>Transparansi &amp; proteksi data warga</CardDescription>
+              <CardDescription>Transparansi &amp; proteksi data pengguna</CardDescription>
             </div>
             <FontAwesome name="shield-halved" className="text-[13px] text-ink-3" />
           </CardHeader>
