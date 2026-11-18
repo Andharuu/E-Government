@@ -63,6 +63,8 @@ export interface User {
   email: string;
   is_active: boolean;
   is_admin?: boolean;
+  total_autofill_lifetime?: number;
+  total_fields_lifetime?: number;
   created_at: string;
 }
 

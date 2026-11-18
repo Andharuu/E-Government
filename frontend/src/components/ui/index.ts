@@ -8,3 +8,4 @@ export * from './EmptyState';
 export * from './StatCard';
 export * from './FontAwesome';
 export * from './CustomSelect';
+export * from './Modal';

@@ -4,7 +4,7 @@ import { adminApi, type AdminUserItem } from '../../services/api';
 import {
   Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
   EmptyState, Input, Tabs,
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Modal,
 } from '../../components/ui';
 import { relativeTime } from '../../components/admin/adminUi';
 
@@ -182,7 +182,7 @@ export function AdminUsers() {
 
       {/* Modal Konfirmasi Toggle Status Pengguna */}
       {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
+        <Modal isOpen={Boolean(confirmTarget)} onClose={() => setConfirmTarget(null)}>
           <div className="card w-full max-w-md">
             <div className="card-head">
               <h3 className="card-title">
@@ -208,7 +208,7 @@ export function AdminUsers() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

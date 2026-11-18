@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  ConfirmDialog,
 } from '../components/ui';
 
 export function ActivityPage() {
@@ -321,30 +322,16 @@ export function ActivityPage() {
         )}
       </Card>
 
-      {confirmModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="card w-full max-w-[420px] p-5" role="dialog" aria-modal="true">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-md bg-danger-soft border border-danger-line text-danger flex items-center justify-center shrink-0">
-                <FontAwesome name="triangle-exclamation" className="text-[12px]" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-[14px] font-semibold text-ink">{confirmModal.title}</h3>
-                <p className="text-[12.5px] text-ink-2 leading-relaxed mt-1">{confirmModal.message}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 mt-5">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmModal(null)}>
-                Batal
-              </Button>
-              <Button type="button" variant="danger" size="sm" onClick={executeConfirmedAction}>
-                Ya, Hapus
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={Boolean(confirmModal?.isOpen)}
+        onClose={() => setConfirmModal(null)}
+        onConfirm={executeConfirmedAction}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmLabel="Ya, Hapus"
+        confirmVariant="danger"
+        confirmLoading={deletingId !== null || clearingAll}
+      />
     </div>
   );
 }

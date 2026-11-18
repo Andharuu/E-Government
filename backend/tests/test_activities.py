@@ -125,6 +125,12 @@ def test_delete_and_clear_activities(client, auth_headers, db_session):
     assert clear_res.status_code == 200
     assert "berhasil dibersihkan" in clear_res.json()["detail"]
 
-    # Pastikan kosong
+    # Pastikan daftar catatan riwayat kosong (hak privasi pengguna terpenuhi)
     final_res = client.get("/api/v1/activities", headers=auth_headers)
     assert len(final_res.json()) == 0
+
+    # Pastikan lifetime stats di dashboard tetap utuh dan tidak berkurang (Opsi 1)
+    stats_res = client.get("/api/v1/activities/stats", headers=auth_headers)
+    assert stats_res.status_code == 200
+    assert stats_res.json()["total_autofill"] >= 2
+    assert stats_res.json()["estimated_time_saved_seconds"] >= 6 * 30

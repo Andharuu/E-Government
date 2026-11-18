@@ -3,7 +3,7 @@ import { adminApi, type Complaint, type ReportType } from '../../services/api';
 import {
   Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
   EmptyState, Input, Select, Tabs, Textarea,
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Modal,
 } from '../../components/ui';
 import type { BadgeVariant } from '../../components/ui';
 import { usePolling } from '../../hooks/usePolling';
@@ -358,10 +358,7 @@ function ComplaintDetailModal({ complaint, onClose, onUpdated }: {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
+    <Modal isOpen onClose={onClose}>
       <div
         className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
@@ -500,6 +497,6 @@ function ComplaintDetailModal({ complaint, onClose, onUpdated }: {
           <Button variant="primary" onClick={save} loading={saving}>Simpan Perubahan</Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

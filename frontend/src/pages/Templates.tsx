@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { profileApi, type Profile } from '../services/api';
-import { FontAwesome, Button, Card, Badge, FormField, Input, Textarea, Select } from '../components/ui';
+import { FontAwesome, Button, Card, Badge, FormField, Input, Textarea, Select, Modal } from '../components/ui';
 import { Link } from 'react-router-dom';
 
 export interface ServiceTemplate {
@@ -544,7 +544,7 @@ export function TemplatesPage() {
 
       {/* DETAIL MODAL / DRAWER */}
       {selectedTemplate && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <Modal isOpen onClose={() => setSelectedTemplate(null)}>
           <div className="card w-full max-w-[640px] max-h-[90vh] flex flex-col overflow-hidden shadow-lg">
             {/* Modal Header */}
             <div className="card-head">
@@ -651,12 +651,12 @@ export function TemplatesPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* CREATE TEMPLATE MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <Modal isOpen onClose={() => setIsCreateModalOpen(false)}>
           <div className="card w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-lg">
             <div className="card-head items-start">
               <div className="min-w-0">
@@ -793,7 +793,7 @@ export function TemplatesPage() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

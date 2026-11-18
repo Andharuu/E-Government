@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { profileApi, type Profile } from '../services/api';
-import { FontAwesome, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, EmptyState, Input, Textarea, Select, FormField } from '../components/ui';
+import { FontAwesome, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, EmptyState, Input, Textarea, Select, FormField, Modal } from '../components/ui';
 
 const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
   identity: [
@@ -1421,7 +1421,7 @@ export function ProfilePage() {
 
       {/* ── Modal Tambah Custom Field ── */}
       {showAddFieldModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <Modal isOpen onClose={() => setShowAddFieldModal(false)}>
           <div className="card w-full max-w-md overflow-hidden">
             <div className="card-head">
               <div className="min-w-0">
@@ -1576,12 +1576,12 @@ export function ProfilePage() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Modal Tambah Kategori Baru ── */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <Modal isOpen onClose={() => setShowAddCategoryModal(false)}>
           <div className="card w-full max-w-md overflow-hidden">
             <div className="card-head">
               <div className="min-w-0">
@@ -1633,14 +1633,15 @@ export function ProfilePage() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Lightbox Image Preview ── */}
       {previewPhoto && (
-        <div
-          onClick={() => setPreviewPhoto(null)}
-          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 p-4"
+        <Modal
+          isOpen
+          onClose={() => setPreviewPhoto(null)}
+          overlayClassName="bg-black/60 cursor-pointer"
         >
           <div
             onClick={e => e.stopPropagation()}
@@ -1669,7 +1670,7 @@ export function ProfilePage() {
               />
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
