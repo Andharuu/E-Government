@@ -225,7 +225,7 @@ export const FontAwesome: React.FC<FontAwesomeProps> = ({
 
   return (
     <i
-      className={`${prefix} ${finalClass} ${spinClass} ${className} inline-flex items-center justify-center leading-none transition-transform duration-300 ease-out will-change-transform`}
+      className={`${prefix} ${finalClass} ${spinClass} ${className} inline-flex items-center justify-center leading-none`}
       aria-hidden="true"
       {...props}
     />

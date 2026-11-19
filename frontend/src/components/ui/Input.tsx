@@ -5,6 +5,7 @@ export interface FormFieldProps {
   required?: boolean;
   error?: string;
   hint?: string;
+  htmlFor?: string;
   children: React.ReactNode;
   className?: string;
 }
@@ -14,44 +15,39 @@ export const FormField: React.FC<FormFieldProps> = ({
   required = false,
   error,
   hint,
+  htmlFor,
   children,
   className = '',
-}) => {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      {label && (
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-[#6EA2B3]">
-          {label} {required && <span className="text-rose-500">*</span>}
-        </label>
-      )}
-      {children}
-      {error ? (
-        <p className="text-xs font-medium text-rose-600 mt-1">{error}</p>
-      ) : hint ? (
-        <p className="text-xs text-slate-400 dark:text-[#94A3B8] mt-1">{hint}</p>
-      ) : null}
-    </div>
-  );
-};
+}) => (
+  <div className={className}>
+    {label && (
+      <label className="label" htmlFor={htmlFor}>
+        {label}
+        {required && <span className="text-danger ml-0.5">*</span>}
+      </label>
+    )}
+    {children}
+    {error ? (
+      <p className="err">{error}</p>
+    ) : hint ? (
+      <p className="hint">{hint}</p>
+    ) : null}
+  </div>
+);
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: boolean;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className = '', error = false, ...props }, ref) => {
-    return (
-      <input
-        ref={ref}
-        className={`w-full px-4 py-2 h-11 text-sm bg-white dark:bg-[#101828] border rounded-xl placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3] text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
-          error
-            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
-        } ${className}`}
-        {...props}
-      />
-    );
-  }
+  ({ className = '', error = false, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={`input ${error ? 'input-error' : ''} ${className}`}
+      aria-invalid={error || undefined}
+      {...props}
+    />
+  )
 );
 Input.displayName = 'Input';
 
@@ -60,19 +56,14 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className = '', error = false, ...props }, ref) => {
-    return (
-      <textarea
-        ref={ref}
-        className={`w-full p-4 text-sm bg-white dark:bg-[#101828] border rounded-xl placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3] text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
-          error
-            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
-        } ${className}`}
-        {...props}
-      />
-    );
-  }
+  ({ className = '', error = false, ...props }, ref) => (
+    <textarea
+      ref={ref}
+      className={`textarea ${error ? 'input-error' : ''} ${className}`}
+      aria-invalid={error || undefined}
+      {...props}
+    />
+  )
 );
 Textarea.displayName = 'Textarea';
 
@@ -81,20 +72,15 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className = '', error = false, children, ...props }, ref) => {
-    return (
-      <select
-        ref={ref}
-        className={`w-full px-4 py-2 h-11 text-sm bg-white dark:bg-[#101828] border rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all duration-150 ${
-          error
-            ? 'border-rose-300 dark:border-rose-500/50 focus:ring-rose-500/15 focus:border-rose-500'
-            : 'border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/20 focus:border-blue-600 dark:focus:border-[#7BBDE8]'
-        } ${className}`}
-        {...props}
-      >
-        {children}
-      </select>
-    );
-  }
+  ({ className = '', error = false, children, ...props }, ref) => (
+    <select
+      ref={ref}
+      className={`select ${error ? 'input-error' : ''} ${className}`}
+      aria-invalid={error || undefined}
+      {...props}
+    >
+      {children}
+    </select>
+  )
 );
 Select.displayName = 'Select';

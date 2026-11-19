@@ -7,9 +7,26 @@ import path from 'path'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+<<<<<<< HEAD
     port: 5173,
     strictPort: true,
   },
+=======
+      port: 5173,
+      // strictPort: true -> kalau 5173 dipakai proses lain, Vite GAGAL dengan jelas
+      // alih-alih diam-diam pindah ke port lain (penyebab "refresh tapi tidak berubah").
+      strictPort: true,
+      proxy: {
+        // Frontend memanggil /api lewat origin yang sama. Ini menghilangkan CORS
+        // sekaligus memperbaiki cookie HttpOnly yang sebelumnya diblokir SameSite
+        // karena localhost:5173 -> 127.0.0.1:8000 dianggap beda situs.
+        '/api': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: false,
+        },
+      },
+    },
+>>>>>>> 63dbf8b6c6dd2c4a9ee44c29a0be10be43331194
   resolve: {
     alias: {
       'chart.js': path.resolve(import.meta.dirname, 'node_modules/chart.js/dist/chart.js'),

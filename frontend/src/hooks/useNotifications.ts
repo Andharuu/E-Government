@@ -44,9 +44,10 @@ export function useNotifications(
     setHasError(false);
     try {
       const res = await notificationApi.get({ limit: initialLimit });
-      setNotifications(res.data);
-      if (res.data.length > 0) {
-        lastIdRef.current = Math.max(...res.data.map(n => n.id));
+      const list = Array.isArray(res.data) ? res.data : [];
+      setNotifications(list);
+      if (list.length > 0) {
+        lastIdRef.current = Math.max(...list.map(n => n.id));
       }
       const cnt = await notificationApi.getUnreadCount();
       setUnreadCount(cnt.data.count);
@@ -61,10 +62,11 @@ export function useNotifications(
     if (!token || lastIdRef.current === 0) return;
     try {
       const res = await notificationApi.get({ since_id: lastIdRef.current, limit: 50 });
-      if (res.data.length > 0) {
-        setNotifications(prev => [...res.data, ...prev].slice(0, 100));
-        lastIdRef.current = Math.max(lastIdRef.current, ...res.data.map(n => n.id));
-        setUnreadCount(prev => prev + res.data.filter(n => !n.read).length);
+      const incoming = Array.isArray(res.data) ? res.data : [];
+      if (incoming.length > 0) {
+        setNotifications(prev => [...incoming, ...prev].slice(0, 100));
+        lastIdRef.current = Math.max(lastIdRef.current, ...incoming.map(n => n.id));
+        setUnreadCount(prev => prev + incoming.filter(n => !n.read).length);
       }
     } catch {
       setHasError(true);

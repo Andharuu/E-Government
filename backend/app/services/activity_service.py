@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import asyncio
 import logging
-from app.models.entities import Activity, Notification
+from app.models.entities import Activity, Notification, User
 from app.database import SessionLocal
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
@@ -77,19 +77,35 @@ def sanitize_target_url(target_url: Optional[str]) -> Optional[str]:
         return target_url.split("?", 1)[0].split("#", 1)[0]
 
 
-def compute_activity_stats(activities: List[Activity], profile_completion: float) -> Dict[str, Any]:
-    """Menghitung ringkasan KPI aktivitas autofill."""
-    total = len(activities)
+def compute_activity_stats(
+    activities: List[Activity],
+    profile_completion: float,
+    user: Optional[User] = None
+) -> Dict[str, Any]:
+    """Menghitung ringkasan KPI aktivitas autofill dengan dukungan lifetime cumulative counter."""
+    current_logs_count = len(activities)
     success_count = sum(1 for a in activities if a.status == "success")
     partial_count = sum(1 for a in activities if a.status == "partial")
     failed_count = sum(1 for a in activities if a.status == "failed")
-    total_fields_filled = sum(a.fields_filled for a in activities)
+    current_fields_filled = sum(a.fields_filled or 0 for a in activities)
 
-    success_rate = round((success_count / total * 100), 1) if total > 0 else 0.0
-    estimated_time_saved_seconds = total_fields_filled * 30
+    # Lifetime counter dari akun pengguna (tidak berkurang saat riwayat audit dihapus - Opsi 1)
+    lifetime_autofill = getattr(user, "total_autofill_lifetime", 0) or 0
+    lifetime_fields = getattr(user, "total_fields_lifetime", 0) or 0
+
+    # Sertakan antrean in-memory jika ada yang belum di-flush untuk user ini
+    user_id = getattr(user, "id", None)
+    queued_count = sum(1 for a in activity_queue if a.get("user_id") == user_id)
+    queued_fields = sum(a.get("fields_filled", 0) for a in activity_queue if a.get("user_id") == user_id)
+
+    total_autofill = max(lifetime_autofill + queued_count, current_logs_count + queued_count)
+    total_fields = max(lifetime_fields + queued_fields, current_fields_filled + queued_fields)
+
+    success_rate = round((success_count / current_logs_count * 100), 1) if current_logs_count > 0 else 0.0
+    estimated_time_saved_seconds = total_fields * 30
 
     return {
-        "total_autofill": total,
+        "total_autofill": total_autofill,
         "success_count": success_count,
         "partial_count": partial_count,
         "failed_count": failed_count,
@@ -102,10 +118,11 @@ def compute_activity_stats(activities: List[Activity], profile_completion: float
 def compute_activity_analytics(
     activities: List[Activity],
     days: int,
-    profile_completion: float
+    profile_completion: float,
+    user: Optional[User] = None
 ) -> Dict[str, Any]:
     """Menghitung analitik tren harian, distribusi domain, dan field terpopuler."""
-    stats = compute_activity_stats(activities, profile_completion)
+    stats = compute_activity_stats(activities, profile_completion, user=user)
 
     # 1. Tren Harian (Daily Trend)
     today = datetime.now(timezone.utc).date()
@@ -206,12 +223,28 @@ def _generate_activity_notification(user_id: int, status: str, domain: str, fiel
 
 
 def _bulk_insert_activities(records: List[Dict[str, Any]], db: Optional[Session] = None):
-    """Fungsi synchronous untuk menjalankan bulk insert di PostgreSQL."""
+    """Fungsi synchronous untuk menjalankan bulk insert di basis data dan memperbarui lifetime stats pengguna."""
     if not records:
         return
     session = db or SessionLocal()
     try:
         session.execute(insert(Activity).values(records))
+
+        # Akumulasikan ke lifetime counter milik setiap pengguna (Opsi 1)
+        from collections import defaultdict
+        user_counts = defaultdict(lambda: {"count": 0, "fields": 0})
+        for r in records:
+            u_id = r.get("user_id")
+            if u_id:
+                user_counts[u_id]["count"] += 1
+                user_counts[u_id]["fields"] += max(0, r.get("fields_filled") or 0)
+
+        for u_id, u_stats in user_counts.items():
+            user = session.query(User).filter(User.id == u_id).first()
+            if user:
+                user.total_autofill_lifetime = (user.total_autofill_lifetime or 0) + u_stats["count"]
+                user.total_fields_lifetime = (user.total_fields_lifetime or 0) + u_stats["fields"]
+
         session.commit()
     except Exception as e:
         logger.error(f"Gagal melakukan bulk insert activity log: {e}")

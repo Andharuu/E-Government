@@ -1,11 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { adminApi, type Complaint, type ReportType } from '../../services/api';
-import { Button, FontAwesome } from '../../components/ui';
+import {
+  Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
+  EmptyState, Input, Select, Tabs, Textarea,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Modal,
+} from '../../components/ui';
+import type { BadgeVariant } from '../../components/ui';
 import { usePolling } from '../../hooks/usePolling';
 import {
-  AdminCard, SectionTitle, StatusBadge, PriorityBadge, CATEGORY_LABEL,
-  ReportTypeBadge, SeverityBadge, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL,
-  EmptyState, LoadingBlock, formatDateTime, LiveSyncBar,
+  CATEGORY_LABEL, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL, formatDateTime,
+  LiveStamp,
 } from '../../components/admin/adminUi';
 
 const STATUS_FILTERS = [
@@ -24,6 +28,22 @@ const TYPE_FILTERS: { key: '' | ReportType; label: string; icon: string }[] = [
 
 const ALL_STATUSES = ['diterima', 'diproses', 'selesai', 'ditolak'];
 const PAGE_SIZE = 10;
+
+const STATUS_LABEL: Record<string, string> = {
+  diterima: 'Diterima', diproses: 'Diproses', proses: 'Diproses', selesai: 'Selesai', ditolak: 'Ditolak',
+};
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  diterima: 'info', diproses: 'warn', proses: 'warn', selesai: 'ok', ditolak: 'danger',
+};
+const PRIORITY_LABEL: Record<string, string> = { tinggi: 'Tinggi', sedang: 'Sedang', rendah: 'Rendah' };
+const PRIORITY_VARIANT: Record<string, BadgeVariant> = { tinggi: 'danger', sedang: 'warn', rendah: 'neutral' };
+const SEVERITY_LABEL: Record<string, string> = {
+  kritis: 'Kritis', tinggi: 'Tinggi', sedang: 'Sedang', rendah: 'Rendah',
+};
+const SEVERITY_VARIANT: Record<string, BadgeVariant> = {
+  kritis: 'danger', tinggi: 'danger', sedang: 'warn', rendah: 'neutral',
+};
+const REPORT_TYPE_LABEL: Record<string, string> = { layanan: 'Layanan', keamanan: 'Keamanan & Bug' };
 
 export function AdminComplaints() {
   const [items, setItems] = useState<Complaint[]>([]);
@@ -66,7 +86,7 @@ export function AdminComplaints() {
   useEffect(() => { load(firstLoad.current ? false : true); firstLoad.current = false; }, [load]);
   useEffect(() => { setPage(1); }, [status, reportType, category, priority, sort, search]);
 
-  // Live sync: pull new warga reports every 15s (silent — no loading flash).
+  // Live sync: pull new pengguna reports every 15s (silent — no loading flash).
   const { refresh, lastUpdated } = usePolling(() => load(true), {
     interval: 15000,
     enabled: !selected,
@@ -103,17 +123,18 @@ export function AdminComplaints() {
   };
 
   return (
-    <div className="w-full space-y-5 pb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Pengaduan & Laporan Keamanan</h1>
-          <p className="text-sm text-slate-500 dark:text-[#6EA2B3] mt-1.5 font-medium">
-            Kelola pengaduan layanan serta laporan bug/kebocoran data — identitas warga hanya email
+          <p className="eyebrow">Operasional</p>
+          <h1 className="page-title">Pengaduan &amp; Laporan Keamanan</h1>
+          <p className="page-sub">
+            Kelola pengaduan layanan serta laporan bug/kebocoran data — identitas pengguna hanya email
           </p>
         </div>
         <Button
-          variant="outline"
-          icon={<FontAwesome name="download" className="text-xs" />}
+          variant="secondary"
+          icon={<FontAwesome name="download" className="text-[12px]" />}
           onClick={handleExport}
           loading={isExporting}
         >
@@ -121,181 +142,187 @@ export function AdminComplaints() {
         </Button>
       </div>
 
-      <LiveSyncBar lastUpdated={lastUpdated} onRefresh={refresh} />
+      <div className="flex items-center gap-2 text-[11.5px] text-ink-3">
+        <span className="dot text-ok" />
+        <LiveStamp at={lastUpdated} />
+        <Button
+          size="sm"
+          variant="ghost"
+          iconOnly
+          onClick={refresh}
+          aria-label="Sinkronkan sekarang"
+          title="Sinkronkan sekarang"
+          icon={<FontAwesome name="rotate-right" className="text-[11px]" />}
+        />
+      </div>
 
-      <AdminCard>
-        <SectionTitle icon="filter" title="Filter & Pencarian" subtitle="Kombinasikan filter untuk menemukan laporan" />
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Filter &amp; Pencarian</CardTitle>
+            <CardDescription>Kombinasikan filter untuk menemukan laporan</CardDescription>
+          </div>
+        </CardHeader>
 
-        {/* Report type tabs */}
-        <div className="px-5 pt-4 flex flex-wrap gap-2">
-          {TYPE_FILTERS.map(f => {
-            const count = f.key === '' ? totalTypes : (typeCounts[f.key] || 0);
-            const active = reportType === f.key;
-            const isSec = f.key === 'keamanan';
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => { setReportType(f.key); setStatus(''); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
-                  active
-                    ? isSec
-                      ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
-                      : 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3] border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <span className={`inline-block w-1.5 h-1.5 rounded-full ${active ? 'bg-white' : isSec ? 'bg-violet-500' : 'bg-blue-500'}`} />
-                <span>{f.label}</span>
-                <span className={`${active ? 'text-white/80' : 'text-slate-400 dark:text-[#6EA2B3]'}`}>{count}</span>
-              </button>
-            );
-          })}
+        <div className="p-4 space-y-3 border-b border-line">
+          <Tabs
+            items={TYPE_FILTERS.map(f => ({
+              id: f.key,
+              label: f.label,
+              icon: <FontAwesome name={f.icon} className="text-[11px]" />,
+              badge: f.key === '' ? totalTypes : (typeCounts[f.key] || 0),
+            }))}
+            activeTab={reportType}
+            onChange={id => { setReportType(id as '' | ReportType); setStatus(''); }}
+          />
+          <Tabs
+            items={STATUS_FILTERS.map(f => ({
+              id: f.key,
+              label: f.label,
+              badge: f.key === '' ? counts['_all'] : counts[f.key],
+            }))}
+            activeTab={status}
+            onChange={id => setStatus(id)}
+          />
         </div>
 
-        {/* Status chips */}
-        <div className="px-5 pt-3 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map(f => {
-            const count = f.key === '' ? counts['_all'] : counts[f.key];
-            const active = status === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setStatus(f.key)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  active
-                    ? 'bg-slate-800 dark:bg-slate-700 text-white border-slate-800 dark:border-slate-600 shadow-sm'
-                    : 'bg-white dark:bg-[#101828] text-slate-600 dark:text-[#6EA2B3] border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <span>{f.label}</span>
-                {count !== undefined && (
-                  <span className={`ml-1.5 ${active ? 'text-slate-300 dark:text-slate-200' : 'text-slate-400 dark:text-[#6EA2B3]'}`}>{count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Controls */}
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="relative lg:col-span-2">
-            <input
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="lg:col-span-2">
+            <Input
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput); }}
               placeholder="Cari referensi / judul / deskripsi..."
-              className="w-full h-10 pl-3.5 pr-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]/50 focus:border-blue-500 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-100/60 dark:focus:ring-blue-900/30 outline-none text-sm transition-all"
+              aria-label="Cari referensi, judul, atau deskripsi"
             />
           </div>
-          <select
+          <Select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            className="h-10 px-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-[#7BBDE8] outline-none text-sm"
+            aria-label="Kategori"
           >
             <option value="">Semua Kategori</option>
             <option value="pelayanan">Pelayanan</option>
             <option value="teknis">Teknis</option>
             <option value="administrasi">Administrasi</option>
             <option value="lainnya">Lainnya</option>
-          </select>
+          </Select>
           <div className="flex gap-2">
-            <select
+            <Select
               value={priority}
               onChange={e => setPriority(e.target.value)}
-              className="flex-1 h-10 px-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-[#7BBDE8] outline-none text-sm"
+              className="flex-1"
+              aria-label="Prioritas"
             >
               <option value="">Prioritas</option>
               <option value="tinggi">Tinggi</option>
               <option value="sedang">Sedang</option>
               <option value="rendah">Rendah</option>
-            </select>
-            <select
+            </Select>
+            <Select
               value={sort}
-              onChange={e => setSort(e.target.value as any)}
-              className="flex-1 h-10 px-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-[#7BBDE8] outline-none text-sm"
+              onChange={e => setSort(e.target.value as 'newest' | 'oldest' | 'priority')}
+              className="flex-1"
+              aria-label="Urutan"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
               <option value="priority">Prioritas</option>
-            </select>
+            </Select>
           </div>
         </div>
-      </AdminCard>
+      </Card>
 
-      <AdminCard>
-        <SectionTitle
-          icon={reportType === 'keamanan' ? 'shield-halved' : 'inbox'}
-          title={reportType === 'keamanan' ? 'Laporan Keamanan & Bug' : 'Daftar Pengaduan'}
-          subtitle={`${total} laporan ditemukan`}
-        />
-        {loading ? (
-          <LoadingBlock />
-        ) : items.length === 0 ? (
-          <EmptyState icon={reportType === 'keamanan' ? 'shield-halved' : 'inbox'} title="Tidak ada laporan" desc="Coba ubah filter atau kata kunci pencarian." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] border-b border-slate-200 dark:border-[#243048]">
-                  <th className="px-5 py-3 font-bold">Referensi</th>
-                  <th className="px-5 py-3 font-bold">Tipe</th>
-                  <th className="px-5 py-3 font-bold">Judul</th>
-                  <th className="px-5 py-3 font-bold">Pengirim</th>
-                  <th className="px-5 py-3 font-bold">Kategori</th>
-                  <th className="px-5 py-3 font-bold">Prioritas</th>
-                  <th className="px-5 py-3 font-bold">Umur</th>
-                  <th className="px-5 py-3 font-bold">Status</th>
-                  <th className="px-5 py-3 font-bold text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(c => {
-                  const isSec = c.report_type === 'keamanan';
-                  return (
-                    <tr
-                      key={c.id}
-                      className={`border-b border-slate-100 dark:border-[#1E293B] hover:bg-slate-50/80 dark:hover:bg-[#1E293B]/50 transition-colors ${
-                        isSec ? 'bg-violet-50/30 dark:bg-violet-950/20' : ''
-                      }`}
-                    >
-                      <td className={`px-5 py-3 font-mono text-[11px] font-semibold whitespace-nowrap ${isSec ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-[#7BBDE8]'}`}>
-                        {c.reference_number}
-                      </td>
-                      <td className="px-5 py-3"><ReportTypeBadge type={c.report_type} /></td>
-                      <td className="px-5 py-3 text-slate-800 dark:text-slate-200 font-medium max-w-[200px] truncate">{c.title}</td>
-                      <td className="px-5 py-3 text-slate-500 dark:text-[#6EA2B3] whitespace-nowrap">{c.user_email}</td>
-                      <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{CATEGORY_LABEL[c.category] || c.category}</td>
-                      <td className="px-5 py-3">
-                        {isSec ? <SeverityBadge severity={c.severity} /> : <PriorityBadge priority={c.priority} />}
-                      </td>
-                      <td className="px-5 py-3 text-slate-500 dark:text-[#6EA2B3] whitespace-nowrap">{c.age_days ?? 0} hari</td>
-                      <td className="px-5 py-3"><StatusBadge status={c.status} /></td>
-                      <td className="px-5 py-3 text-right">
-                        <Button size="sm" variant="ghost" onClick={() => setSelected(c)}>Detail</Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>{reportType === 'keamanan' ? 'Laporan Keamanan & Bug' : 'Daftar Pengaduan'}</CardTitle>
+            <CardDescription>{total} laporan ditemukan</CardDescription>
           </div>
+        </CardHeader>
+
+        {loading ? (
+          <div className="empty">
+            <FontAwesome name="spinner" spin className="text-[15px] text-ink-3 mb-3" />
+            <p className="text-[12.5px] text-ink-3">Memuat data...</p>
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<FontAwesome name={reportType === 'keamanan' ? 'shield-halved' : 'inbox'} />}
+            title="Tidak ada laporan"
+            description="Coba ubah filter atau kata kunci pencarian."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Referensi</TableHead>
+                <TableHead>Tipe</TableHead>
+                <TableHead>Judul</TableHead>
+                <TableHead>Pengirim</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Prioritas</TableHead>
+                <TableHead>Umur</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map(c => {
+                const isSec = c.report_type === 'keamanan';
+                return (
+                  <TableRow key={c.id}>
+                    <TableCell className="cell-mono text-accent-text font-semibold">
+                      {c.reference_number}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={isSec ? 'warn' : 'info'} dot>
+                        {REPORT_TYPE_LABEL[c.report_type || 'layanan'] || 'Layanan'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="block max-w-[220px] truncate cell-strong">{c.title}</span>
+                    </TableCell>
+                    <TableCell className="text-[12px] text-ink-3 whitespace-nowrap">{c.user_email}</TableCell>
+                    <TableCell>{CATEGORY_LABEL[c.category] || c.category}</TableCell>
+                    <TableCell>
+                      {isSec
+                        ? <Badge variant={SEVERITY_VARIANT[c.severity || ''] || 'neutral'}>
+                            {SEVERITY_LABEL[c.severity || ''] || c.severity}
+                          </Badge>
+                        : <Badge variant={PRIORITY_VARIANT[c.priority] || 'neutral'}>
+                            {PRIORITY_LABEL[c.priority] || c.priority}
+                          </Badge>}
+                    </TableCell>
+                    <TableCell className="tabular-nums whitespace-nowrap">{c.age_days ?? 0} hari</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[c.status] || 'neutral'} dot>
+                        {STATUS_LABEL[c.status] || c.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="ghost" onClick={() => setSelected(c)}>Detail</Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
 
         {/* Pagination */}
         {!loading && items.length > 0 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-200 dark:border-[#243048]">
-            <span className="text-xs text-slate-500 dark:text-[#6EA2B3]">
+          <div className="card-foot">
+            <span className="text-[12px] text-ink-3">
               Halaman {page} dari {totalPages}
             </span>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Sebelumnya</Button>
-              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Berikutnya</Button>
+              <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Sebelumnya</Button>
+              <Button size="sm" variant="secondary" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Berikutnya</Button>
             </div>
           </div>
         )}
-      </AdminCard>
+      </Card>
 
       {selected && (
         <ComplaintDetailModal
@@ -331,131 +358,145 @@ function ComplaintDetailModal({ complaint, onClose, onUpdated }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" onClick={onClose}>
+    <Modal isOpen onClose={onClose}>
       <div
-        className="bg-white dark:bg-[#171F2F] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#243048] text-slate-900 dark:text-white w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+        className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-100 dark:border-[#243048] sticky top-0 bg-white dark:bg-[#171F2F] rounded-t-2xl z-10">
+        <div className="card-head sticky top-0 z-10 bg-surface rounded-t-lg">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <ReportTypeBadge type={complaint.report_type} />
-              <p className={`font-mono text-[11px] font-semibold ${isSec ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-[#7BBDE8]'}`}>{complaint.reference_number}</p>
+              <Badge variant={isSec ? 'warn' : 'info'} dot>
+                {REPORT_TYPE_LABEL[complaint.report_type || 'layanan'] || 'Layanan'}
+              </Badge>
+              <span className="mono text-ink-3">{complaint.reference_number}</span>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{complaint.title}</h3>
+            <h3 className="text-[15px] font-semibold text-ink mt-1.5">{complaint.title}</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer text-lg leading-none transition-colors"
+            aria-label="Tutup"
+            className="btn btn-ghost btn-icon btn-sm text-ink-3"
           >
-            ✕
+            <FontAwesome name="xmark" className="text-[13px]" />
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="card-body space-y-5">
           {/* privacy notice */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/40">
-            <FontAwesome name="lock" className="text-emerald-600 dark:text-emerald-400 text-sm shrink-0" />
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium leading-relaxed">
-              Data pribadi warga (NIK, telepon, alamat) tidak ditampilkan & tetap terenkripsi. Hanya email pelapor yang terlihat.
+          <div className="flex items-start gap-2.5 rounded-md border border-line bg-surface-2 px-3 py-2.5">
+            <FontAwesome name="lock" className="text-[12px] text-ink-3 mt-0.5 shrink-0" />
+            <p className="text-[11.5px] text-ink-2 leading-relaxed">
+              Data pribadi pengguna (NIK, telepon, alamat) tidak ditampilkan &amp; tetap terenkripsi. Hanya email pelapor yang terlihat.
             </p>
           </div>
 
           {/* Security report details panel */}
           {isSec && (
-            <div className="rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-950/30 p-4">
+            <div className="rounded-md border border-line bg-surface-2 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <FontAwesome name="shield-halved" className="text-violet-600 dark:text-violet-400 text-sm" />
-                <p className="text-[12px] font-bold text-violet-800 dark:text-violet-300 uppercase tracking-wide">Detail Laporan Keamanan</p>
+                <FontAwesome name="shield-halved" className="text-[12px] text-ink-3" />
+                <p className="eyebrow">Detail Laporan Keamanan</p>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-violet-600 dark:text-violet-400/80 font-bold mb-1">Jenis Masalah</p>
-                  <p className="text-violet-900 dark:text-violet-200 font-medium">{SECURITY_KIND_LABEL[complaint.security_kind || ''] || '-'}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Jenis Masalah</p>
+                  <p className="text-[13px] font-medium text-ink">{SECURITY_KIND_LABEL[complaint.security_kind || ''] || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-violet-600 dark:text-violet-400/80 font-bold mb-1">Sumber</p>
-                  <p className="text-violet-900 dark:text-violet-200 font-medium">{SECURITY_SOURCE_LABEL[complaint.security_source || ''] || '-'}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Sumber</p>
+                  <p className="text-[13px] font-medium text-ink">{SECURITY_SOURCE_LABEL[complaint.security_source || ''] || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-violet-600 dark:text-violet-400/80 font-bold mb-1">Keparahan</p>
-                  <SeverityBadge severity={complaint.severity} />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Keparahan</p>
+                  {complaint.severity ? (
+                    <Badge variant={SEVERITY_VARIANT[complaint.severity] || 'neutral'} dot>
+                      {SEVERITY_LABEL[complaint.severity] || complaint.severity}
+                    </Badge>
+                  ) : <p className="text-[13px] text-ink-3">-</p>}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-violet-600 dark:text-violet-400/80 font-bold mb-1">URL Terkait</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">URL Terkait</p>
                   {complaint.affected_url ? (
-                    <a href={complaint.affected_url} target="_blank" rel="noreferrer"
-                       className="text-violet-700 dark:text-violet-300 underline decoration-dotted truncate block max-w-full font-mono text-xs" title={complaint.affected_url}>
+                    <a
+                      href={complaint.affected_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="link mono block truncate max-w-full"
+                      title={complaint.affected_url}
+                    >
                       {complaint.affected_url}
                     </a>
-                  ) : <p className="text-slate-400 dark:text-[#6EA2B3]">-</p>}
+                  ) : <p className="text-[13px] text-ink-3">-</p>}
                 </div>
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1">Pelapor</p>
-              <p className="text-slate-800 dark:text-slate-200 font-medium">{complaint.user_email}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Pelapor</p>
+              <p className="text-[13px] font-medium text-ink break-all">{complaint.user_email}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1">Kategori</p>
-              <p className="text-slate-800 dark:text-slate-200 font-medium">{CATEGORY_LABEL[complaint.category] || complaint.category}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Kategori</p>
+              <p className="text-[13px] font-medium text-ink">{CATEGORY_LABEL[complaint.category] || complaint.category}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1">Prioritas</p>
-              <PriorityBadge priority={complaint.priority} />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Prioritas</p>
+              <Badge variant={PRIORITY_VARIANT[complaint.priority] || 'neutral'}>
+                {PRIORITY_LABEL[complaint.priority] || complaint.priority}
+              </Badge>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1">Dibuat</p>
-              <p className="text-slate-800 dark:text-slate-200 font-medium">{formatDateTime(complaint.created_at)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Dibuat</p>
+              <p className="text-[13px] font-medium text-ink">{formatDateTime(complaint.created_at)}</p>
             </div>
           </div>
 
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1">Deskripsi</p>
-            <p className="text-sm text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#101828] rounded-xl p-3.5 border border-slate-200 dark:border-[#243048] whitespace-pre-wrap leading-relaxed">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-1">Deskripsi</p>
+            <p className="text-[13px] text-ink-2 bg-surface-2 rounded-md px-3.5 py-3 border border-line whitespace-pre-wrap leading-relaxed">
               {complaint.description}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1 block">Ubah Status</label>
-              <select
+              <label className="label" htmlFor="complaint-status">Ubah Status</label>
+              <Select
+                id="complaint-status"
                 value={status}
                 onChange={e => setStatus(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white focus:border-blue-500 dark:focus:border-[#7BBDE8] outline-none text-sm"
               >
                 {ALL_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] font-bold mb-1 block">
+            <label className="label" htmlFor="complaint-resolution">
               {isSec ? 'Resolusi / Tindak Lanjut Keamanan' : 'Resolusi / Tanggapan'}
             </label>
-            <textarea
+            <Textarea
+              id="complaint-resolution"
               value={resolution}
               onChange={e => setResolution(e.target.value)}
               rows={3}
-              placeholder={isSec ? 'Tindakan mitigasi, hasil investigasi, atau status perbaikan...' : 'Tuliskan tindak lanjut atau tanggapan untuk warga...'}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-[#243048] bg-white dark:bg-[#101828] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]/50 focus:border-blue-500 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-100/60 dark:focus:ring-blue-900/30 outline-none text-sm resize-none"
+              placeholder={isSec ? 'Tindakan mitigasi, hasil investigasi, atau status perbaikan...' : 'Tuliskan tindak lanjut atau tanggapan untuk pengguna...'}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 dark:border-[#243048] sticky bottom-0 bg-white dark:bg-[#171F2F] rounded-b-2xl z-10">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-line bg-surface-2 rounded-b-lg sticky bottom-0">
           {saveError && (
-            <p className="mr-auto text-[12px] font-medium text-rose-600 dark:text-rose-400">{saveError}</p>
+            <p className="mr-auto text-[12px] font-medium text-danger">{saveError}</p>
           )}
           <Button variant="ghost" onClick={onClose}>Batal</Button>
           <Button variant="primary" onClick={save} loading={saving}>Simpan Perubahan</Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

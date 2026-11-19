@@ -5,15 +5,14 @@ import {
 } from '../services/api';
 import { usePolling } from '../hooks/usePolling';
 import {
-  StatusBadge, PriorityBadge, CATEGORY_LABEL,
-  ReportTypeBadge, SeverityBadge, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL,
-  SEVERITY_META, EmptyState, LoadingBlock, formatDateTime,
+  PRIORITY_META, STATUS_META, CATEGORY_LABEL,
+  REPORT_TYPE_META, SEVERITY_META, SECURITY_KIND_LABEL, SECURITY_SOURCE_LABEL,
+  formatDateTime,
 } from '../components/admin/adminUi';
-import { FontAwesome, CustomSelect } from '../components/ui';
-
-const FIELD_CLS =
-  'w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:border-blue-600 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]';
-const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-[#6EA2B3] mb-2';
+import {
+  FontAwesome, CustomSelect, Badge, Button, Card, CardHeader, CardTitle, CardDescription,
+  CardContent, EmptyState, FormField, Input, Textarea, Tabs, type BadgeVariant,
+} from '../components/ui';
 
 const SERVICE_CATEGORY_OPTIONS = [
   { value: 'pelayanan', label: 'Pelayanan' },
@@ -27,6 +26,27 @@ const SERVICE_PRIORITY_OPTIONS = [
   { value: 'sedang', label: 'Sedang (Kendala proses berkas)' },
   { value: 'tinggi', label: 'Tinggi (Mendesak / batas waktu)' },
 ];
+
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  diterima: 'info',
+  diproses: 'warn',
+  proses: 'warn',
+  selesai: 'ok',
+  ditolak: 'danger',
+};
+
+const PRIORITY_VARIANT: Record<string, BadgeVariant> = {
+  tinggi: 'danger',
+  sedang: 'warn',
+  rendah: 'neutral',
+};
+
+const SEVERITY_VARIANT: Record<string, BadgeVariant> = {
+  kritis: 'danger',
+  tinggi: 'danger',
+  sedang: 'warn',
+  rendah: 'neutral',
+};
 
 export function UserComplaintsPage() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -152,293 +172,287 @@ export function UserComplaintsPage() {
   }, [complaints, historyFilter, searchQuery]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="page page-enter mx-auto w-full max-w-4xl pb-12">
       {/* ── Page Header ── */}
-      <div className="pb-2 border-b border-[#243048]">
-        <h1 className="text-2xl font-bold text-white tracking-tight">
-          Pengaduan &amp; Laporan Keamanan
-        </h1>
-        <p className="text-sm text-[#6EA2B3] mt-1">
-          Sampaikan kendala layanan publik atau laporkan celah keamanan secara terenkripsi dan terpantau.
-        </p>
+      <div className="page-head">
+        <div className="min-w-0">
+          <p className="eyebrow">Layanan Pengguna</p>
+          <h1 className="page-title">Pengaduan &amp; Laporan Keamanan</h1>
+          <p className="page-sub">
+            Sampaikan kendala layanan publik atau laporkan celah keamanan secara terenkripsi dan terpantau.
+          </p>
+        </div>
       </div>
 
-      {/* ── Focused Single-Column Navigation (Tab Switcher) ── */}
-      <div className="flex items-center gap-2 p-1 bg-[#171F2F] border border-[#243048] rounded-xl w-full sm:w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab('form')}
-          className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'form'
-              ? 'bg-[#7BBDE8] text-[#101828] shadow-xs'
-              : 'text-[#6EA2B3] hover:text-white'
-          }`}
-        >
-          <FontAwesome name="file-lines" className="text-xs" />
-          <span>Buat Laporan Baru</span>
-        </button>
+      {/* ── Tab Switcher ── */}
+      <Tabs
+        items={[
+          { id: 'form', label: 'Buat Laporan Baru', icon: <FontAwesome name="file-lines" /> },
+          { id: 'history', label: 'Riwayat Laporan', badge: complaints.length, icon: <FontAwesome name="clock" /> },
+        ]}
+        activeTab={activeTab}
+        onChange={id => setActiveTab(id as 'form' | 'history')}
+      />
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('history')}
-          className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'history'
-              ? 'bg-[#7BBDE8] text-[#101828] shadow-xs'
-              : 'text-[#6EA2B3] hover:text-white'
-          }`}
-        >
-          <FontAwesome name="clock" className="text-xs" />
-          <span>Riwayat Laporan ({complaints.length})</span>
-        </button>
-      </div>
-
-      {/* ── TAB 1: FORMULIR PENGADUAN (Focused Single-Column Layout) ── */}
+      {/* ── TAB 1: FORMULIR PENGADUAN ── */}
       {activeTab === 'form' && (
-        <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 sm:p-8 space-y-6">
-          <div className="pb-4 border-b border-[#243048]">
-            <h2 className="text-lg font-bold text-white">Formulir Pelaporan Warga</h2>
-            <p className="text-xs text-[#6EA2B3] mt-1">
-              Pilih klasifikasi laporan, isi detail kendala secara objektif, lalu kirim ke sistem pelayanan.
-            </p>
-          </div>
+        <Card>
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Formulir Pelaporan Pengguna</CardTitle>
+              <CardDescription>
+                Pilih klasifikasi laporan, isi detail kendala secara objektif, lalu kirim ke sistem pelayanan.
+              </CardDescription>
+            </div>
+          </CardHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Klasifikasi Laporan */}
-            <div>
-              <label className={LABEL_CLS}>Pilih Klasifikasi Laporan</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setReportType('layanan')}
-                  className={`p-4 rounded-xl border text-left transition-colors cursor-pointer ${
-                    reportType === 'layanan'
-                      ? 'border-[#7BBDE8] bg-[#7BBDE8]/15 ring-2 ring-[#7BBDE8]/20'
-                      : 'border-[#243048] hover:border-[#7BBDE8]/50 bg-[#101828]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      reportType === 'layanan' ? 'bg-[#7BBDE8] text-[#101828]' : 'bg-[#171F2F] text-[#6EA2B3]'
-                    }`}>
-                      <FontAwesome name="comment-dots" className="text-xs" />
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Klasifikasi Laporan */}
+              <div>
+                <label className="label">Pilih Klasifikasi Laporan</label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setReportType('layanan')}
+                    aria-pressed={reportType === 'layanan'}
+                    className={`flex items-start gap-3 rounded-lg border p-3.5 text-left transition-colors ${
+                      reportType === 'layanan'
+                        ? 'border-accent bg-accent-soft'
+                        : 'border-line bg-surface hover:border-line-2 hover:bg-surface-2'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-[12px] ${
+                        reportType === 'layanan'
+                          ? 'border-accent bg-accent text-accent-fg'
+                          : 'border-line bg-surface-3 text-ink-3'
+                      }`}
+                    >
+                      <FontAwesome name="comment-dots" />
                     </span>
-                    <div>
-                      <p className="text-sm font-bold text-white">Pengaduan Layanan Publik</p>
-                      <p className="text-xs text-[#6EA2B3] mt-0.5">Keluhan pelayanan kependudukan, administrasi, dan teknis form</p>
-                    </div>
-                  </div>
-                </button>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-ink">Pengaduan Layanan Publik</span>
+                      <span className="mt-0.5 block text-[11.5px] leading-relaxed text-ink-3">
+                        Keluhan pelayanan kependudukan, administrasi, dan teknis form
+                      </span>
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setReportType('keamanan')}
-                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                  <button
+                    type="button"
+                    onClick={() => setReportType('keamanan')}
+                    aria-pressed={reportType === 'keamanan'}
+                    className={`flex items-start gap-3 rounded-lg border p-3.5 text-left transition-colors ${
+                      reportType === 'keamanan'
+                        ? 'border-accent bg-accent-soft'
+                        : 'border-line bg-surface hover:border-line-2 hover:bg-surface-2'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-[12px] ${
+                        reportType === 'keamanan'
+                          ? 'border-accent bg-accent text-accent-fg'
+                          : 'border-line bg-surface-3 text-ink-3'
+                      }`}
+                    >
+                      <FontAwesome name="shield-check" variant="solid" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-ink">Keamanan &amp; Laporan Bug</span>
+                      <span className="mt-0.5 block text-[11.5px] leading-relaxed text-ink-3">
+                        Dugaan kebocoran data, kerentanan sistem, atau anomali privasi
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Notice untuk laporan keamanan */}
+              {reportType === 'keamanan' && (
+                <div className="flex items-start gap-2.5 rounded-md border border-accent-line bg-accent-soft p-3">
+                  <FontAwesome name="shield-check" variant="solid" className="mt-0.5 shrink-0 text-[12px] text-accent-text" />
+                  <div className="text-[12px] leading-relaxed text-ink-2">
+                    <span className="block font-semibold text-ink">Jalur Kepatuhan Terenkripsi:</span>
+                    Identitas data pribadi (NIK, telepon, domisili) disamarkan secara otomatis. Laporan Anda ditangani langsung oleh tim audit teknis GovConnect.
+                  </div>
+                </div>
+              )}
+
+              {/* Judul Laporan */}
+              <FormField label="Judul Laporan" required>
+                <Input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder={
                     reportType === 'keamanan'
-                      ? 'border-[#7BBDE8] bg-[#7BBDE8]/15 ring-2 ring-[#7BBDE8]/20'
-                      : 'border-[#243048] hover:border-[#7BBDE8]/50 bg-[#101828]'
+                      ? 'Contoh: Indikasi kebocoran riwayat form pada domain pihak ketiga'
+                      : 'Contoh: Kendala verifikasi berkas formulir kependudukan'
+                  }
+                  required
+                />
+              </FormField>
+
+              {/* Kategori Spesifik */}
+              {reportType === 'keamanan' ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Jenis Kerentanan</label>
+                    <CustomSelect
+                      value={securityKind}
+                      onChange={v => setSecurityKind(v as SecurityKind)}
+                      options={securityKindOptions}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Sumber Temuan</label>
+                    <CustomSelect
+                      value={securitySource}
+                      onChange={v => setSecuritySource(v as SecuritySource)}
+                      options={securitySourceOptions}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Tingkat Keparahan</label>
+                    <CustomSelect
+                      value={severity}
+                      onChange={v => setSeverity(v as SecuritySeverity)}
+                      options={severityOptions}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">
+                      URL / Domain Terkait <span className="font-normal text-ink-3">(opsional)</span>
+                    </label>
+                    <Input
+                      value={affectedUrl}
+                      onChange={e => setAffectedUrl(e.target.value)}
+                      placeholder="https://layanan.go.id/form/..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Kategori Bidang</label>
+                    <CustomSelect
+                      value={category}
+                      onChange={setCategory}
+                      options={SERVICE_CATEGORY_OPTIONS}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Prioritas Urgensi</label>
+                    <CustomSelect
+                      value={priority}
+                      onChange={setPriority}
+                      options={SERVICE_PRIORITY_OPTIONS}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Deskripsi */}
+              <div>
+                <label className="label">
+                  Deskripsi &amp; Kronologi Lengkap <span className="text-danger">*</span>
+                </label>
+                <Textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  maxLength={2000}
+                  rows={5}
+                  placeholder={
+                    reportType === 'keamanan'
+                      ? 'Jelaskan langkah reproduksi temuan, dampak risiko data, dan tangkapan layar jika ada...'
+                      : 'Uraikan permasalahan secara jelas: instansi/layanan yang diakses, kendala yang dialami, dan bukti pendukung...'
+                  }
+                  required
+                />
+                {/* Character counter (F-H8) */}
+                <div className="mt-1.5 flex items-center justify-between gap-3 text-[11.5px]">
+                  <span className={description.trim().length < 10 ? 'text-ink-3' : 'text-ok'}>
+                    {description.trim().length < 10 ? 'Minimal 10 karakter' : 'Panjang deskripsi memadai'}
+                  </span>
+                  <span
+                    className={`tabular-nums ${
+                      description.length >= 2000 ? 'font-semibold text-danger' : 'text-ink-3'
+                    }`}
+                  >
+                    {description.length} / 2000 karakter
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Feedback */}
+              {submitMessage && (
+                <div
+                  className={`flex items-start gap-2.5 rounded-md border p-3 text-[12.5px] ${
+                    submitMessage.type === 'success'
+                      ? 'border-ok-line bg-ok-soft text-ok'
+                      : 'border-danger-line bg-danger-soft text-danger'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                      reportType === 'keamanan' ? 'bg-[#7BBDE8] text-[#101828]' : 'bg-[#171F2F] text-[#6EA2B3]'
-                    }`}>
-                      <FontAwesome name="shield-check" variant="solid" className="text-sm" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-bold text-white">Keamanan &amp; Laporan Bug</p>
-                      <p className="text-xs text-[#6EA2B3] mt-0.5">Dugaan kebocoran data, kerentanan sistem, atau anomali privasi</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Notice untuk laporan keamanan */}
-            {reportType === 'keamanan' && (
-              <div className="p-4 rounded-xl bg-[#7BBDE8]/10 border border-[#7BBDE8]/30 text-xs text-[#a5cbde] flex items-start gap-3">
-                <div className="w-6 h-6 rounded-lg bg-[#7BBDE8]/20 flex items-center justify-center text-[#7BBDE8] shrink-0 mt-0.5">
-                  <FontAwesome name="shield-check" variant="solid" className="text-xs" />
-                </div>
-                <div className="leading-relaxed">
-                  <span className="font-bold block mb-0.5 text-white">Jalur Kepatuhan Terenkripsi:</span>
-                  Identitas data pribadi (NIK, telepon, domisili) disamarkan secara otomatis. Laporan Anda ditangani langsung oleh tim audit teknis GovConnect.
-                </div>
-              </div>
-            )}
-
-            {/* Judul Laporan */}
-            <div>
-              <label className={LABEL_CLS}>
-                Judul Laporan <span className="text-rose-400">*</span>
-              </label>
-              <input
-                className={FIELD_CLS}
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder={
-                  reportType === 'keamanan'
-                    ? 'Contoh: Indikasi kebocoran riwayat form pada domain pihak ketiga'
-                    : 'Contoh: Kendala verifikasi berkas formulir kependudukan'
-                }
-                required
-              />
-            </div>
-
-            {/* Kategori Spesifik */}
-            {reportType === 'keamanan' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={LABEL_CLS}>Jenis Kerentanan</label>
-                  <CustomSelect
-                    value={securityKind}
-                    onChange={v => setSecurityKind(v as SecurityKind)}
-                    options={securityKindOptions}
+                  <FontAwesome
+                    name={submitMessage.type === 'success' ? 'circle-check' : 'circle-exclamation'}
+                    className="mt-0.5 shrink-0 text-[12px]"
                   />
+                  <span>{submitMessage.text}</span>
                 </div>
+              )}
 
-                <div>
-                  <label className={LABEL_CLS}>Sumber Temuan</label>
-                  <CustomSelect
-                    value={securitySource}
-                    onChange={v => setSecuritySource(v as SecuritySource)}
-                    options={securitySourceOptions}
-                  />
-                </div>
+              {/* Action Bar */}
+              <div className="flex flex-col items-stretch gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={resetForm}
+                  icon={<FontAwesome name="eraser" variant="solid" className="text-[11px]" />}
+                >
+                  Bersihkan Isian
+                </Button>
 
-                <div>
-                  <label className={LABEL_CLS}>Tingkat Keparahan</label>
-                  <CustomSelect
-                    value={severity}
-                    onChange={v => setSeverity(v as SecuritySeverity)}
-                    options={severityOptions}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLS}>
-                    URL / Domain Terkait <span className="text-[#6EA2B3] font-normal normal-case">(opsional)</span>
-                  </label>
-                  <input
-                    className={FIELD_CLS}
-                    value={affectedUrl}
-                    onChange={e => setAffectedUrl(e.target.value)}
-                    placeholder="https://layanan.go.id/form/..."
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={LABEL_CLS}>Kategori Bidang</label>
-                  <CustomSelect
-                    value={category}
-                    onChange={setCategory}
-                    options={SERVICE_CATEGORY_OPTIONS}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLS}>Prioritas Urgensi</label>
-                  <CustomSelect
-                    value={priority}
-                    onChange={setPriority}
-                    options={SERVICE_PRIORITY_OPTIONS}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Deskripsi */}
-            <div>
-              <label className={LABEL_CLS}>
-                Deskripsi &amp; Kronologi Lengkap <span className="text-rose-400">*</span>
-              </label>
-              <textarea
-                className="w-full p-4 rounded-xl border border-[#243048] hover:border-[#7BBDE8]/60 focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 bg-[#101828] text-sm outline-none transition-colors text-white placeholder:text-[#6EA2B3] resize-none"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                maxLength={2000}
-                rows={5}
-                placeholder={
-                  reportType === 'keamanan'
-                    ? 'Jelaskan langkah reproduksi temuan, dampak risiko data, dan tangkapan layar jika ada...'
-                    : 'Uraikan permasalahan secara jelas: instansi/layanan yang diakses, kendala yang dialami, dan bukti pendukung...'
-                }
-                required
-              />
-              {/* Character counter (F-H8) */}
-              <div className="flex justify-between items-center mt-1.5 px-1 text-xs">
-                <span className="text-[#6EA2B3]">
-                  {description.trim().length < 10 ? 'Minimal 10 karakter' : 'Panjang deskripsi memadai'}
-                </span>
-                <span className={`tabular-nums ${description.length >= 2000 ? 'text-rose-400 font-bold' : 'text-[#6EA2B3]'}`}>
-                  {description.length} / 2000 karakter
-                </span>
-              </div>
-            </div>
-
-            {/* Status Feedback */}
-            {submitMessage && (
-              <div className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-3 border ${
-                submitMessage.type === 'success'
-                  ? 'bg-emerald-950/30 text-emerald-300 border-emerald-800/40'
-                  : 'bg-rose-950/30 text-rose-300 border-rose-800/40'
-              }`}>
-                <FontAwesome
-                  name={submitMessage.type === 'success' ? 'circle-check' : 'circle-exclamation'}
-                  className={`text-sm shrink-0 ${submitMessage.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}
-                />
-                <span>{submitMessage.text}</span>
-              </div>
-            )}
-
-            {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#243048]">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#6EA2B3] hover:text-white hover:bg-[#101828] rounded-xl transition-colors cursor-pointer"
-              >
-                <FontAwesome name="eraser" variant="solid" className="text-xs" />
-                <span>Bersihkan Isian</span>
-              </button>
-
-              <button
-                type="submit"
-                disabled={isSubmitting || !canSubmit}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] active:bg-[#92cbef] transition-colors cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <FontAwesome
-                  name={isSubmitting ? 'spinner' : reportType === 'keamanan' ? 'shield-halved' : 'paper-plane'}
-                  spin={isSubmitting}
-                  className="text-xs"
-                />
-                <span>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={isSubmitting || !canSubmit}
+                  loading={isSubmitting}
+                  icon={
+                    <FontAwesome
+                      name={reportType === 'keamanan' ? 'shield-halved' : 'paper-plane'}
+                      className="text-[11px]"
+                    />
+                  }
+                >
                   {isSubmitting
                     ? 'Mengirim Laporan...'
                     : reportType === 'keamanan'
                     ? 'Kirim Laporan Keamanan'
                     : 'Kirim Pengaduan Layanan'}
-                </span>
-              </button>
-            </div>
-          </form>
-        </div>
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
-      {/* ── TAB 2: RIWAYAT & PELACAKAN STATUS (Focused Single-Column Layout) ── */}
+      {/* ── TAB 2: RIWAYAT & PELACAKAN STATUS ── */}
       {activeTab === 'history' && (
-        <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#243048]">
-            <div>
-              <h2 className="text-lg font-bold text-white">Daftar Riwayat Laporan</h2>
-              <p className="text-xs text-[#6EA2B3] mt-1">
+        <Card>
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Daftar Riwayat Laporan</CardTitle>
+              <CardDescription>
                 Menampilkan {filteredComplaints.length} dari total {complaints.length} laporan yang pernah Anda sampaikan.
-              </p>
+              </CardDescription>
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-1 p-1 bg-[#101828] border border-[#243048] rounded-xl self-start sm:self-auto">
+            <div className="segmented self-start sm:self-auto">
               {(
                 [
                   { key: 'all', label: 'Semua' },
@@ -448,146 +462,165 @@ export function UserComplaintsPage() {
               ).map(t => (
                 <button
                   key={t.key}
+                  type="button"
                   onClick={() => setHistoryFilter(t.key)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    historyFilter === t.key
-                      ? 'bg-[#7BBDE8] text-[#101828] font-bold shadow-xs'
-                      : 'text-[#6EA2B3] hover:text-white'
-                  }`}
+                  data-active={historyFilter === t.key}
+                  className="segmented-item"
                 >
                   {t.label}
                 </button>
               ))}
             </div>
-          </div>
+          </CardHeader>
 
-          {/* Search Input */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cari berdasarkan judul, nomor tiket referensi, atau isi keluhan..."
-              className="w-full h-11 pl-10 pr-10 bg-[#101828] border border-[#243048] focus:border-[#7BBDE8] focus:ring-4 focus:ring-[#7BBDE8]/15 rounded-xl text-sm text-white placeholder-[#6EA2B3] outline-none transition-colors"
-            />
-            <FontAwesome name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#6EA2B3]" />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6EA2B3] hover:text-white p-1"
-                title="Hapus pencarian"
-              >
-                <FontAwesome name="xmark" />
-              </button>
-            )}
-          </div>
-
-          {/* List Content */}
-          {isLoading ? (
-            <div className="py-12">
-              <LoadingBlock />
+          <CardContent className="space-y-4">
+            {/* Search Input */}
+            <div className="relative">
+              <FontAwesome
+                name="magnifying-glass"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-3"
+              />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cari berdasarkan judul, nomor tiket referensi, atau isi keluhan..."
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-ink-3 transition-colors hover:text-ink"
+                  title="Hapus pencarian"
+                  aria-label="Hapus pencarian"
+                >
+                  <FontAwesome name="xmark" className="text-[11px]" />
+                </button>
+              )}
             </div>
-          ) : filteredComplaints.length === 0 ? (
-            <div className="py-12">
+
+            {/* List Content */}
+            {isLoading ? (
+              <div className="space-y-3">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="rounded-lg border border-line p-4">
+                    <div className="skeleton h-3 w-32" />
+                    <div className="skeleton mt-3 h-2.5 w-2/3" />
+                    <div className="skeleton mt-2 h-2.5 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredComplaints.length === 0 ? (
               <EmptyState
-                icon="inbox"
+                icon={<FontAwesome name="inbox" className="text-[15px]" />}
                 title={complaints.length === 0 ? 'Belum Ada Laporan Terkirim' : 'Tidak Ditemukan Laporan'}
-                desc={
+                description={
                   complaints.length === 0
                     ? 'Anda belum pernah mengirimkan pengaduan. Beralih ke tab Buat Laporan Baru untuk memulai.'
                     : 'Tidak ada laporan yang sesuai dengan filter atau kata kunci pencarian Anda.'
                 }
               />
-            </div>
-          ) : (
-            <div className="space-y-4 divide-y divide-[#243048]/50">
-              {filteredComplaints.map(c => {
-                const isSec = c.report_type === 'keamanan';
-                return (
-                  <div
-                    key={c.id}
-                    className={`pt-4 first:pt-0 rounded-xl p-5 border transition-colors ${
-                      isSec
-                        ? 'border-violet-800/40 bg-violet-950/20'
-                        : 'border-[#243048] bg-[#101828]'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <ReportTypeBadge type={c.report_type} />
-                          <h3 className="font-bold text-sm text-white leading-snug">{c.title}</h3>
-                        </div>
+            ) : (
+              <div className="divide-y divide-line">
+                {filteredComplaints.map(c => {
+                  const isSec = c.report_type === 'keamanan';
+                  const statusMeta = STATUS_META[c.status];
+                  const typeMeta = REPORT_TYPE_META[c.report_type || 'layanan'];
+                  return (
+                    <div key={c.id} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                            <Badge variant={isSec ? 'warn' : 'info'} dot>
+                              {typeMeta?.label ?? 'Layanan'}
+                            </Badge>
+                            <h3 className="text-[13px] font-semibold leading-snug text-ink">{c.title}</h3>
+                          </div>
 
-                        <div className="flex items-center gap-2 flex-wrap mt-1">
                           <button
                             type="button"
                             onClick={() => handleCopyRef(c.reference_number)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold bg-[#171F2F] text-[#7BBDE8] border border-[#243048] hover:bg-[#243048] transition-colors cursor-pointer"
+                            className="mono inline-flex items-center gap-1.5 rounded-md border border-line bg-surface-2 px-2 py-1 text-ink-2 transition-colors hover:border-line-2 hover:text-ink"
                             title="Salin nomor tiket"
                           >
                             <span>{c.reference_number}</span>
-                            <FontAwesome name={copiedRef === c.reference_number ? 'check' : 'copy'} className="text-[10px]" />
-                            <span className="text-[10px] font-sans font-medium text-[#6EA2B3]">
+                            <FontAwesome
+                              name={copiedRef === c.reference_number ? 'check-pure' : 'copy'}
+                              className="text-[10px]"
+                            />
+                            <span className="font-sans text-[10px] font-medium text-ink-3">
                               {copiedRef === c.reference_number ? 'Tersalin' : 'Salin'}
                             </span>
                           </button>
                         </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          {isSec ? (
+                            c.severity ? (
+                              <Badge variant={SEVERITY_VARIANT[c.severity] ?? 'neutral'} dot>
+                                {SEVERITY_META[c.severity]?.label ?? c.severity}
+                              </Badge>
+                            ) : null
+                          ) : (
+                            <Badge variant={PRIORITY_VARIANT[c.priority] ?? 'neutral'}>
+                              {PRIORITY_META[c.priority]?.label ?? c.priority}
+                            </Badge>
+                          )}
+                          <Badge variant={STATUS_VARIANT[c.status] ?? 'neutral'} dot>
+                            {statusMeta?.label ?? c.status}
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {isSec ? <SeverityBadge severity={c.severity} /> : <PriorityBadge priority={c.priority} />}
-                        <StatusBadge status={c.status} />
-                      </div>
-                    </div>
+                      {isSec && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                          <Badge variant="neutral">
+                            {SECURITY_KIND_LABEL[c.security_kind || ''] || 'Keamanan'}
+                          </Badge>
+                          <Badge variant="neutral">
+                            Sumber: {SECURITY_SOURCE_LABEL[c.security_source || ''] || '-'}
+                          </Badge>
+                          {c.affected_url && (
+                            <span
+                              className="flex max-w-sm items-center gap-1 truncate text-[11.5px] text-ink-3"
+                              title={c.affected_url}
+                            >
+                              <FontAwesome name="link" className="shrink-0 text-[10px]" />
+                              <span className="truncate">{c.affected_url}</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                    {isSec && (
-                      <div className="flex items-center gap-2 flex-wrap mt-3 text-xs">
-                        <span className="px-2 py-0.5 rounded-md bg-[#171F2F] border border-violet-800/40 text-violet-300 font-semibold">
-                          {SECURITY_KIND_LABEL[c.security_kind || ''] || 'Keamanan'}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-[#171F2F] border border-[#243048] text-[#6EA2B3]">
-                          Sumber: {SECURITY_SOURCE_LABEL[c.security_source || ''] || '-'}
-                        </span>
-                        {c.affected_url && (
-                          <span className="text-[#6EA2B3] flex items-center gap-1 truncate max-w-sm" title={c.affected_url}>
-                            <FontAwesome name="link" className="text-[10px] text-[#6EA2B3]" />
-                            <span className="truncate">{c.affected_url}</span>
+                      <p className="mt-2.5 whitespace-pre-line text-[12.5px] leading-relaxed text-ink-2">
+                        {c.description}
+                      </p>
+
+                      {c.resolution && (
+                        <div className="mt-3 rounded-md border border-ok-line bg-ok-soft p-3">
+                          <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ok">
+                            <FontAwesome name="comment-dots" className="text-[10px]" />
+                            Tanggapan &amp; Resolusi Resmi Petugas
                           </span>
-                        )}
-                      </div>
-                    )}
+                          <p className="text-[12.5px] leading-relaxed text-ink-2">{c.resolution}</p>
+                        </div>
+                      )}
 
-                    <p className="text-xs text-[#6EA2B3] mt-3 whitespace-pre-line leading-relaxed">
-                      {c.description}
-                    </p>
-
-                    {c.resolution && (
-                      <div className="mt-4 p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
-                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5 mb-1">
-                          <FontAwesome name="comment-dots" className="text-xs" />
-                          Tanggapan &amp; Resolusi Resmi Petugas
-                        </span>
-                        <p className="text-xs text-emerald-200 leading-relaxed font-medium">
-                          {c.resolution}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-[#6EA2B3] mt-4 pt-3 border-t border-[#243048] flex-wrap gap-2">
-                      <span>Bidang: {CATEGORY_LABEL[c.category] || c.category}</span>
-                      <div className="flex items-center gap-4">
-                        <span>Dibuat: {formatDateTime(c.created_at)}</span>
-                        <span>Diperbarui: {formatDateTime(c.updated_at)}</span>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2.5 text-[11.5px] text-ink-3">
+                        <span>Bidang: {CATEGORY_LABEL[c.category] || c.category}</span>
+                        <div className="flex flex-wrap items-center gap-4">
+                          <span>Dibuat: {formatDateTime(c.created_at)}</span>
+                          <span>Diperbarui: {formatDateTime(c.updated_at)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

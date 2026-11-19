@@ -1,49 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FontAwesome } from '../ui';
 
-/* ─── Shared admin UI primitives (clean white/navy government theme + dark mode) ─── */
+/* ─── Shared admin UI primitives — Design System v3 (token semantik) ─── */
 
 export const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
-  diterima: {
-    label: 'Diterima',
-    cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50',
-    dot: 'bg-blue-500 dark:bg-blue-400'
-  },
-  diproses: {
-    label: 'Diproses',
-    cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
-    dot: 'bg-amber-500 dark:bg-amber-400'
-  },
-  proses: {
-    label: 'Diproses',
-    cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
-    dot: 'bg-amber-500 dark:bg-amber-400'
-  },
-  selesai: {
-    label: 'Selesai',
-    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
-    dot: 'bg-emerald-500 dark:bg-emerald-400'
-  },
-  ditolak: {
-    label: 'Ditolak',
-    cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
-    dot: 'bg-rose-500 dark:bg-rose-400'
-  },
+  diterima: { label: 'Diterima', cls: 'badge-accent', dot: 'bg-accent' },
+  diproses: { label: 'Diproses', cls: 'badge-warn', dot: 'bg-warn' },
+  proses: { label: 'Diproses', cls: 'badge-warn', dot: 'bg-warn' },
+  selesai: { label: 'Selesai', cls: 'badge-ok', dot: 'bg-ok' },
+  ditolak: { label: 'Ditolak', cls: 'badge-danger', dot: 'bg-danger' },
 };
 
 export const PRIORITY_META: Record<string, { label: string; cls: string }> = {
-  tinggi: {
-    label: 'Tinggi',
-    cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50'
-  },
-  sedang: {
-    label: 'Sedang',
-    cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50'
-  },
-  rendah: {
-    label: 'Rendah',
-    cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60'
-  },
+  tinggi: { label: 'Tinggi', cls: 'badge-danger' },
+  sedang: { label: 'Sedang', cls: 'badge-warn' },
+  rendah: { label: 'Rendah', cls: 'badge-neutral' },
 };
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -57,14 +28,14 @@ export const CATEGORY_LABEL: Record<string, string> = {
 export const REPORT_TYPE_META: Record<string, { label: string; cls: string; dot: string; icon: string }> = {
   layanan: {
     label: 'Layanan',
-    cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50',
-    dot: 'bg-blue-500 dark:bg-blue-400',
+    cls: 'badge-accent',
+    dot: 'bg-accent',
     icon: 'inbox'
   },
   keamanan: {
     label: 'Keamanan & Bug',
-    cls: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50',
-    dot: 'bg-violet-500 dark:bg-violet-400',
+    cls: 'badge-warn',
+    dot: 'bg-warn',
     icon: 'shield-exclamation'
   },
 };
@@ -72,8 +43,8 @@ export const REPORT_TYPE_META: Record<string, { label: string; cls: string; dot:
 export function ReportTypeBadge({ type }: { type?: string }) {
   const meta = REPORT_TYPE_META[type || 'layanan'] || REPORT_TYPE_META.layanan;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${meta.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+    <span className={`badge ${meta.cls}`}>
+      <span className={`dot ${meta.dot}`} />
       {meta.label}
     </span>
   );
@@ -94,38 +65,22 @@ export const SECURITY_SOURCE_LABEL: Record<string, string> = {
 };
 
 export const SEVERITY_META: Record<string, { label: string; cls: string; dot: string }> = {
-  kritis: {
-    label: 'Kritis',
-    cls: 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700',
-    dot: 'bg-rose-600 dark:bg-rose-400'
-  },
-  tinggi: {
-    label: 'Tinggi',
-    cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
-    dot: 'bg-rose-500 dark:bg-rose-400'
-  },
-  sedang: {
-    label: 'Sedang',
-    cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
-    dot: 'bg-amber-500 dark:bg-amber-400'
-  },
-  rendah: {
-    label: 'Rendah',
-    cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60',
-    dot: 'bg-slate-400 dark:bg-slate-500'
-  },
+  kritis: { label: 'Kritis', cls: 'badge-danger border-danger', dot: 'bg-danger' },
+  tinggi: { label: 'Tinggi', cls: 'badge-danger', dot: 'bg-danger' },
+  sedang: { label: 'Sedang', cls: 'badge-warn', dot: 'bg-warn' },
+  rendah: { label: 'Rendah', cls: 'badge-neutral', dot: 'bg-ink-3' },
 };
 
 export function SeverityBadge({ severity }: { severity?: string | null }) {
   if (!severity) return null;
   const meta = SEVERITY_META[severity] || {
     label: severity,
-    cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60',
-    dot: 'bg-slate-400'
+    cls: 'badge-neutral',
+    dot: 'bg-ink-3'
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${meta.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+    <span className={`badge ${meta.cls}`}>
+      <span className={`dot ${meta.dot}`} />
       {meta.label}
     </span>
   );
@@ -134,12 +89,12 @@ export function SeverityBadge({ severity }: { severity?: string | null }) {
 export function StatusBadge({ status }: { status: string }) {
   const meta = STATUS_META[status] || {
     label: status,
-    cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60',
-    dot: 'bg-slate-400'
+    cls: 'badge-neutral',
+    dot: 'bg-ink-3'
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${meta.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+    <span className={`badge ${meta.cls}`}>
+      <span className={`dot ${meta.dot}`} />
       {meta.label}
     </span>
   );
@@ -148,10 +103,10 @@ export function StatusBadge({ status }: { status: string }) {
 export function PriorityBadge({ priority }: { priority: string }) {
   const meta = PRIORITY_META[priority] || {
     label: priority,
-    cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60'
+    cls: 'badge-neutral'
   };
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-semibold ${meta.cls}`}>
+    <span className={`badge ${meta.cls}`}>
       {meta.label}
     </span>
   );
@@ -159,7 +114,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
 
 export function AdminCard({ className = '', children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={`bg-white dark:bg-[#171F2F] rounded-2xl border border-slate-200 dark:border-[#243048] shadow-sm text-slate-800 dark:text-white transition-colors duration-200 ${className}`}>
+    <div className={`card ${className}`}>
       {children}
     </div>
   );
@@ -169,14 +124,14 @@ export function SectionTitle({ icon, title, subtitle, action }: {
   icon: string; title: string; subtitle?: string; action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-[#243048]">
-      <div className="flex items-center gap-3 min-w-0 group">
-        <div className="w-9 h-9 rounded-xl bg-[#EFF4FF] dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/40 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6 shadow-2xs">
-          <FontAwesome name={icon} className="text-sm" />
+    <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent-line bg-accent-soft text-accent-text">
+          <FontAwesome name={icon} className="text-[13px]" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{title}</h2>
-          {subtitle && <p className="text-xs text-slate-500 dark:text-[#6EA2B3] mt-0.5 truncate">{subtitle}</p>}
+          <h2 className="truncate text-[14px] font-semibold text-ink">{title}</h2>
+          {subtitle && <p className="mt-0.5 truncate text-[12px] text-ink-3">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -188,67 +143,47 @@ export function KpiCard({ label, value, icon, tone = 'blue', hint }: {
   label: string; value: React.ReactNode; icon: string;
   tone?: 'blue' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'slate'; hint?: string;
 }) {
-  const tones: Record<string, { iconBg: string; border: string }> = {
-    blue: {
-      iconBg: 'bg-[#EFF4FF] text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40',
-      border: 'hover:border-blue-300 dark:hover:border-blue-800'
-    },
-    emerald: {
-      iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40',
-      border: 'hover:border-emerald-300 dark:hover:border-emerald-800'
-    },
-    amber: {
-      iconBg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40',
-      border: 'hover:border-amber-300 dark:hover:border-amber-800'
-    },
-    rose: {
-      iconBg: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-100 dark:border-rose-900/40',
-      border: 'hover:border-rose-300 dark:hover:border-rose-800'
-    },
-    indigo: {
-      iconBg: 'bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400 border border-violet-100 dark:border-violet-900/40',
-      border: 'hover:border-violet-300 dark:hover:border-violet-800'
-    },
-    slate: {
-      iconBg: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60',
-      border: 'hover:border-slate-300 dark:hover:border-slate-600'
-    },
+  const tones: Record<string, string> = {
+    blue: 'border-accent-line bg-accent-soft text-accent-text',
+    emerald: 'border-ok-line bg-ok-soft text-ok',
+    amber: 'border-warn-line bg-warn-soft text-warn',
+    rose: 'border-danger-line bg-danger-soft text-danger',
+    indigo: 'border-accent-line bg-accent-soft text-accent-text',
+    slate: 'border-line bg-surface-3 text-ink-2',
   };
 
   const selectedTone = tones[tone] || tones.blue;
 
   return (
-    <AdminCard className={`group p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${selectedTone.border}`}>
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-slate-500 dark:text-[#6EA2B3] truncate">{label}</p>
-          <p className="text-[28px] leading-tight font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">{value}</p>
-          {hint && <p className="text-[11px] text-slate-400 dark:text-[#6EA2B3] mt-1 font-medium">{hint}</p>}
-        </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-6 shadow-2xs ${selectedTone.iconBg}`}>
-          <FontAwesome name={icon} className="text-base" />
-        </div>
+    <div className="kpi">
+      <div className="kpi-label">
+        <span className="truncate">{label}</span>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${selectedTone}`}>
+          <FontAwesome name={icon} className="text-[11px]" />
+        </span>
       </div>
-    </AdminCard>
+      <p className="kpi-value">{value}</p>
+      {hint && <p className="kpi-foot">{hint}</p>}
+    </div>
   );
 }
 
 export function EmptyState({ icon = 'inbox', title, desc }: { icon?: string; title: string; desc?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-[#101828] text-slate-400 dark:text-[#6EA2B3] flex items-center justify-center mb-3 border border-slate-200 dark:border-[#243048] transition-transform duration-300 hover:scale-115 hover:rotate-6">
-        <FontAwesome name={icon} className="text-xl" />
+    <div className="empty">
+      <div className="empty-icon">
+        <FontAwesome name={icon} className="text-[15px]" />
       </div>
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
-      {desc && <p className="text-xs text-slate-500 dark:text-[#6EA2B3] mt-1 max-w-sm">{desc}</p>}
+      <p className="text-[13px] font-semibold text-ink">{title}</p>
+      {desc && <p className="mt-1 max-w-sm text-[12px] text-ink-3">{desc}</p>}
     </div>
   );
 }
 
 export function LoadingBlock({ label = 'Memuat data...' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center py-16 text-slate-500 dark:text-[#6EA2B3] gap-2.5 text-sm">
-      <FontAwesome name="spinner" spin className="text-lg text-blue-600 dark:text-[#7BBDE8]" />
+    <div className="flex items-center justify-center gap-2.5 py-16 text-[12.5px] text-ink-3">
+      <FontAwesome name="spinner" spin className="text-[15px] text-accent-text" />
       <span>{label}</span>
     </div>
   );
@@ -293,21 +228,49 @@ export function LiveSyncBar({ lastUpdated, onRefresh, refreshing }: {
     : `Tersinkron ${Math.floor(secondsAgo / 60)} menit lalu`;
 
   return (
-    <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/40">
-      <span className="relative flex items-center justify-center w-2.5 h-2.5">
-        <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
-        <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500" />
+    <div className="flex items-center gap-3 rounded-md border border-ok-line bg-ok-soft px-3.5 py-2">
+      <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-40" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-ok" />
       </span>
-      <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Data Langsung</span>
-      <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 hidden sm:inline">• {label}</span>
+      <span className="text-[11px] font-semibold text-ok">Data Langsung</span>
+      <span className="hidden text-[11px] text-ok/80 sm:inline">• {label}</span>
       <button
         type="button"
         onClick={onRefresh}
-        className="ml-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors cursor-pointer"
+        className="btn btn-ghost btn-icon btn-sm ml-1 text-ok hover:text-ok"
         title="Sinkronkan sekarang"
       >
         <FontAwesome name="rotate-right" spin={refreshing} className="text-[12px]" />
       </button>
     </div>
+  );
+}
+
+/**
+ * Indikator sinkronisasi yang benar-benar berdetak: menampilkan berapa detik
+ * sejak data terakhir diambil, bukan hanya jam statis.
+ */
+export function LiveStamp({ at }: { at: Date | null }) {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!at) return <span>Menghubungkan…</span>;
+
+  const seconds = Math.max(0, Math.round((Date.now() - at.getTime()) / 1000));
+  const label = seconds < 5 ? 'baru saja' : seconds < 60 ? `${seconds} detik lalu` : `${Math.round(seconds / 60)} menit lalu`;
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="relative flex w-1.5 h-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ok opacity-60" />
+        <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-ok" />
+      </span>
+      Diperbarui {label}
+    </span>
   );
 }

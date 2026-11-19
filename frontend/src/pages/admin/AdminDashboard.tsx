@@ -8,23 +8,42 @@ import {
   adminApi, type AdminStats, type Complaint,
   type AdminUserItem,
 } from '../../services/api';
-import { Button, FontAwesome } from '../../components/ui';
-import { usePolling } from '../../hooks/usePolling';
-import { useTheme } from '../../context/ThemeContext';
 import {
-  AdminCard, SectionTitle, KpiCard, StatusBadge, PriorityBadge,
-  CATEGORY_LABEL, EmptyState, LoadingBlock, relativeTime, LiveSyncBar,
-} from '../../components/admin/adminUi';
+  Button, FontAwesome, Badge, Card, CardHeader, CardTitle, CardDescription,
+  CardContent, EmptyState, StatCard,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from '../../components/ui';
+import type { BadgeVariant } from '../../components/ui';
+import { usePolling } from '../../hooks/usePolling';
+import { CATEGORY_LABEL, relativeTime, LiveStamp } from '../../components/admin/adminUi';
 
-const CATEGORY_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+const CATEGORY_COLORS = ['var(--accent)', 'var(--ok)', 'var(--warn)', 'var(--danger)', 'var(--ink-3)'];
 const PRIORITY_COLORS: Record<string, string> = {
-  tinggi: '#F43F5E', sedang: '#F59E0B', rendah: '#94A3B8',
+  tinggi: 'var(--danger)', sedang: 'var(--warn)', rendah: 'var(--ink-3)',
 };
+
+const TOOLTIP_STYLE = {
+  backgroundColor: 'var(--surface)',
+  border: '1px solid var(--line)',
+  color: 'var(--ink)',
+  borderRadius: 8,
+  fontSize: 12,
+  boxShadow: 'var(--shadow-sm)',
+};
+const GRID_STROKE = 'var(--line)';
+const AXIS_TICK = 'var(--ink-3)';
+
+const STATUS_LABEL: Record<string, string> = {
+  diterima: 'Diterima', diproses: 'Diproses', proses: 'Diproses', selesai: 'Selesai', ditolak: 'Ditolak',
+};
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  diterima: 'info', diproses: 'warn', proses: 'warn', selesai: 'ok', ditolak: 'danger',
+};
+const PRIORITY_LABEL: Record<string, string> = { tinggi: 'Tinggi', sedang: 'Sedang', rendah: 'Rendah' };
+const PRIORITY_VARIANT: Record<string, BadgeVariant> = { tinggi: 'danger', sedang: 'warn', rendah: 'neutral' };
 
 export function AdminDashboard() {
   const navigate = useNavigate();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recent, setRecent] = useState<Complaint[]>([]);
@@ -50,13 +69,29 @@ export function AdminDashboard() {
     }
   }, []);
 
-  // Live sync every 15s so new warga complaints appear automatically.
-  const { refresh, lastUpdated } = usePolling(load, { interval: 15000 });
+  // Live sync every 15s so new pengguna complaints appear automatically.
+  const { refresh, lastUpdated } = usePolling(load, { interval: 8000 });
 
   useEffect(() => { load(); }, [load]);
 
-  if (isLoading) return <LoadingBlock label="Memuat dashboard admin..." />;
-  if (error || !stats) return <EmptyState icon="triangle-exclamation" title="Tidak dapat memuat data" desc={error || undefined} />;
+  if (isLoading) return (
+    <div className="page">
+      <div className="empty">
+        <FontAwesome name="spinner" spin className="text-[15px] text-ink-3 mb-3" />
+        <p className="text-[12.5px] text-ink-3">Memuat dashboard admin...</p>
+      </div>
+    </div>
+  );
+
+  if (error || !stats) return (
+    <div className="page">
+      <EmptyState
+        icon={<FontAwesome name="triangle-exclamation" />}
+        title="Tidak dapat memuat data"
+        description={error || undefined}
+      />
+    </div>
+  );
 
   const trendData = stats.complaints_trend.map(t => ({
     name: new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
@@ -74,330 +109,401 @@ export function AdminDashboard() {
   }));
 
   const statusData = [
-    { name: 'Diterima', value: stats.complaints_by_status['diterima'] || 0, color: '#3B82F6' },
-    { name: 'Diproses', value: stats.complaints_by_status['diproses'] || 0, color: '#F59E0B' },
-    { name: 'Selesai', value: stats.complaints_by_status['selesai'] || 0, color: '#10B981' },
-    { name: 'Ditolak', value: stats.complaints_by_status['ditolak'] || 0, color: '#F43F5E' },
+    { name: 'Diterima', value: stats.complaints_by_status['diterima'] || 0, color: 'var(--accent)' },
+    { name: 'Diproses', value: stats.complaints_by_status['diproses'] || 0, color: 'var(--warn)' },
+    { name: 'Selesai', value: stats.complaints_by_status['selesai'] || 0, color: 'var(--ok)' },
+    { name: 'Ditolak', value: stats.complaints_by_status['ditolak'] || 0, color: 'var(--danger)' },
   ];
 
-  const tooltipStyle = isDark ? {
-    backgroundColor: '#171F2F',
-    borderColor: '#243048',
-    color: '#FFFFFF',
-    borderRadius: 12,
-    fontSize: 12,
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
-  } : {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
-    color: '#0F172A',
-    borderRadius: 12,
-    fontSize: 12,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
-  };
-
-  const gridStroke = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.15)';
-  const axisTickColor = isDark ? '#6EA2B3' : '#94A3B8';
-
   return (
-    <div className="w-full space-y-6 pb-6">
+    <div className="page">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="page-head">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-[#6EA2B3] mt-1.5 font-medium">
-            Ringkasan operasional, tren pengaduan & kepatuhan privasi
+          <p className="eyebrow">Ringkasan</p>
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-sub">
+            Ringkasan operasional, tren pengaduan &amp; kepatuhan privasi
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <LiveSyncBar lastUpdated={lastUpdated} onRefresh={refresh} />
+        <div className="flex items-center gap-2 text-[11.5px] text-ink-3">
+          <span className="dot text-ok" />
+          <LiveStamp at={lastUpdated} />
+          <Button
+            size="sm"
+            variant="ghost"
+            iconOnly
+            onClick={refresh}
+            aria-label="Sinkronkan sekarang"
+            title="Sinkronkan sekarang"
+            icon={<FontAwesome name="rotate-right" className="text-[11px]" />}
+          />
         </div>
       </div>
 
       {/* KPI Row 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Total Pengguna" value={stats.total_users} icon="users" tone="blue" hint={`${stats.active_users} aktif`} />
-        <KpiCard label="Pengguna Baru (7h)" value={stats.new_users_7d} icon="user-plus" tone="indigo" hint="Pengguna terdaftar" />
-        <KpiCard label="Total Pengaduan" value={stats.total_complaints} icon="inbox" tone="blue" />
-        <KpiCard label="Belum Selesai" value={stats.open_complaints} icon="clock" tone="amber" hint={`${stats.in_progress_complaints} sedang diproses`} />
+        <StatCard
+          title="Total Pengguna"
+          value={stats.total_users}
+          subLabel={`${stats.active_users} aktif`}
+          icon={<FontAwesome name="users" className="text-[12px]" />}
+        />
+        <StatCard
+          title="Pengguna Baru (7h)"
+          value={stats.new_users_7d}
+          subLabel="Pengguna terdaftar"
+          icon={<FontAwesome name="user-plus" className="text-[12px]" />}
+        />
+        <StatCard
+          title="Total Pengaduan"
+          value={stats.total_complaints}
+          icon={<FontAwesome name="inbox" className="text-[12px]" />}
+        />
+        <StatCard
+          title="Belum Selesai"
+          value={stats.open_complaints}
+          subLabel={`${stats.in_progress_complaints} sedang diproses`}
+          icon={<FontAwesome name="clock" className="text-[12px]" />}
+          iconBg="bg-warn-soft text-warn"
+        />
       </div>
 
       {/* Security report KPI banner */}
-      <AdminCard className={stats.security_reports_open_high > 0 ? 'border-violet-400 dark:border-violet-700/80 ring-1 ring-violet-200 dark:ring-violet-900/40' : ''}>
-        <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 border border-violet-200 dark:border-violet-800/40">
-              <FontAwesome name="shield-halved" className="text-[18px]" />
+      <Card>
+        <div className="card-body flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-md border border-line bg-surface-2 text-ink-2 flex items-center justify-center shrink-0">
+              <FontAwesome name="shield-halved" className="text-[14px]" />
             </div>
-            <div>
-              <p className="text-[12px] font-bold text-violet-700 dark:text-violet-400 uppercase tracking-wide">Laporan Keamanan & Bug</p>
-              <p className="text-[12px] text-slate-500 dark:text-[#6EA2B3]">Dugaan kebocoran data, privasi & bug dari ekstensi/web</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-[13px] font-semibold text-ink">Laporan Keamanan &amp; Bug</p>
+              </div>
+              <p className="text-[12px] text-ink-3 mt-0.5">
+                Dugaan kebocoran data, privasi &amp; bug dari ekstensi/web
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-6 sm:ml-auto">
+
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-3 sm:ml-auto">
             <div>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.security_reports_total}</p>
-              <p className="text-[11px] text-slate-500 dark:text-[#6EA2B3] font-medium">Total</p>
+              <p className="text-[20px] font-bold tracking-[-0.02em] text-ink tabular-nums">{stats.security_reports_total}</p>
+              <p className="text-[11.5px] text-ink-3">Total</p>
             </div>
             <div>
-              <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.security_reports_open}</p>
-              <p className="text-[11px] text-slate-500 dark:text-[#6EA2B3] font-medium">Belum Selesai</p>
+              <p className="text-[20px] font-bold tracking-[-0.02em] text-warn tabular-nums">{stats.security_reports_open}</p>
+              <p className="text-[11.5px] text-ink-3">Belum Selesai</p>
             </div>
             <div>
-              <p className={`text-2xl font-black ${stats.security_reports_open_high > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-600'}`}>
+              <p className={`text-[20px] font-bold tracking-[-0.02em] tabular-nums ${stats.security_reports_open_high > 0 ? 'text-danger' : 'text-ink-3'}`}>
                 {stats.security_reports_open_high}
               </p>
-              <p className="text-[11px] text-slate-500 dark:text-[#6EA2B3] font-medium">Prioritas Tinggi</p>
+              <p className="text-[11.5px] text-ink-3">Prioritas Tinggi</p>
             </div>
             <Link
               to="/admin/complaints"
-              className="hidden sm:inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 text-white text-sm font-semibold transition-colors"
+              className="btn btn-secondary btn-sm hidden sm:inline-flex"
             >
-              <FontAwesome name="shield-halved" className="text-[12px]" />
+              <FontAwesome name="shield-halved" className="text-[11px]" />
               <span>Tinjau Laporan</span>
             </Link>
           </div>
         </div>
-      </AdminCard>
+      </Card>
 
       {/* KPI Row 2 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Selesai" value={stats.resolved_complaints} icon="circle-check" tone="emerald" />
-        <KpiCard label="Ditolak" value={stats.rejected_complaints} icon="circle-xmark" tone="rose" />
-        <KpiCard label="Rata-rata Respon" value={`${stats.avg_response_hours}j`} icon="chart-line" tone="indigo" hint="Jam per pengaduan" />
-        <KpiCard label="Lewat SLA (>3h)" value={stats.sla_breached} icon="triangle-exclamation" tone={stats.sla_breached > 0 ? 'rose' : 'slate'} />
+        <StatCard
+          title="Selesai"
+          value={stats.resolved_complaints}
+          icon={<FontAwesome name="circle-check" className="text-[12px]" />}
+          iconBg="bg-ok-soft text-ok"
+        />
+        <StatCard
+          title="Ditolak"
+          value={stats.rejected_complaints}
+          icon={<FontAwesome name="circle-xmark" className="text-[12px]" />}
+          iconBg="bg-danger-soft text-danger"
+        />
+        <StatCard
+          title="Rata-rata Respon"
+          value={`${stats.avg_response_hours}j`}
+          subLabel="Jam per pengaduan"
+          icon={<FontAwesome name="chart-line" className="text-[12px]" />}
+        />
+        <StatCard
+          title="Lewat SLA (>3h)"
+          value={stats.sla_breached}
+          icon={<FontAwesome name="triangle-exclamation" className="text-[12px]" />}
+          iconBg={stats.sla_breached > 0 ? 'bg-danger-soft text-danger' : 'bg-surface-3 text-ink-2'}
+        />
       </div>
 
       {/* Trend + Privacy */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
-        <AdminCard>
-          <SectionTitle icon="chart-area" title="Tren Pengaduan (14 Hari)" subtitle="Jumlah pengaduan masuk per hari" />
-          <div className="p-5 h-64">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Tren Pengaduan (14 Hari)</CardTitle>
+              <CardDescription>Jumlah pengaduan masuk per hari</CardDescription>
+            </div>
+          </CardHeader>
+          <div className="p-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="admTrend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_STROKE} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ stroke: 'var(--line-2)', strokeWidth: 1, strokeDasharray: '4 4' }}
                 />
-                <Area type="monotone" dataKey="count" name="Pengaduan" stroke={isDark ? '#7BBDE8' : '#0A4174'} strokeWidth={2.5} fill="url(#admTrend)" />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  name="Pengaduan"
+                  stroke="var(--accent)"
+                  strokeWidth={2}
+                  fill="var(--accent-soft)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </AdminCard>
+        </Card>
 
         {/* Privacy panel */}
-        <AdminCard className="bg-gradient-to-br from-[#001D39] via-[#0A4174] to-[#001D39] dark:from-[#0B1528] dark:via-[#102444] dark:to-[#0B1528] border border-[#BDD8E9]/20 dark:border-[#243048]">
-          <div className="p-5">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                <FontAwesome name="shield-halved" className="text-sm" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-white">Ringkasan Audit Privasi</h2>
-                <p className="text-[11px] text-slate-300 dark:text-[#6EA2B3]">Transparansi & proteksi data warga</p>
-              </div>
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Ringkasan Audit Privasi</CardTitle>
+              <CardDescription>Transparansi &amp; proteksi data pengguna</CardDescription>
             </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 dark:bg-white/[0.04] border border-white/10 dark:border-white/[0.08]">
-                <span className="text-xs text-slate-200">Akses PII hari ini</span>
-                <span className={`text-sm font-black ${stats.pii_views_today > 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
-                  {stats.pii_views_today}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 dark:bg-white/[0.04] border border-white/10 dark:border-white/[0.08]">
-                <span className="text-xs text-slate-200">Aktivitas admin hari ini</span>
-                <span className="text-sm font-black text-white">{stats.audit_logs_today}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-white/5 dark:bg-white/[0.04] border border-white/10 dark:border-white/[0.08]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-slate-200">Cakupan enkripsi PII</span>
-                  <span className="text-sm font-black text-emerald-400">{stats.encryption_coverage}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full rounded-full bg-emerald-400 transition-all duration-700" style={{ width: `${Math.min(stats.encryption_coverage, 100)}%` }} />
-                </div>
-                <p className="text-[10px] text-slate-300 dark:text-[#6EA2B3] mt-2">Field PII terenkripsi AES-256 di database</p>
-              </div>
+            <FontAwesome name="shield-halved" className="text-[13px] text-ink-3" />
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2.5">
+              <span className="text-[12.5px] text-ink-2">Akses PII hari ini</span>
+              <span className={`text-[13px] font-semibold tabular-nums ${stats.pii_views_today > 0 ? 'text-warn' : 'text-ok'}`}>
+                {stats.pii_views_today}
+              </span>
             </div>
-          </div>
-        </AdminCard>
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2.5">
+              <span className="text-[12.5px] text-ink-2">Aktivitas admin hari ini</span>
+              <span className="text-[13px] font-semibold text-ink tabular-nums">{stats.audit_logs_today}</span>
+            </div>
+            <div className="rounded-md border border-line bg-surface-2 px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12.5px] text-ink-2">Cakupan enkripsi PII</span>
+                <span className="text-[13px] font-semibold text-ok tabular-nums">{stats.encryption_coverage}%</span>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-ok transition-[width] duration-200"
+                  style={{ width: `${Math.min(stats.encryption_coverage, 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-ink-3 mt-2">Field PII terenkripsi AES-256 di database</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Distributions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <AdminCard>
-          <SectionTitle icon="chart-pie" title="Per Kategori" />
-          <div className="p-5 h-60">
+        <Card>
+          <CardHeader>
+            <CardTitle>Per Kategori</CardTitle>
+          </CardHeader>
+          <div className="p-4 h-60">
             {categoryData.length === 0 ? (
-              <EmptyState icon="chart-pie" title="Belum ada data" />
+              <EmptyState icon={<FontAwesome name="chart-pie" />} title="Belum ada data" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3}>
                     {categoryData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </div>
-          <div className="px-5 pb-5 flex flex-wrap gap-3">
+          <div className="px-4 pb-4 flex flex-wrap gap-x-4 gap-y-2">
             {categoryData.map((c, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-[#6EA2B3]">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c.color }} />
+              <div key={i} className="flex items-center gap-1.5 text-[11.5px] text-ink-2">
+                <span className="w-2 h-2 rounded-xs" style={{ backgroundColor: c.color }} />
                 <span>{c.name} ({c.value})</span>
               </div>
             ))}
           </div>
-        </AdminCard>
+        </Card>
 
-        <AdminCard>
-          <SectionTitle icon="chart-simple" title="Per Status" />
-          <div className="p-5 h-60">
+        <Card>
+          <CardHeader>
+            <CardTitle>Per Status</CardTitle>
+          </CardHeader>
+          <div className="p-4 h-60">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(148,163,184,0.08)' }} />
-                <Bar dataKey="value" name="Jumlah" radius={[6, 6, 0, 0]}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_STROKE} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--surface-3)' }} />
+                <Bar dataKey="value" name="Jumlah" radius={[4, 4, 0, 0]}>
                   {statusData.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </AdminCard>
+        </Card>
 
-        <AdminCard>
-          <SectionTitle icon="bolt" title="Per Prioritas" />
-          <div className="p-5 h-60">
+        <Card>
+          <CardHeader>
+            <CardTitle>Per Prioritas</CardTitle>
+          </CardHeader>
+          <div className="p-4 h-60">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={priorityData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridStroke} />
-                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: axisTickColor, fontSize: 11 }} width={60} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(148,163,184,0.08)' }} />
-                <Bar dataKey="value" name="Jumlah" radius={[0, 6, 6, 0]}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID_STROKE} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: AXIS_TICK, fontSize: 11 }} width={60} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--surface-3)' }} />
+                <Bar dataKey="value" name="Jumlah" radius={[0, 4, 4, 0]}>
                   {priorityData.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </AdminCard>
+        </Card>
       </div>
 
       {/* Recent complaints + workload */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-5">
-        <AdminCard>
-          <SectionTitle
-            icon="inbox"
-            title="Pengaduan Terbaru"
-            subtitle="Hanya email pengirim — tanpa data pribadi"
-            action={<Button size="sm" variant="outline" onClick={() => navigate('/admin/complaints')}>Lihat semua</Button>}
-          />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] border-b border-slate-200 dark:border-[#243048]">
-                  <th className="px-5 py-3 font-bold">Referensi</th>
-                  <th className="px-5 py-3 font-bold">Pengirim</th>
-                  <th className="px-5 py-3 font-bold">Kategori</th>
-                  <th className="px-5 py-3 font-bold">Prioritas</th>
-                  <th className="px-5 py-3 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.length === 0 ? (
-                  <tr><td colSpan={5}><EmptyState icon="inbox" title="Belum ada pengaduan" /></td></tr>
-                ) : recent.map(c => (
-                  <tr key={c.id} className="border-b border-slate-100 dark:border-[#1E293B] hover:bg-slate-50/80 dark:hover:bg-[#1E293B]/50 transition-colors">
-                    <td className="px-5 py-3 font-mono text-[11px] text-blue-600 dark:text-[#7BBDE8] font-semibold">{c.reference_number}</td>
-                    <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{c.user_email}</td>
-                    <td className="px-5 py-3 text-slate-600 dark:text-[#6EA2B3]">{CATEGORY_LABEL[c.category] || c.category}</td>
-                    <td className="px-5 py-3"><PriorityBadge priority={c.priority} /></td>
-                    <td className="px-5 py-3"><StatusBadge status={c.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </AdminCard>
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Pengaduan Terbaru</CardTitle>
+              <CardDescription>Hanya email pengirim — tanpa data pribadi</CardDescription>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/admin/complaints')}>
+              Lihat semua
+            </Button>
+          </CardHeader>
 
-        <AdminCard>
-          <SectionTitle icon="briefcase" title="Beban Kerja Admin" subtitle="Kasus yang ditangani per admin" />
-          <div className="p-5 space-y-3">
+          {recent.length === 0 ? (
+            <EmptyState icon={<FontAwesome name="inbox" />} title="Belum ada pengaduan" />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Referensi</TableHead>
+                  <TableHead>Pengirim</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Prioritas</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recent.map(c => (
+                  <TableRow key={c.id}>
+                    <TableCell className="cell-mono text-accent-text font-semibold">{c.reference_number}</TableCell>
+                    <TableCell className="cell-strong">{c.user_email}</TableCell>
+                    <TableCell>{CATEGORY_LABEL[c.category] || c.category}</TableCell>
+                    <TableCell>
+                      <Badge variant={PRIORITY_VARIANT[c.priority] || 'neutral'}>
+                        {PRIORITY_LABEL[c.priority] || c.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[c.status] || 'neutral'} dot>
+                        {STATUS_LABEL[c.status] || c.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Beban Kerja Admin</CardTitle>
+              <CardDescription>Kasus yang ditangani per admin</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
             {stats.admin_workload.length === 0 ? (
-              <EmptyState icon="briefcase" title="Belum ada penanganan" />
+              <EmptyState icon={<FontAwesome name="briefcase" />} title="Belum ada penanganan" />
             ) : stats.admin_workload.map((w, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#101828]/60 border border-slate-100 dark:border-[#243048]">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-xs font-bold shrink-0">
+              <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface-2 px-3 py-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-7 h-7 rounded-full border border-line bg-surface text-ink-2 text-[11px] font-semibold flex items-center justify-center shrink-0">
                     {w.admin_email.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{w.admin_email}</span>
+                  </span>
+                  <span className="text-[12.5px] font-medium text-ink-2 truncate">{w.admin_email}</span>
                 </div>
-                <span className="text-sm font-black text-slate-900 dark:text-white">{w.handled_count}</span>
+                <span className="text-[13px] font-semibold text-ink tabular-nums shrink-0">{w.handled_count}</span>
               </div>
             ))}
-          </div>
-        </AdminCard>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Latest users */}
-      <AdminCard>
-        <SectionTitle
-          icon="users"
-          title="Pengguna Terbaru"
-          subtitle="Email & kelengkapan profil saja — tanpa PII"
-          action={<Button size="sm" variant="outline" onClick={() => navigate('/admin/users')}>Kelola pengguna</Button>}
-        />
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-[#6EA2B3] border-b border-slate-200 dark:border-[#243048]">
-                <th className="px-5 py-3 font-bold">Email</th>
-                <th className="px-5 py-3 font-bold">Status</th>
-                <th className="px-5 py-3 font-bold">Pengaduan</th>
-                <th className="px-5 py-3 font-bold">Kelengkapan</th>
-                <th className="px-5 py-3 font-bold">Terdaftar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.slice(0, 5).map(u => (
-                <tr key={u.id} className="border-b border-slate-100 dark:border-[#1E293B] hover:bg-slate-50/80 dark:hover:bg-[#1E293B]/50 transition-colors">
-                  <td className="px-5 py-3 text-slate-700 dark:text-slate-200 font-medium">{u.email}</td>
-                  <td className="px-5 py-3">
-                    {u.is_active
-                      ? <span className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">Aktif</span>
-                      : <span className="text-rose-600 dark:text-rose-400 text-xs font-semibold">Nonaktif</span>}
-                    {u.is_admin && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-bold">ADMIN</span>}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600 dark:text-[#6EA2B3]">{u.complaint_count}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div className="h-full rounded-full bg-blue-500 dark:bg-[#7BBDE8]" style={{ width: `${Math.min(u.profile_completion, 100)}%` }} />
-                      </div>
-                      <span className="text-[11px] text-slate-500 dark:text-[#6EA2B3] font-medium">{u.profile_completion}%</span>
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Pengguna Terbaru</CardTitle>
+            <CardDescription>Email &amp; kelengkapan profil saja — tanpa PII</CardDescription>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/admin/users')}>
+            Kelola pengguna
+          </Button>
+        </CardHeader>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Pengaduan</TableHead>
+              <TableHead>Kelengkapan</TableHead>
+              <TableHead>Terdaftar</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.slice(0, 5).map(u => (
+              <TableRow key={u.id}>
+                <TableCell className="cell-strong">{u.email}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={u.is_active ? 'ok' : 'danger'} dot>
+                      {u.is_active ? 'Aktif' : 'Nonaktif'}
+                    </Badge>
+                    {u.is_admin && <Badge variant="info">ADMIN</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell className="tabular-nums">{u.complaint_count}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-accent transition-[width] duration-200"
+                        style={{ width: `${Math.min(u.profile_completion, 100)}%` }}
+                      />
                     </div>
-                  </td>
-                  <td className="px-5 py-3 text-slate-500 dark:text-[#6EA2B3] text-xs">{relativeTime(u.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </AdminCard>
+                    <span className="text-[11.5px] text-ink-3 tabular-nums">{u.profile_completion}%</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-[12px] text-ink-3 whitespace-nowrap">{relativeTime(u.created_at)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

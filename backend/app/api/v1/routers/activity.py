@@ -95,7 +95,7 @@ def get_activity_stats(
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     profile_completion = calculate_profile_completion(profile)
 
-    return compute_activity_stats(activities, profile_completion)
+    return compute_activity_stats(activities, profile_completion, user=current_user)
 
 
 @router.get("/analytics", response_model=AnalyticsResponse)
@@ -116,7 +116,7 @@ def get_activity_analytics(
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     profile_completion = calculate_profile_completion(profile)
 
-    return compute_activity_analytics(activities, days, profile_completion)
+    return compute_activity_analytics(activities, days, profile_completion, user=current_user)
 
 
 @router.delete("", response_model=MessageResponse)

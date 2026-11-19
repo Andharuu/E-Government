@@ -575,12 +575,49 @@ function updateSelectionUI() {
 // ============================================================
 // Render daftar field dengan transisi staggered fluid
 // ============================================================
+// Tampilan saat tidak ada kolom sama sekali (belum terdeteksi / tidak cocok)
+function renderEmptyFieldState(container, detectCountEl) {
+  detectedFields = [];
+  if (detectCountEl) detectCountEl.textContent = "0 Kolom Terdeteksi";
+
+  const statusPill = document.querySelector(".detect-status-pill");
+  const selControls = document.querySelector(".selection-controls");
+  if (statusPill) {
+    statusPill.innerHTML =
+      '<i class="fa-solid fa-circle-info" style="font-size: 10px;"></i><span>Belum ada kolom</span>';
+  }
+  if (selControls) selControls.style.display = "none";
+
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+      <p class="empty-state-title">Tidak ada kolom yang cocok</p>
+      <p class="empty-state-desc">Buka halaman formulir instansi terlebih dahulu, lalu pindai ulang. GovConnect akan mencocokkan kolom dengan profil Anda.</p>
+      <button type="button" class="btn-outline" id="btnRetryFromEmpty">
+        <i class="fa-solid fa-rotate-right" style="font-size: 11px;"></i> Pindai ulang
+      </button>
+    </div>`;
+
+  document.getElementById("btnRetryFromEmpty")?.addEventListener("click", () => {
+    document.getElementById("btnRetryDetect")?.click();
+  });
+
+  const btnFill = document.getElementById("btnFill");
+  if (btnFill) btnFill.disabled = true;
+
+  updateSelectionUI();
+  syncMarkersWithCheckedFields();
+}
+
 function renderFieldList() {
   const container = document.getElementById("fieldList");
   const detectCountEl = document.getElementById("detectCount");
 
   container.innerHTML = "";
-  if (!allDetectedResult) return;
+  if (!allDetectedResult) {
+    renderEmptyFieldState(container, detectCountEl);
+    return;
+  }
 
   const allMatched = (allDetectedResult.fields || []).filter(f => f.profileKey);
 
@@ -590,12 +627,20 @@ function renderFieldList() {
     detectCountEl.textContent = `${detectedFields.length} Kolom Terdeteksi`;
   }
 
+  // Samakan status chrome dengan kondisi daftar: jangan tampilkan "Siap Isi"
+  // atau kontrol pemilihan saat tidak ada kolom sama sekali.
+  const statusPill = document.querySelector(".detect-status-pill");
+  const selControls = document.querySelector(".selection-controls");
+  const hasFields = detectedFields.length > 0;
+  if (statusPill) {
+    statusPill.innerHTML = hasFields
+      ? '<i class="fa-solid fa-bolt" style="font-size: 10px;"></i><span>Siap Isi</span>'
+      : '<i class="fa-solid fa-circle-info" style="font-size: 10px;"></i><span>Belum ada kolom</span>';
+  }
+  if (selControls) selControls.style.display = hasFields ? "" : "none";
+
   if (detectedFields.length === 0) {
-    container.innerHTML = `<div style="padding: 24px; font-size: 12px; color: #64748B; text-align: center;">Tidak ada kolom yang cocok dengan profil.</div>`;
-    const btnFill = document.getElementById("btnFill");
-    if (btnFill) btnFill.disabled = true;
-    updateSelectionUI();
-    syncMarkersWithCheckedFields();
+    renderEmptyFieldState(container, detectCountEl);
     return;
   }
 
@@ -708,6 +753,7 @@ function syncMarkersWithCheckedFields() {
 async function executeAutofill() {
   const btn = document.getElementById("btnFill");
   isAutofillingInProgress = true;
+  setFillingProgress(true);
   btn.innerHTML = `<i class="fa-solid fa-rotate-right" style="margin-right: 6px; display: inline-block; animation: spin 0.8s linear infinite;"></i> Mengisi Formulir...`;
 
   const checkedInputs = Array.from(
@@ -718,6 +764,7 @@ async function executeAutofill() {
     btn.textContent = "Pilih Minimal 1 Kolom";
     btn.disabled = true;
     isAutofillingInProgress = false;
+    setFillingProgress(false);
     showStatus("Pilih minimal satu kolom formulir terlebih dahulu.");
     return;
   }
@@ -815,6 +862,7 @@ async function executeAutofill() {
     showStatus("Gagal mengisi form: " + (err.message || "Timeout"));
   } finally {
     isAutofillingInProgress = false;
+    setFillingProgress(false);
     if (btn) {
       btn.disabled = false;
       btn.textContent = "âš¡ Isi Formulir Otomatis";
@@ -985,10 +1033,23 @@ function renderResultBreakdown(result) {
 // Layar & Status Helper
 // ============================================================
 function showScreen(id) {
+  const prev = currentActiveScreen;
   currentActiveScreen = id;
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   const target = document.getElementById(id);
-  if (target) target.classList.add("active");
+  if (target) {
+    const order = ["screenAuth", "screenScanning", "screenDetect", "screenResult", "screenUnsupported"];
+    const pi = order.indexOf(prev);
+    const ni = order.indexOf(id);
+    target.dataset.dir = pi >= 0 && ni >= 0 && ni < pi ? "back" : "forward";
+    target.classList.add("active");
+  }
+  setFillingProgress(false);
+}
+
+function setFillingProgress(active) {
+  const footer = document.querySelector(".detect-footer");
+  if (footer) footer.classList.toggle("is-filling", !!active);
 }
 
 function setApiStatus(status) {

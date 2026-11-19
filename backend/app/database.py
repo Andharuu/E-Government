@@ -186,12 +186,80 @@ def _bootstrap_admins():
         db.close()
 
 
+def _ensure_user_lifetime_columns():
+    """Auto-migration: add lifetime counter columns to `users` if they don't exist yet."""
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    existing = {col["name"] for col in inspector.get_columns("users")}
+    DDL = {
+        "total_autofill_lifetime": "ALTER TABLE users ADD COLUMN total_autofill_lifetime INTEGER DEFAULT 0 NOT NULL",
+        "total_fields_lifetime": "ALTER TABLE users ADD COLUMN total_fields_lifetime INTEGER DEFAULT 0 NOT NULL",
+    }
+    with engine.begin() as conn:
+        for name, statement in DDL.items():
+            if name in existing:
+                continue
+            try:
+                conn.execute(text(statement))
+                logger.info(f"Migrasi: kolom users.{name} ditambahkan.")
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(f"Gagal menambah kolom users.{name}: {exc}")
+
+    # Backfill awal: Jika ada selisih, sinkronkan dengan data aktivitas & notifikasi yang sudah tercatat
+    try:
+        with engine.begin() as conn:
+            if settings.is_sqlite:
+                conn.execute(text("""
+                    UPDATE users
+                    SET total_autofill_lifetime = MAX(
+                        COALESCE(total_autofill_lifetime, 0),
+                        COALESCE((SELECT COUNT(*) FROM activities WHERE activities.user_id = users.id), 0),
+                        COALESCE((SELECT COUNT(*) FROM notifications WHERE notifications.user_id = users.id AND notifications.source = 'autofill'), 0)
+                    ),
+                    total_fields_lifetime = MAX(
+                        COALESCE(total_fields_lifetime, 0),
+                        COALESCE((SELECT SUM(fields_filled) FROM activities WHERE activities.user_id = users.id), 0)
+                    );
+                """))
+            else:
+                conn.execute(text("""
+                    UPDATE users u
+                    LEFT JOIN (
+                        SELECT user_id, COUNT(*) as act_count, COALESCE(SUM(fields_filled), 0) as field_sum
+                        FROM activities
+                        GROUP BY user_id
+                    ) a ON u.id = a.user_id
+                    LEFT JOIN (
+                        SELECT user_id, COUNT(*) as notif_count
+                        FROM notifications
+                        WHERE source = 'autofill'
+                        GROUP BY user_id
+                    ) n ON u.id = n.user_id
+                    SET u.total_autofill_lifetime = GREATEST(
+                        COALESCE(u.total_autofill_lifetime, 0),
+                        COALESCE(a.act_count, 0),
+                        COALESCE(n.notif_count, 0)
+                    ),
+                    u.total_fields_lifetime = GREATEST(
+                        COALESCE(u.total_fields_lifetime, 0),
+                        COALESCE(a.field_sum, 0)
+                    );
+                """))
+            logger.info("Migrasi: Backfill lifetime counters untuk pengguna selesai.")
+    except Exception as exc:
+        logger.warning(f"Gagal melakukan backfill kolom users lifetime: {exc}")
+
+
 def run_schema_migrations():
     """Menjalankan migrasi skema ringan secara eksplisit (B-H2)."""
     _ensure_complaint_report_columns()
     _ensure_activity_columns()
     _ensure_profile_columns()
     _ensure_profile_encryption_columns()
+    _ensure_user_lifetime_columns()
 
 
 def init_db():

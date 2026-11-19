@@ -15,19 +15,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   action,
   className = '',
-}) => {
-  return (
-    <div className={`p-8 sm:p-10 text-center flex flex-col items-center justify-center ${className}`}>
-      <div className="w-14 h-14 rounded-xl bg-[#BDD8E9]/15 border border-[#BDD8E9]/60 flex items-center justify-center text-[#49769F] mb-3">
-        {icon || <FontAwesome name="folder-open" className="text-2xl" />}
-      </div>
-      <h4 className="text-[14px] leading-[20px] font-medium text-[#001D39]">{title}</h4>
-      {description && (
-        <p className="text-[13px] leading-[20px] font-normal text-[#49769F] mt-1 max-w-[360px] leading-relaxed">
-          {description}
-        </p>
-      )}
-      {action && <div className="mt-4">{action}</div>}
-    </div>
-  );
-};
+}) => (
+  <div className={`empty ${className}`}>
+    <div className="empty-icon">{icon || <FontAwesome name="inbox" className="text-[15px]" />}</div>
+    <h4 className="text-[13.5px] font-semibold text-ink">{title}</h4>
+    {description && (
+      <p className="text-[12.5px] text-ink-3 mt-1 max-w-[380px] leading-relaxed">{description}</p>
+    )}
+    {action && <div className="mt-4">{action}</div>}
+  </div>
+);
