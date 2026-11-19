@@ -755,7 +755,7 @@ export function ProfilePage() {
       <div className="space-y-6" key={catId}>
         {/* Konten Standar berdasarkan ID */}
         {catId === 'identity' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div data-tour="profile-identity" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {renderField('Nama Lengkap (Sesuai KTP)', 'full_name', profile?.full_name || '', v => handleChange('full_name', v), { badge: 'Wajib KTP' })}
             {renderField('NIK (Nomor Induk Kependudukan)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
             {renderField('Tempat Lahir', 'birth_place', profile?.birth_place || '', v => handleChange('birth_place', v))}
@@ -785,7 +785,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'address' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div data-tour="profile-address" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="md:col-span-2 lg:col-span-3">
               {renderField('Alamat Domisili Utama', 'address', profile?.address || '', v => handleChange('address', v), { isPii: true, type: 'textarea' })}
             </div>
@@ -801,7 +801,7 @@ export function ProfilePage() {
         )}
 
         {catId === 'contact' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div data-tour="profile-contact" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {renderField('Nomor HP / WhatsApp Utama', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
             {renderField('Alamat Surel / Email', 'email', profile?.email || '', v => handleChange('email', v))}
             {renderField('Telepon Rumah', 'home_phone', profile?.home_phone ?? getExtendedField('home_phone'), v => { handleChange('home_phone', v); handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'); }, { isPii: true })}
@@ -955,7 +955,7 @@ export function ProfilePage() {
         )}
 
         {/* Custom Fields pada Kategori ini */}
-        <div className="pt-2 space-y-4">
+        <div data-tour="profile-custom" className="pt-2 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-white uppercase tracking-wider">
               Kolom Kustom Tambahan ({fieldsInCat.length})
@@ -1114,20 +1114,33 @@ export function ProfilePage() {
 
         {/* Action Toolbar with clear text labels */}
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          {/* Tombol Simpan Cepat (Target Tur Onboarding) */}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            data-tour="profile-save"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-all cursor-pointer shadow-xs disabled:opacity-50"
+          >
+            {saving ? <FontAwesome name="rotate" spin className="text-xs" /> : <FontAwesome name="floppy-disk" className="text-xs" />}
+            <span>{saving ? 'Menyimpan...' : 'Simpan Profil (Ctrl+S)'}</span>
+          </button>
+
           {/* Add Category Trigger */}
           <button
             type="button"
             onClick={() => setShowAddCategoryModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
+            data-tour="profile-category-new"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#171F2F] hover:bg-[#243048] border border-[#243048] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
-            <FontAwesome name="folder-plus" className="text-sm" />
+            <FontAwesome name="folder-plus" className="text-sm text-[#7BBDE8]" />
             <span>Kategori Baru</span>
           </button>
         </div>
       </div>
 
       {/* ── Profile Completeness Bar (Strict 8px Grid) ── */}
-      <div className="bg-[#171F2F] rounded-2xl border border-[#243048] p-4 space-y-2 shadow-sm">
+      <div data-tour="profile-completeness" className="bg-[#171F2F] rounded-2xl border border-[#243048] p-4 space-y-2 shadow-sm">
         <div className="flex items-center justify-between text-xs font-semibold">
           <span className="text-white flex items-center gap-2">
             <span>Kelengkapan Profil &amp; Berkas</span>
@@ -1150,7 +1163,7 @@ export function ProfilePage() {
       {/* ── Main Profile Workspace (Focused Category Navigation) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar / Category Navigator (3 cols on lg) - STICKY FOLLOWING USER SCROLL */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-4 sticky top-6 self-start z-10">
+        <div data-tour="profile-categories" className="lg:col-span-4 xl:col-span-3 space-y-4 sticky top-6 self-start z-10">
           <div className="bg-[#171F2F] rounded-2xl border border-[#243048] shadow-sm overflow-hidden">
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -1363,6 +1376,7 @@ export function ProfilePage() {
               type="button"
               onClick={handleSave}
               disabled={saving}
+              data-tour="profile-save"
               className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
               {saving ? <FontAwesome name="rotate" spin className="text-xs" /> : <FontAwesome name="floppy-disk" className="text-xs" />}

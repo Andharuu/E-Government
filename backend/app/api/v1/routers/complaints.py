@@ -4,13 +4,14 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.api.v1.routers.auth import get_current_user
 from app.database import get_db
 from app.models.entities import User, Complaint
+from app.core.security import limiter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 router = APIRouter(prefix="/complaints", tags=["Pengaduan"])
@@ -230,21 +231,31 @@ def get_my_complaint(
 
 
 @router.post("/public-help", response_model=ComplaintResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 def submit_public_help(
+    request: Request,
     payload: PublicHelpCreate,
     db: Session = Depends(get_db),
 ):
     """Submit a public help/support ticket from unauthenticated visitors (Login/Register).
-    Stores directly into the complaints database so admins can review and resolve it.
+    Stores into the complaints database under the admin system role with rate-limiting.
+    Does NOT attach ticket to arbitrary regular user accounts to prevent spoofing/IDOR.
     """
-    # Check if a user with this email already exists
-    user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
-    if user:
-        target_user_id = user.id
-    else:
-        # Fallback to the first existing user (e.g. admin or system user)
-        first_user = db.query(User).order_by(User.id.asc()).first()
-        target_user_id = first_user.id if first_user else 1
+    # Selalu alokasikan ke akun admin / helpdesk sistem (bukan akun pengguna reguler)
+    admin_user = db.query(User).filter(User.is_admin == True).first()
+    if not admin_user:
+        admin_user = db.query(User).filter(User.email == "helpdesk@govconnect.local").first()
+    if not admin_user:
+        admin_user = User(
+            email="helpdesk@govconnect.local",
+            hashed_password="[SYSTEM_ACCOUNT_LOCKED]",
+            is_admin=True,
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+    target_user_id = admin_user.id
 
     clean_name = payload.name.strip()
     clean_email = payload.email.strip().lower()
@@ -264,7 +275,7 @@ def submit_public_help(
     complaint = Complaint(
         user_id=target_user_id,
         title=f"[Bantuan Publik] {clean_subject} ({clean_name})",
-        description=f"Pengirim: {clean_name}\nEmail: {clean_email}\n\nDetail Kendala:\n{clean_message}",
+        description=f"Pengirim: {clean_name}\nEmail Kontak: {clean_email}\n[Tiket Tamu Publik - Tidak Terautentikasi]\n\nDetail Kendala:\n{clean_message}",
         category=assigned_category,
         priority="sedang",
         status="diterima",

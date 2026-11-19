@@ -131,7 +131,7 @@ export function ActivityPage() {
             Audit log dan jejak privasi pengisian formulir autofill
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div data-tour="activity-actions" className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleRefresh}
@@ -190,7 +190,7 @@ export function ActivityPage() {
       )}
 
       {/* Table Container */}
-      <Card className="overflow-hidden border border-[#243048] bg-[#171F2F] shadow-sm">
+      <Card data-tour="activity-audit" className="overflow-hidden border border-[#243048] bg-[#171F2F] shadow-sm">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
             <FontAwesome name="spinner" className="text-3xl text-[#7BBDE8] animate-spin" />

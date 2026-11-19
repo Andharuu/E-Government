@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useTour } from '../tour';
 import logoDark from '../assets/logo dark.png';
 import logoLight from '../assets/logo light.png';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -69,12 +70,14 @@ const SEARCH_ITEMS: SearchResultItem[] = [
   { id: 's13', title: 'Kebijakan Privasi', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Baca kebijakan privasi dan penggunaan data GovConnect', keywords: 'privasi kebijakan privacy policy' },
   { id: 's14', title: 'Mode gelap / terang', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Ganti tampilan tema GovConnect sesuai preferensi', keywords: 'tema gelap terang mode appearance' },
   { id: 's15', title: 'Bahasa / Locale', category: 'Pengaturan & Fitur', path: '/settings', desc: 'Ganti bahasa antarmuka GovConnect', keywords: 'bahasa bahasa indonesia english locale i18n' },
+  { id: 's_tour', title: 'Panduan & Tur Tutorial Akun', category: 'Pengaturan & Fitur', path: '#start-tour', desc: 'Mulai panduan interaktif penggunaan GovConnect langkah demi langkah', keywords: 'tur tutorial panduan onboarding walkthrough guide bantuan langkah' },
 ];
 
 
 export function Layout() {
   const { theme, toggleTheme } = useTheme();
   const { user, token, logout } = useAuth();
+  const { startTour } = useTour();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -315,6 +318,10 @@ export function Layout() {
   const handleSelectSearchResult = (path: string) => {
     setIsSearchOpen(false);
     setSearchQuery('');
+    if (path === '#start-tour') {
+      startTour();
+      return;
+    }
     navigate(path);
   };
 
@@ -540,6 +547,26 @@ export function Layout() {
                           )}
                         </NavLink>
                       ))}
+
+                      {/* Tombol Buka Panduan Tur Tutorial */}
+                      <button
+                        type="button"
+                        onClick={() => startTour()}
+                        title={sidebarCollapsed ? 'Panduan Tur Tutorial' : undefined}
+                        className={`group relative flex items-center text-[14px] transition-all duration-200 active:scale-[0.98] cursor-pointer text-slate-600 dark:text-[#BDD8E9]/80 hover:bg-slate-100 dark:hover:bg-[#171F2F]/60 hover:text-slate-900 dark:hover:text-white font-medium ${
+                          sidebarCollapsed
+                            ? 'justify-center h-11 w-11 mx-auto rounded-xl'
+                            : 'gap-3 px-3.5 h-11 w-full rounded-lg text-left'
+                        }`}
+                      >
+                        <FontAwesome
+                          name="compass"
+                          className={`text-[17px] text-center shrink-0 transition-colors text-slate-400 dark:text-[#7BBDE8] group-hover:text-slate-700 dark:group-hover:text-white ${
+                            sidebarCollapsed ? 'w-full' : 'w-5'
+                          }`}
+                        />
+                        {!sidebarCollapsed && <span className="truncate">Panduan Tur</span>}
+                      </button>
                     </nav>
                   </div>
                 </>

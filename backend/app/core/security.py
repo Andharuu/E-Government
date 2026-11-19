@@ -51,17 +51,35 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 # Rate Limiter (SlowAPI)
 # ============================================================
 def get_ip_or_token(request: Request) -> str:
-    """Menggunakan token otentikasi (jika ada) atau IP sebagai kunci rate limit.
+    """Menggunakan user_id terverifikasi dari token otentikasi (jika valid) atau IP sebagai kunci rate limit.
 
+    Token palsu atau tidak bertanda-tangan sah diabaikan agar penyerang tidak bisa
+    memalsukan header Authorization Bearer acak untuk mem-bypass rate limiter IP.
     IP diambil dengan kebijakan trusted-proxy yang sama seperti jejak audit
     (T3) agar X-Forwarded-For tidak bisa dipakai memalsukan kunci rate limit.
     """
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ")[1]
-        return f"token:{token}"
     from app.services.audit_service import get_client_ip
     client_ip = get_client_ip(request) or get_remote_address(request)
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        parts = auth_header.split(" ", 1)
+        if len(parts) == 2:
+            raw_token = parts[1].strip()
+            if raw_token:
+                try:
+                    payload = jwt.decode(
+                        raw_token,
+                        settings.SECRET_KEY,
+                        algorithms=[settings.ALGORITHM]
+                    )
+                    sub = payload.get("sub")
+                    if sub:
+                        return f"user:{sub}"
+                except Exception:
+                    # Token tidak valid, expired, atau dipalsukan -> batasi berdasarkan IP!
+                    pass
+
     return f"ip:{client_ip}"
 
 limiter = Limiter(key_func=get_ip_or_token)

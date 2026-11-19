@@ -3,6 +3,7 @@ import { useState, useId } from 'react';
 import { authApi, activityApi } from '../services/api';
 import { FontAwesome } from '../components/ui';
 import { useTheme } from '../context/ThemeContext';
+import { useTour } from '../tour';
 
 const INPUT_CLS =
   'w-full h-11 px-4 text-sm bg-white dark:bg-[#101828] border border-slate-200 dark:border-[#243048] hover:border-slate-300 dark:hover:border-[#7BBDE8]/60 focus:border-blue-600 dark:focus:border-[#7BBDE8] focus:ring-4 focus:ring-blue-500/15 dark:focus:ring-[#7BBDE8]/15 rounded-xl outline-none transition-colors text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6EA2B3]';
@@ -11,6 +12,8 @@ const LABEL_CLS = 'block text-xs font-semibold uppercase tracking-wider text-sla
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { resetTour, clearTourData } = useTour();
+  const [tourMsg, setTourMsg] = useState<string | null>(null);
   const currentPasswordId = useId();
   const newPasswordId = useId();
   const confirmPasswordId = useId();
@@ -151,7 +154,7 @@ export function SettingsPage() {
       </div>
 
       {/* ── CARD 1.5: PENGATURAN TEMA GELAP / TERANG ── */}
-      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-4 border border-[#243048]">
+      <div data-tour="settings-theme" className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-4 border border-[#243048]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-bold text-white">Mode Tampilan (Dark &amp; Light Mode)</h2>
@@ -188,8 +191,58 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {/* ── CARD 1.8: PANDUAN TUR ONBOARDING INTERAKTIF ── */}
+      <div data-tour="settings-tour" className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-4 border border-[#243048]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <FontAwesome name="compass" className="text-sm text-[#7BBDE8]" />
+              <span>Panduan Interaktif &amp; Tur Pengguna</span>
+            </h2>
+            <p className="text-xs text-[#6EA2B3] mt-0.5">
+              Pelajari kembali fitur dan alur kerja GovConnect, atau reset preferensi tur pada peramban ini.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                resetTour();
+                setTourMsg('Tur tutorial berhasil di-reset. Panduan akan muncul secara kontekstual di Dasbor, Profil, dan Grup Layanan.');
+                setTimeout(() => setTourMsg(null), 4000);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] transition-colors cursor-pointer shadow-xs"
+            >
+              <FontAwesome name="play" className="text-xs" />
+              <span>Ulangi Tur Tutorial</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                clearTourData();
+                setTourMsg('Data riwayat tur berhasil dibersihkan dari peramban.');
+                setTimeout(() => setTourMsg(null), 3500);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-[#6EA2B3] hover:text-white bg-[#101828] hover:bg-[#243048] border border-[#243048] transition-colors cursor-pointer"
+            >
+              <FontAwesome name="trash" className="text-xs" />
+              <span>Hapus Riwayat Tur</span>
+            </button>
+          </div>
+        </div>
+
+        {tourMsg && (
+          <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl flex items-center gap-2">
+            <FontAwesome name="circle-check" className="text-emerald-400 text-xs" />
+            <span>{tourMsg}</span>
+          </div>
+        )}
+      </div>
+
       {/* ── CARD 2: GANTI KATA SANDI ── */}
-      <div className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+      <div data-tour="settings-security" className="bg-[#171F2F] rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
         <div className="flex items-center justify-between pb-1">
           <div>
             <h2 className="text-base font-bold text-white">Perbarui Kata Sandi Akun</h2>

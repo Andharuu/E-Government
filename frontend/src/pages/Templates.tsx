@@ -398,6 +398,7 @@ export function TemplatesPage() {
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
+            data-tour="templates-create"
             className="inline-flex items-center gap-2 h-10 px-4 text-[13px] font-bold text-[#101828] bg-[#7BBDE8] hover:bg-[#92cbef] rounded-xl transition-colors cursor-pointer shadow-xs"
           >
             <FontAwesome name="plus" variant="solid" className="text-xs" />
@@ -406,8 +407,40 @@ export function TemplatesPage() {
         </div>
       </div>
 
+      {/* ── Extension Download Banner (Target Tur Onboarding) ── */}
+      <div
+        data-tour="extension-download"
+        className="bg-gradient-to-r from-[#0A4174]/40 via-[#171F2F] to-[#171F2F] border border-[#243048] rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#7BBDE8]/15 border border-[#7BBDE8]/30 text-[#7BBDE8] flex items-center justify-center text-xl shrink-0">
+            <FontAwesome name="puzzle-piece" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-white">Pasang Ekstensi Browser GovConnect</h2>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#7BBDE8]/20 text-[#7BBDE8]">
+                Manifest V3
+              </span>
+            </div>
+            <p className="text-xs text-[#6EA2B3] mt-1 max-w-xl">
+              Unduh paket ekstensi Chromium untuk mengaktifkan pendeteksian otomatis dan pengisian instan formulir di seluruh portal e-government.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="/govconnect-extension.zip"
+          download="govconnect-extension.zip"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7BBDE8] hover:bg-[#92cbef] text-[#101828] text-xs font-bold transition-all shrink-0 cursor-pointer shadow-md hover:shadow-lg hover:shadow-[#7BBDE8]/20"
+        >
+          <FontAwesome name="download" />
+          <span>Unduh Ekstensi (.zip)</span>
+        </a>
+      </div>
+
       {/* Kategori Filter Pills & Counter (Mirrors PublicServices design) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+      <div data-tour="templates-categories" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           {templateCategories.map(cat => {
             const isAct = activeCategoryFilter === cat.id;
@@ -441,7 +474,7 @@ export function TemplatesPage() {
       </div>
 
       {/* Grid of Templates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div data-tour="templates-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTemplates.map(template => {
           const readiness = getReadiness(template);
           const isCopied = copySuccessId === template.id;

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { TourProvider, TourOverlay } from './tour';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { Landing } from './pages/Landing';
@@ -102,9 +103,12 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
+          <TourProvider>
+            <TourOverlay />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
+          </TourProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

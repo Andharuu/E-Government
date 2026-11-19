@@ -406,6 +406,7 @@ export function Dashboard() {
           type="button"
           onClick={handleRefresh}
           disabled={refreshing}
+          data-tour="dashboard-refresh"
           aria-label="Segarkan data ringkasan dashboard"
           className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#171F2F] hover:bg-[#243048] border border-[#243048] text-xs font-semibold text-[#BDD8E9] hover:text-white transition-all duration-200 active:scale-95 cursor-pointer self-start sm:self-auto disabled:opacity-50 shadow-sm group"
         >
@@ -418,7 +419,7 @@ export function Dashboard() {
       </div>
 
       {/* Row 1: 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="dashboard-kpi" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="group rounded-2xl bg-[#171F2F] p-5 flex flex-col justify-between shadow-sm border border-[#243048]/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#385175]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold tracking-wider uppercase text-[#7BBDE8]">
@@ -508,7 +509,7 @@ export function Dashboard() {
       </div>
 
       {/* Row 2: Box Aktivitas Pengisian Formulir (Memanjang Penuh di Layar / Full Width) */}
-      <div className="w-full rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col transition-all duration-300 hover:border-[#385175]">
+      <div data-tour="dashboard-trend" className="w-full rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col transition-all duration-300 hover:border-[#385175]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-base font-bold text-white">Aktivitas Pengisian Formulir</h2>
@@ -620,7 +621,7 @@ export function Dashboard() {
       {/* Row 3: Hasil Pengisian Formulir (Kiri Bawah) & Ringkasan Audit Privasi (Kanan Bawah) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Box Kiri Bawah: Hasil Pengisian Formulir (Desain TailAdmin Sessions By Device, Tanpa Titik Tiga & Legend Horizontal) */}
-        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
+        <div data-tour="dashboard-results" className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
           <div className="flex items-center justify-between pb-2">
             <div>
               <h2 className="text-base font-bold text-white">Hasil Pengisian Formulir</h2>
@@ -718,7 +719,7 @@ export function Dashboard() {
         </div>
 
         {/* Box Kanan Bawah: Ringkasan Audit Privasi (Tanpa Badge, Tanpa Garis Pembatas, Icon Selaras) */}
-        <div className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
+        <div data-tour="dashboard-privacy" className="rounded-2xl bg-[#171F2F] p-6 border border-[#243048] shadow-sm flex flex-col justify-between transition-all duration-300 hover:border-[#385175]">
           <div className="flex items-center justify-between pb-2">
             <div>
               <h2 className="text-base font-bold text-white">Ringkasan Audit Privasi</h2>
