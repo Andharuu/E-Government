@@ -8,12 +8,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 # ============================================================
 class UserCreate(BaseModel):
     email: EmailStr = Field(..., description="Alamat email valid")
-    password: str = Field(..., min_length=6, description="Password minimal 6 karakter")
+    password: str = Field(..., min_length=6, max_length=128, description="Password minimal 6 dan maksimal 128 karakter")
 
 
 class PasswordChangeRequest(BaseModel):
-    old_password: str = Field(..., description="Password saat ini")
-    new_password: str = Field(..., min_length=6, description="Password baru minimal 6 karakter")
+    old_password: str = Field(..., max_length=128, description="Password saat ini")
+    new_password: str = Field(..., min_length=6, max_length=128, description="Password baru minimal 6 dan maksimal 128 karakter")
 
 
 class UserResponse(BaseModel):

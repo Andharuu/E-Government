@@ -35,9 +35,9 @@ function isGovConnectDashboardPage() {
     const path = (window.location.pathname || "").toLowerCase();
     const title = (document.title || "").toLowerCase();
 
-    // 1. Host local dev port atau environment GovConnect (5173, 5174, 3000, 4173)
+    // 1. Host local dev port atau environment GovConnect (5173, 4173)
     if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && 
-        (port === "5173" || port === "5174" || port === "3000" || port === "4173")) {
+        (port === "5173" || port === "4173")) {
       return true;
     }
 
@@ -532,10 +532,15 @@ function querySelectorAllDeep(selector, root = document) {
 
 function getAllFormFields() {
   const standardInputs = querySelectorAllDeep(
-    "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]), select, textarea"
+    "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=password]):not([type=image]), select, textarea"
   ).filter(el => {
     // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
     if (el.closest(".p-hidden-accessible, .cdk-visually-hidden, [aria-hidden='true']")) {
+      return false;
+    }
+    // Perlindungan ketat: Tolak mutlak seluruh kolom kata sandi (password)
+    const type = (el.type || el.getAttribute("type") || "").toLowerCase();
+    if (type === "password") {
       return false;
     }
     // Abaikan input jika berada di dalam p-dropdown kecuali jika berupa search filter
@@ -550,7 +555,12 @@ function getAllFormFields() {
   );
 
   const all = [...standardInputs, ...customDropdowns];
-  return all.filter(el => el && el.isConnected);
+  return all.filter(el => {
+    if (!el || !el.isConnected) return false;
+    const type = (el.type || el.getAttribute("type") || "").toLowerCase();
+    if (type === "password") return false;
+    return true;
+  });
 }
 
 // ============================================================
@@ -1216,6 +1226,11 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
   const inputs = getAllFormFields();
 
   for (const el of inputs) {
+    const inputType = (el.type || el.getAttribute("type") || "").toLowerCase();
+    if (inputType === "password") {
+      continue;
+    }
+
     const profileKey = await matchProfileKey(el);
     if (!profileKey) continue;
 
@@ -1241,7 +1256,10 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
     badge.style.animationDelay = `${Math.min(activeMarkers.length * 35, 450)}ms`;
     const label = MARKER_LABELS[profileKey] || profileKey;
     badge.title = val ? `Siap mengisi: ${val}` : `Kolom terdeteksi: ${label}`;
-    badge.innerHTML = `<span>${label}</span>`;
+    badge.textContent = "";
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = label;
+    badge.appendChild(labelSpan);
 
     badge.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1320,7 +1338,14 @@ function markFieldsAsFilled(filledKeys, profile) {
         badge.classList.remove("govconnect-badge-fadeout");
         badge.className = "govconnect-badge govconnect-badge-filled";
         const label = MARKER_LABELS[profileKey] || profileKey;
-        badge.innerHTML = `<span class="govconnect-badge-icon">✓</span><span>Terisi: ${label}</span>`;
+        badge.textContent = "";
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "govconnect-badge-icon";
+        iconSpan.textContent = "✓";
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = `Terisi: ${label}`;
+        badge.appendChild(iconSpan);
+        badge.appendChild(labelSpan);
         if (profile && profile[profileKey]) {
           badge.title = `Berhasil diisi: ${profile[profileKey]}`;
         }
@@ -1829,6 +1854,10 @@ async function detectFields() {
   const detected = [];
   for (const el of inputs) {
     try {
+      const inputType = (el.type || el.getAttribute("type") || "").toLowerCase();
+      if (inputType === "password") {
+        continue;
+      }
       const profileKey = await matchProfileKey(el);
       const visible = isElementVisible(el);
       const isPrime = isPrimeNGDropdown(el);
@@ -1946,6 +1975,11 @@ async function fillForm(profile, targetFields = null) {
   let filledCount = 0;
 
   for (const el of inputs) {
+    const inputType = (el.type || el.getAttribute("type") || "").toLowerCase();
+    if (inputType === "password") {
+      continue;
+    }
+
     let profileKey = await matchProfileKey(el);
     const hostEl = el.closest("p-dropdown, mat-select") || el;
     const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
@@ -2717,6 +2751,14 @@ function computeBM25Similarity(inputTokens, kwTokens) {
 
 // ============================================================
 async function matchProfileKey(el) {
+  if (!el) return null;
+
+  // SAFEGUARD KEAMANAN KRITIS (SEC-01): Tolak mutlak seluruh elemen input kata sandi (password)
+  const inputType = (el.type || el.getAttribute("type") || "").toLowerCase();
+  if (inputType === "password") {
+    return null;
+  }
+
   // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence)
   const autoKey = getAutocompleteProfileKey(el);
   if (autoKey) return autoKey;
@@ -3075,7 +3117,6 @@ async function matchProfileKey(el) {
 
   // Fallback Semantic lewat Offscreen: Non-blocking di Background
   // Memastikan deteksi seluruh halaman selesai sub-milidetik (<5ms)
-  const inputType = (el.type || "").toLowerCase();
   const fallbackLabel = inputTokens.join(" ");
 
   if (!IS_INSIDE_IFRAME && fallbackLabel && fallbackLabel.length >= 3) {
@@ -3394,8 +3435,8 @@ document.addEventListener("change", (e) => {
   const ALLOWED_WEB_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
   ];
   const webOrigin = window.location.origin;
   const isGovConnectApp = ALLOWED_WEB_ORIGINS.includes(webOrigin);

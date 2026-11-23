@@ -233,3 +233,21 @@ def v1_models_fallback():
         "object": "list",
         "data": []
     }
+
+
+@app.api_route("/mcp", methods=["GET", "POST", "OPTIONS"], tags=["Health"])
+def mcp_probe_fallback():
+    """Endpoint kompatibilitas MCP (Model Context Protocol) probe agar tidak membanjiri log dengan 404."""
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"status": "ok", "service": "mcp-probe", "supported": False}
+    )
+
+
+@app.api_route("/.well-known/oauth-protected-resource", methods=["GET", "OPTIONS"], tags=["Health"])
+def oauth_protected_resource_probe():
+    """Endpoint kompatibilitas OAuth discovery probe agar tidak membanjiri log dengan 404."""
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"resource": settings.APP_NAME, "status": "active"}
+    )
