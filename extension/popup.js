@@ -345,26 +345,23 @@ function clearUserEmail() {
 
 async function tryAutoSyncFromOpenTabs() {
   try {
-    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend
-    if (chrome.cookies) {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend (mendukung localhost:5173, 127.0.0.1:8000, dsb.)
+    let cookieToken = null;
+    if (typeof GovConnectConfig !== "undefined" && typeof GovConnectConfig.findAuthCookie === "function") {
+      cookieToken = await GovConnectConfig.findAuthCookie();
+    } else if (chrome.cookies) {
       try {
-        const apiOrigin = new URL(typeof GovConnectConfig !== "undefined" ? GovConnectConfig.API_BASE : "http://127.0.0.1:8000").origin;
-        const cookie = await chrome.cookies.get({
-          url: apiOrigin,
-          name: "govconnect_access_token"
-        });
-        if (cookie?.value) {
-          await chrome.storage.local.set({
-            govconnect_token: cookie.value
-          });
-          return cookie.value;
+        const cookies = await chrome.cookies.getAll({ name: "govconnect_access_token" });
+        if (cookies && cookies.length > 0) {
+          const now = Date.now() / 1000;
+          const valid = cookies.find(c => !c.expirationDate || c.expirationDate > now);
+          if (valid?.value) cookieToken = valid.value;
         }
-      } catch (cookieErr) {
-        // Fallback ke tab extraction bila cookie belum terbaca
-      }
+      } catch (_) {}
     }
 
     // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
+    let email = "";
     const tabs = await chrome.tabs.query({});
     const dashboardTab = tabs.find(t => {
       if (!t.url) return false;
@@ -380,24 +377,29 @@ async function tryAutoSyncFromOpenTabs() {
     });
 
     if (dashboardTab?.id) {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: dashboardTab.id },
-        func: () => {
-          return {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: dashboardTab.id },
+          func: () => ({
             token: localStorage.getItem("govconnect_token"),
             email: localStorage.getItem("govconnect_email")
-          };
-        }
-      });
-
-      const extracted = results?.[0]?.result;
-      if (extracted?.token) {
-        await chrome.storage.local.set({
-          govconnect_token: extracted.token,
-          govconnect_email: extracted.email || ""
+          })
         });
-        return extracted.token;
-      }
+
+        const extracted = results?.[0]?.result;
+        if (extracted?.email) email = extracted.email;
+        if (!cookieToken && extracted?.token) {
+          cookieToken = extracted.token;
+        }
+      } catch (_) {}
+    }
+
+    if (cookieToken) {
+      await chrome.storage.local.set({
+        govconnect_token: cookieToken,
+        ...(email ? { govconnect_email: email } : {})
+      });
+      return cookieToken;
     }
   } catch (err) {
     console.log("Auto-sync from open tabs in popup:", err);

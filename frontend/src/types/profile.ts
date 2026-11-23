@@ -7,6 +7,7 @@ export interface CustomFieldItem {
   label: string;
   value: string;
   type?: CustomFieldType;
+  aliases?: string[];
   photoData?: string;
   photoName?: string;
   photoSize?: number;

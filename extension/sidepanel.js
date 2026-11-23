@@ -28,6 +28,7 @@ let cachedProfile = null;
 let detectedFields = [];
 let currentTab = null;
 let customFieldLabels = {};
+let domainMappingsCache = {};
 let allDetectedResult = null;
 let currentActiveScreen = "screenDetect";
 let isAutofillingInProgress = false;
@@ -36,6 +37,112 @@ let isScanningActive = false;
 let hasPendingScan = false;
 let formUpdateDebounceTimer = null;
 let detectedFrameId = 0;
+
+function getDomainFromUrl(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (e) {
+    return "";
+  }
+}
+
+async function loadDomainMappings(domain) {
+  if (!domain) return;
+  const token = await getToken();
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/mappings?domain=${encodeURIComponent(domain)}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      domainMappingsCache = {};
+      if (Array.isArray(data)) {
+        data.forEach(m => {
+          if (m.website_field && m.govconnect_field) {
+            domainMappingsCache[m.website_field] = m.govconnect_field;
+          }
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("GovConnect: Gagal memuat domain mappings:", e);
+  }
+}
+
+async function saveDomainMapping(domain, fieldIdentifier, govconnectField) {
+  const token = await getToken();
+  if (!token || !domain || !fieldIdentifier || !govconnectField) return;
+  try {
+    await fetch(`${API_BASE}/mappings`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        website_domain: domain,
+        website_field: fieldIdentifier,
+        govconnect_field: govconnectField,
+        selector_query: fieldIdentifier.startsWith("#") ? fieldIdentifier : `[name="${fieldIdentifier}"]`
+      })
+    });
+  } catch (e) {
+    console.warn("GovConnect: Gagal menyimpan mapping ke server:", e);
+  }
+}
+
+function renderFieldOptionsHtml(currentSelectedKey) {
+  let html = `<option value="">-- Pilih Data Profil / Kustom --</option>`;
+
+  // 1. Group Kolom Kustom Pengguna
+  const customKeys = Object.keys(customFieldLabels);
+  if (customKeys.length > 0) {
+    html += `<optgroup label="Kolom Kustom Pengguna">`;
+    customKeys.forEach(k => {
+      const selected = k === currentSelectedKey ? "selected" : "";
+      const val = cachedProfile ? cachedProfile[k] : "";
+      const valSnippet = val ? ` (${truncate(val, 15)})` : "";
+      html += `<option value="${escapeHtml(k)}" ${selected}>${escapeHtml(customFieldLabels[k])}${escapeHtml(valSnippet)}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  // 2. Group Standar
+  const standardKeys = [
+    { key: "full_name", label: "Nama Lengkap" },
+    { key: "first_name", label: "Nama Depan" },
+    { key: "last_name", label: "Nama Belakang" },
+    { key: "nik", label: "NIK (KTP)" },
+    { key: "phone", label: "Nomor HP / WhatsApp" },
+    { key: "email", label: "Email" },
+    { key: "address", label: "Alamat Lengkap" },
+    { key: "city", label: "Kota / Kabupaten" },
+    { key: "province", label: "Provinsi" },
+    { key: "postal_code", label: "Kode Pos" },
+    { key: "birth_date", label: "Tanggal Lahir" },
+    { key: "birth_place", label: "Tempat Lahir" },
+    { key: "gender", label: "Jenis Kelamin" },
+    { key: "occupation", label: "Pekerjaan" },
+    { key: "organization", label: "Instansi / Perusahaan" },
+    { key: "education_level", label: "Pendidikan Terakhir" },
+    { key: "mother_name", label: "Nama Ibu Kandung" },
+    { key: "npwp", label: "Nomor NPWP" },
+    { key: "bpjs_number", label: "Nomor BPJS" },
+    { key: "driver_license", label: "Nomor SIM" }
+  ];
+
+  html += `<optgroup label="Data Profil Standar">`;
+  standardKeys.forEach(item => {
+    const selected = item.key === currentSelectedKey ? "selected" : "";
+    const val = cachedProfile ? cachedProfile[item.key] : "";
+    const valSnippet = val ? ` (${truncate(val, 15)})` : "";
+    html += `<option value="${item.key}" ${selected}>${item.label}${escapeHtml(valSnippet)}</option>`;
+  });
+  html += `</optgroup>`;
+
+  return html;
+}
 
 function parseBirthDate(dateStr) {
   if (!dateStr) return { day: "", month: "", year: "" };
@@ -189,6 +296,27 @@ function processCustomFields(profile) {
       if (item && item.key) {
         profile[item.key] = item.value;
         customFieldLabels[item.key] = item.label || item.key;
+
+        // Auto-Cross-Binding cerdas ke profil standar jika field standar kosong
+        const valStr = (item.value || "").toString().trim();
+        const lowerK = `${item.key} ${item.label || ""}`.toLowerCase();
+        if (valStr) {
+          if (!profile.driver_license && (lowerK.includes("sim") || lowerK.includes("mengemudi") || lowerK.includes("driver"))) {
+            profile.driver_license = item.value;
+          }
+          if (!profile.npwp && (lowerK.includes("npwp") || lowerK.includes("tax") || lowerK.includes("wajib_pajak"))) {
+            profile.npwp = item.value;
+          }
+          if (!profile.bpjs_number && lowerK.includes("bpjs")) {
+            profile.bpjs_number = item.value;
+          }
+          if (!profile.passport && (lowerK.includes("paspor") || lowerK.includes("passport"))) {
+            profile.passport = item.value;
+          }
+          if (!profile.nik && (lowerK.includes("nik") || lowerK.includes("ktp") || lowerK.includes("kependudukan"))) {
+            profile.nik = item.value;
+          }
+        }
       }
     });
 
@@ -404,8 +532,10 @@ chrome.runtime.onMessage.addListener(async (message) => {
         hasPendingScan = true;
         return;
       }
-      detectPageFieldsWithFluidScan();
-    }, 350);
+      // Jika pengguna sudah berada di screenDetect, jalankan silent update agar tidak flicker/reload
+      const isAlreadyOnDetect = (currentActiveScreen === "screenDetect");
+      detectPageFieldsWithFluidScan({ silent: isAlreadyOnDetect });
+    }, 600);
   }
 });
 
@@ -445,7 +575,9 @@ function updatePageHeader(tab) {
 // ============================================================
 // FLUID SCANNING TRANSITION: Pindai halaman dengan animasi jeda
 // ============================================================
-async function detectPageFieldsWithFluidScan() {
+async function detectPageFieldsWithFluidScan(options = {}) {
+  const silent = !!(options && options.silent);
+
   if (isScanningActive) {
     hasPendingScan = true;
     return;
@@ -455,20 +587,22 @@ async function detectPageFieldsWithFluidScan() {
   try {
     currentTab = await getActiveTab();
     if (!currentTab?.id) {
-      showScreen("screenUnsupported");
+      if (!silent) showScreen("screenUnsupported");
       return;
     }
 
     if (currentTab.url?.startsWith("chrome://") || currentTab.url?.startsWith("chrome-extension://")) {
-      showScreen("screenUnsupported");
+      if (!silent) showScreen("screenUnsupported");
       return;
     }
 
     updatePageHeader(currentTab);
 
-    // Tampilkan layar pemindaian
-    showScreen("screenScanning");
-    setScanPhase("form", "Memindai Formulir...", "Menganalisis kolom input web...", "60%");
+    // Tampilkan layar pemindaian HANYA jika bukan silent scan
+    if (!silent) {
+      showScreen("screenScanning");
+      setScanPhase("form", "Memindai Formulir...", "Menganalisis kolom input web...", "60%");
+    }
 
     // 1. Coba kirim pesan deteksi langsung ke top frame ({ frameId: 0 }) agar respon tidak dicuri oleh iklan/iframe lain
     let result = await sendMessageToTab(currentTab.id, {
@@ -504,27 +638,59 @@ async function detectPageFieldsWithFluidScan() {
       }
     }
 
-    if (!result || result.total === 0 || (result.matched === 0 && result.hiddenMatchedCount === 0)) {
-      showScreen("screenUnsupported");
+    // Muat domain mapping yang tersimpan di backend
+    const currentDomain = getDomainFromUrl(currentTab?.url);
+    await loadDomainMappings(currentDomain);
+
+    if (result && Array.isArray(result.fields)) {
+      result.fields.forEach(f => {
+        const idKey = f.id || f.name;
+        if (!f.profileKey && idKey && domainMappingsCache[idKey]) {
+          f.profileKey = domainMappingsCache[idKey];
+          f.status = "matched";
+          f.isCustomMapped = true;
+        }
+      });
+      // Re-calculate matched counters
+      const visibleMatched = result.fields.filter(d => d.profileKey && d.isVisible);
+      const hiddenMatched = result.fields.filter(d => d.profileKey && !d.isVisible);
+      result.matched = visibleMatched.length;
+      result.hiddenMatchedCount = hiddenMatched.length;
+    }
+
+    if (!result || result.total === 0) {
+      if (!silent) showScreen("screenUnsupported");
       return;
+    }
+
+    // Jika mode silent, cek apakah struktur kolom berubah. Jika identik, jangan buang DOM yang sedang dilihat pengguna
+    if (silent && allDetectedResult && Array.isArray(allDetectedResult.fields)) {
+      const prevSig = (allDetectedResult.fields || []).map(f => `${f.id || ''}_${f.name || ''}_${f.profileKey || ''}_${f.status || ''}`).join('|');
+      const newSig = (result.fields || []).map(f => `${f.id || ''}_${f.name || ''}_${f.profileKey || ''}_${f.status || ''}`).join('|');
+      if (prevSig === newSig) {
+        return;
+      }
     }
 
     allDetectedResult = result;
     renderFieldList();
-    showScreen("screenDetect");
+    if (!silent || currentActiveScreen !== "screenDetect") {
+      showScreen("screenDetect");
+    }
 
   } catch (err) {
     console.warn("Scan failed:", err);
-    showScreen("screenUnsupported");
+    if (!silent) showScreen("screenUnsupported");
   } finally {
     isScanningActive = false;
     if (hasPendingScan) {
       hasPendingScan = false;
       setTimeout(() => {
         if (!isAutofillingInProgress && currentActiveScreen !== "screenResult") {
-          detectPageFieldsWithFluidScan();
+          const isAlreadyOnDetect = (currentActiveScreen === "screenDetect");
+          detectPageFieldsWithFluidScan({ silent: isAlreadyOnDetect });
         }
-      }, 200);
+      }, 300);
     }
   }
 }
@@ -616,6 +782,8 @@ function renderEmptyFieldState(container, detectCountEl) {
 function renderFieldList() {
   const container = document.getElementById("fieldList");
   const detectCountEl = document.getElementById("detectCount");
+  const scrollWrap = document.querySelector(".fields-scroll-wrap");
+  const prevScrollTop = scrollWrap ? scrollWrap.scrollTop : 0;
 
   container.innerHTML = "";
   if (!allDetectedResult) {
@@ -624,6 +792,7 @@ function renderFieldList() {
   }
 
   const allMatched = (allDetectedResult.fields || []).filter(f => f.profileKey);
+  const allUnmatched = (allDetectedResult.fields || []).filter(f => !f.profileKey);
 
   detectedFields = allMatched;
 
@@ -631,28 +800,33 @@ function renderFieldList() {
     detectCountEl.textContent = `${detectedFields.length} Kolom Terdeteksi`;
   }
 
-  // Samakan status chrome dengan kondisi daftar: jangan tampilkan "Siap Isi"
-  // atau kontrol pemilihan saat tidak ada kolom sama sekali.
   const statusPill = document.querySelector(".detect-status-pill");
   const selControls = document.querySelector(".selection-controls");
-  const hasFields = detectedFields.length > 0;
+  const hasMatchedFields = detectedFields.length > 0;
+  const hasAnyFields = (allDetectedResult.fields || []).length > 0;
+
   if (statusPill) {
-    statusPill.innerHTML = hasFields
+    statusPill.innerHTML = hasMatchedFields
       ? '<i class="fa-solid fa-bolt" style="font-size: 10px;"></i><span>Siap Isi</span>'
+      : hasAnyFields
+      ? '<i class="fa-solid fa-sliders" style="font-size: 10px;"></i><span>Atur Pemetaan</span>'
       : '<i class="fa-solid fa-circle-info" style="font-size: 10px;"></i><span>Belum ada kolom</span>';
   }
-  if (selControls) selControls.style.display = hasFields ? "" : "none";
+  if (selControls) selControls.style.display = hasMatchedFields ? "" : "none";
 
-  if (detectedFields.length === 0) {
+  if (!hasAnyFields) {
     renderEmptyFieldState(container, detectCountEl);
     return;
   }
 
+  const currentDomain = getDomainFromUrl(currentTab?.url);
+
+  // 1. Render Matched Fields
   detectedFields.forEach((field, i) => {
     const uid = getFieldUid(field, i);
     const profileValue = cachedProfile ? cachedProfile[field.profileKey] : null;
     const hasValue = !!(profileValue && profileValue.toString().trim() !== "");
-    const isVis = field.isVisible;
+    const isCustom = field.profileKey && (customFieldLabels[field.profileKey] !== undefined || field.isCustomMapped);
 
     let isChecked = false;
     if (uid in userSelectedMap) {
@@ -672,11 +846,22 @@ function renderFieldList() {
     item.innerHTML = `
       <input type="checkbox" id="chk_${i}" class="field-checkbox" data-index="${i}" data-uid="${uid}" ${isChecked ? "checked" : ""} ${!hasValue ? "disabled" : ""}>
       <div class="field-content">
-        <div class="field-name">
-          <span>${escapeHtml(field.name || field.id || formatFieldLabel(field.profileKey) || "(field)")}</span>
+        <div class="field-name" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+          <span style="display: inline-flex; align-items: center; gap: 4px; min-width: 0;">
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(field.name || field.id || formatFieldLabel(field.profileKey) || "(field)")}</span>
+            ${isCustom ? '<span class="badge-custom" title="Kolom Kustom Profil"><i class="fa-solid fa-puzzle-piece" style="font-size: 7.5px;"></i> Kustom</span>' : ''}
+          </span>
+          <button type="button" class="btn-field-remap" id="btnRemap_${i}" title="Ubah Pemetaan Kolom">
+            <i class="fa-solid fa-sliders" style="font-size: 9.5px;"></i>
+          </button>
         </div>
         <div class="field-meta">
           <span>${escapeHtml(formatFieldLabel(field.profileKey))}:</span> ${hasValue ? `<span class="field-val-matched">${escapeHtml(truncate(profileValue, 24))}</span>` : "<span class='field-val-empty'>Data belum ada di profil</span>"}
+        </div>
+        <div class="field-remap-wrap" id="remapWrap_${i}" style="display: none; margin-top: 4px;">
+          <select class="remap-select" id="remapSelect_${i}">
+            ${renderFieldOptionsHtml(field.profileKey)}
+          </select>
         </div>
       </div>
       <span class="status-pill ${hasValue ? "matched" : "empty"}">
@@ -715,8 +900,36 @@ function renderFieldList() {
       });
     }
 
+    const btnRemap = item.querySelector(`#btnRemap_${i}`);
+    const remapWrap = item.querySelector(`#remapWrap_${i}`);
+    const remapSelect = item.querySelector(`#remapSelect_${i}`);
+
+    if (btnRemap && remapWrap && remapSelect) {
+      btnRemap.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = remapWrap.style.display !== "none";
+        remapWrap.style.display = isOpen ? "none" : "block";
+      });
+
+      remapSelect.addEventListener("click", (e) => e.stopPropagation());
+      remapSelect.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const newKey = remapSelect.value;
+        if (!newKey) return;
+        field.profileKey = newKey;
+        field.isCustomMapped = true;
+        const fId = field.id || field.name;
+        if (fId && currentDomain) {
+          domainMappingsCache[fId] = newKey;
+          saveDomainMapping(currentDomain, fId, newKey);
+        }
+        userSelectedMap[uid] = true;
+        renderFieldList();
+      });
+    }
+
     item.addEventListener("click", (e) => {
-      if (e.target.tagName.toLowerCase() === "input") {
+      if (e.target.tagName.toLowerCase() === "input" || e.target.tagName.toLowerCase() === "select" || e.target.closest(".btn-field-remap") || e.target.closest(".field-remap-wrap")) {
         return;
       }
       if (chk && !chk.disabled) {
@@ -731,8 +944,77 @@ function renderFieldList() {
     container.appendChild(item);
   });
 
+  // 2. Render Unmatched Fields Section (jika ada form input yang belum terpetakan)
+  if (allUnmatched.length > 0) {
+    const unmatchedSection = document.createElement("div");
+    unmatchedSection.className = "unmatched-section";
+    const defaultOpen = allMatched.length === 0;
+
+    unmatchedSection.innerHTML = `
+      <button type="button" class="unmatched-toggle-btn" id="btnToggleUnmatched">
+        <span><i class="fa-solid fa-circle-question" style="font-size: 11px; margin-right: 5px; color: var(--ink-3);"></i>Kolom Belum Terpetakan (${allUnmatched.length})</span>
+        <i class="fa-solid fa-chevron-down" id="iconUnmatchedChevron" style="font-size: 10px; transition: transform 0.2s ease; ${defaultOpen ? 'transform: rotate(180deg);' : ''}"></i>
+      </button>
+      <div class="unmatched-content" id="unmatchedContent" style="display: ${defaultOpen ? 'flex' : 'none'};">
+        <p style="font-size: 10.5px; color: var(--ink-3); margin-bottom: 2px;">Petakan kolom web liar di bawah ke kolom profil atau kustom Anda:</p>
+      </div>
+    `;
+
+    const unmatchedContent = unmatchedSection.querySelector("#unmatchedContent");
+    allUnmatched.forEach((uField, uIdx) => {
+      const uItem = document.createElement("div");
+      uItem.className = "field-item is-unmatched";
+      const uName = uField.name || uField.id || `Input #${uIdx + 1}`;
+      uItem.innerHTML = `
+        <div style="min-width: 0; width: 100%;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; font-weight: 600; color: var(--ink);">
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(uName)}</span>
+            <span style="font-size: 9.5px; color: var(--ink-3); font-weight: normal;">${escapeHtml(uField.placeholder ? `(${truncate(uField.placeholder, 18)})` : '')}</span>
+          </div>
+          <select class="remap-select" id="unmatchedSelect_${uIdx}">
+            ${renderFieldOptionsHtml("")}
+          </select>
+        </div>
+      `;
+
+      const uSelect = uItem.querySelector(`#unmatchedSelect_${uIdx}`);
+      uSelect.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const chosenKey = uSelect.value;
+        if (!chosenKey) return;
+        uField.profileKey = chosenKey;
+        uField.status = "matched";
+        uField.isCustomMapped = true;
+
+        const fId = uField.id || uField.name;
+        if (fId && currentDomain) {
+          domainMappingsCache[fId] = chosenKey;
+          saveDomainMapping(currentDomain, fId, chosenKey);
+        }
+
+        renderFieldList();
+      });
+
+      unmatchedContent.appendChild(uItem);
+    });
+
+    const toggleBtn = unmatchedSection.querySelector("#btnToggleUnmatched");
+    const chevron = unmatchedSection.querySelector("#iconUnmatchedChevron");
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = unmatchedContent.style.display === "none";
+      unmatchedContent.style.display = isHidden ? "flex" : "none";
+      chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+    });
+
+    container.appendChild(unmatchedSection);
+  }
+
   updateSelectionUI();
   syncMarkersWithCheckedFields();
+
+  if (scrollWrap && prevScrollTop > 0) {
+    scrollWrap.scrollTop = prevScrollTop;
+  }
 }
 
 function syncMarkersWithCheckedFields() {
@@ -1203,46 +1485,50 @@ function escapeHtml(str) {
 // ============================================================
 async function tryAutoSyncFromOpenTabs() {
   try {
-    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly backend (via chrome.cookies API)
-    if (chrome.cookies) {
+    // 1. Coba sinkronisasi langsung dari Cookie HttpOnly (mendukung localhost:5173, 127.0.0.1:8000, dsb.)
+    let cookieToken = null;
+    if (typeof GovConnectConfig !== "undefined" && typeof GovConnectConfig.findAuthCookie === "function") {
+      cookieToken = await GovConnectConfig.findAuthCookie();
+    } else if (chrome.cookies) {
       try {
-        const apiOrigin = new URL(typeof API_BASE !== "undefined" ? API_BASE : "http://127.0.0.1:8000").origin;
-        const cookie = await chrome.cookies.get({
-          url: apiOrigin,
-          name: "govconnect_access_token"
-        });
-        if (cookie?.value) {
-          await chrome.storage.local.set({
-            govconnect_token: cookie.value
-          });
-          return cookie.value;
+        const cookies = await chrome.cookies.getAll({ name: "govconnect_access_token" });
+        if (cookies && cookies.length > 0) {
+          const now = Date.now() / 1000;
+          const valid = cookies.find(c => !c.expirationDate || c.expirationDate > now);
+          if (valid?.value) cookieToken = valid.value;
         }
-      } catch (cookieErr) {
-        // Fallback ke tab extraction bila cookie belum terbaca
-      }
+      } catch (_) {}
     }
 
-    // 2. Fallback: ambil dari tab dashboard yang sedang terbuka
-    const tabs = await chrome.tabs.query({});
-    const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
+    // 2. Ambil informasi email atau token fallback dari tab dashboard yang sedang terbuka
+    let email = "";
+    try {
+      const tabs = await chrome.tabs.query({});
+      const dashboardTab = tabs.find(t => isGovConnectDashboardUrl(t.url));
 
-    if (dashboardTab?.id) {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: dashboardTab.id },
-        func: () => ({
-          token: localStorage.getItem("govconnect_token"),
-          email: localStorage.getItem("govconnect_email")
-        })
-      });
-
-      const extracted = results?.[0]?.result;
-      if (extracted?.token) {
-        await chrome.storage.local.set({
-          govconnect_token: extracted.token,
-          govconnect_email: extracted.email || ""
+      if (dashboardTab?.id) {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: dashboardTab.id },
+          func: () => ({
+            token: localStorage.getItem("govconnect_token"),
+            email: localStorage.getItem("govconnect_email")
+          })
         });
-        return extracted.token;
+
+        const extracted = results?.[0]?.result;
+        if (extracted?.email) email = extracted.email;
+        if (!cookieToken && extracted?.token) {
+          cookieToken = extracted.token;
+        }
       }
+    } catch (_) {}
+
+    if (cookieToken) {
+      await chrome.storage.local.set({
+        govconnect_token: cookieToken,
+        ...(email ? { govconnect_email: email } : {})
+      });
+      return cookieToken;
     }
   } catch (err) {
     console.warn("Auto-sync error:", err);
@@ -1288,10 +1574,14 @@ function setupAuthListeners() {
       if (alertEl) alertEl.style.display = "none";
 
       try {
+        const formParams = new URLSearchParams();
+        formParams.append("username", email);
+        formParams.append("password", password);
+
         const res = await fetch(`${API_BASE}/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formParams.toString()
         });
 
         const data = await res.json();

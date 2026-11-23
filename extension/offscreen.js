@@ -142,6 +142,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // Sinkronisasi pembaruan profil pengguna ke embedding custom fields secara dinamis
+  if (message.action === "PROFILE_UPDATED" || message.action === "SET_CACHED_PROFILE") {
+    if (message.profile && message.profile.custom_fields) {
+      getExtractor().then(extractor => {
+        updateCustomFieldEmbeddings(extractor, message.profile.custom_fields);
+      }).catch(err => {
+        console.warn("GovConnect Offscreen: Gagal sinkronisasi custom fields embeddings:", err);
+      });
+    }
+    if (sendResponse) sendResponse({ success: true });
+    return false;
+  }
+
 if (message.action === "SEMANTIC_FALLBACK") {
     (async () => {
         try {
@@ -249,27 +262,124 @@ const PROFILE_KEY_LABELS = {
   comments:                "catatan keterangan komentar notes remark"
 };
 
-// Cache embedding referensi agar tidak dihitung ulang setiap request
-let referenceEmbeddingsCache = null;
+// Cache embedding referensi statis (54 core keys)
+let staticReferenceEmbeddingsCache = null;
+
+// Cache embedding referensi dinamis (custom fields pengguna)
+let customReferenceEmbeddingsCache = [];
+let cachedCustomFieldsSignature = "";
+
+/**
+ * Parsing dan normalisasi custom_fields dari payload profil
+ */
+function extractCustomFieldItems(customFieldsRaw) {
+  if (!customFieldsRaw) return [];
+  try {
+    const parsed = typeof customFieldsRaw === "string" ? JSON.parse(customFieldsRaw) : customFieldsRaw;
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    if (parsed && typeof parsed === "object") {
+      if (Array.isArray(parsed.fields)) {
+        return parsed.fields;
+      }
+      return Object.entries(parsed).map(([k, v]) => ({
+        key: k,
+        label: typeof v === "object" ? (v.label || k) : k,
+        value: typeof v === "object" ? v.value : v,
+        aliases: typeof v === "object" && Array.isArray(v.aliases) ? v.aliases : undefined
+      }));
+    }
+  } catch (e) {
+    console.warn("GovConnect Offscreen: Gagal parse custom_fields:", e);
+  }
+  return [];
+}
+
+/**
+ * Menghitung embedding untuk kolom kustom pengguna secara batch
+ */
+async function updateCustomFieldEmbeddings(extractor, customFieldsRaw) {
+  const items = extractCustomFieldItems(customFieldsRaw).filter(item => item && item.key);
+  if (items.length === 0) {
+    customReferenceEmbeddingsCache = [];
+    cachedCustomFieldsSignature = "";
+    return;
+  }
+
+  // Signature untuk mencegah komputasi ulang jika tidak ada perubahan
+  const signature = JSON.stringify(items.map(i => [
+    i.key,
+    i.label || "",
+    Array.isArray(i.aliases) ? i.aliases.join(",") : ""
+  ]));
+
+  if (signature === cachedCustomFieldsSignature && customReferenceEmbeddingsCache.length > 0) {
+    return;
+  }
+
+  console.log(`GovConnect Offscreen: Menghitung dynamic embeddings untuk ${items.length} kolom kustom...`);
+
+  // Bangun teks representasi semantik kaya: label + key + aliases
+  const descriptions = items.map(item => {
+    const keyParts = (item.key || "").replace(/_/g, " ");
+    const label = item.label || "";
+    const aliasesStr = Array.isArray(item.aliases) ? item.aliases.join(" ") : "";
+    return `${label} ${keyParts} ${aliasesStr}`.trim();
+  });
+
+  try {
+    const output = await extractor(descriptions, { pooling: "mean", normalize: true });
+    const hiddenDim = output.data.length / items.length;
+
+    customReferenceEmbeddingsCache = items.map((item, i) => ({
+      key: item.key,
+      label: item.label || item.key,
+      isCustom: true,
+      vector: output.data.slice(i * hiddenDim, (i + 1) * hiddenDim)
+    }));
+
+    cachedCustomFieldsSignature = signature;
+    semanticCache.clear();
+    console.log(`GovConnect Offscreen: Berhasil mengkomputasi ${customReferenceEmbeddingsCache.length} dynamic custom embeddings.`);
+  } catch (err) {
+    console.error("GovConnect Offscreen: Gagal menghitung dynamic custom embeddings:", err);
+  }
+}
 
 async function getReferenceEmbeddings(extractor) {
-  if (referenceEmbeddingsCache) return referenceEmbeddingsCache;
+  if (!staticReferenceEmbeddingsCache) {
+    const keys   = Object.keys(PROFILE_KEY_LABELS);
+    const labels = Object.values(PROFILE_KEY_LABELS);
 
-  const keys   = Object.keys(PROFILE_KEY_LABELS);
-  const labels = Object.values(PROFILE_KEY_LABELS);
+    console.log("GovConnect Offscreen: Menghitung static embedding referensi untuk", keys.length, "profile keys...");
+    const output = await extractor(labels, { pooling: "mean", normalize: true });
 
-  console.log("GovConnect Offscreen: Menghitung embedding referensi untuk", keys.length, "profile keys...");
-  const output = await extractor(labels, { pooling: "mean", normalize: true });
+    // output.data adalah Float32Array panjang (n_keys * hidden_dim)
+    const hiddenDim = output.data.length / keys.length;
+    staticReferenceEmbeddingsCache = keys.map((key, i) => ({
+      key,
+      isCustom: false,
+      vector: output.data.slice(i * hiddenDim, (i + 1) * hiddenDim)
+    }));
 
-  // output.data adalah Float32Array panjang (n_keys * hidden_dim)
-  const hiddenDim = output.data.length / keys.length;
-  referenceEmbeddingsCache = keys.map((key, i) => ({
-    key,
-    vector: output.data.slice(i * hiddenDim, (i + 1) * hiddenDim)
-  }));
+    console.log("GovConnect Offscreen: Static embedding referensi siap. Hidden dim:", hiddenDim);
+  }
 
-  console.log("GovConnect Offscreen: Embedding referensi siap. Hidden dim:", hiddenDim);
-  return referenceEmbeddingsCache;
+  // Jika cache custom embeddings belum terisi, coba sinkronkan dari background profile cache
+  if (customReferenceEmbeddingsCache.length === 0) {
+    try {
+      const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
+      if (resp?.profile?.custom_fields) {
+        await updateCustomFieldEmbeddings(extractor, resp.profile.custom_fields);
+      }
+    } catch (e) {
+      // Background mungkin belum merespon atau belum ada profile aktif
+    }
+  }
+
+  // Gabungkan 54 kunci statis dengan custom field dinamis milik pengguna
+  return [...staticReferenceEmbeddingsCache, ...customReferenceEmbeddingsCache];
 }
 
 function cosineSimilarity(a, b) {
@@ -295,23 +405,25 @@ async function processSemanticFallback(labelText, targetElementId) {
     const queryOutput = await extractor([labelText], { pooling: "mean", normalize: true });
     const queryVector = queryOutput.data;
 
-    // 2. Ambil / bangun embedding referensi semua profile keys
+    // 2. Ambil / bangun embedding referensi semua profile keys (statis + kustom)
     const references = await getReferenceEmbeddings(extractor);
 
     // 3. Hitung cosine similarity dan temukan best match
     let bestMatchKey   = null;
     let bestMatchScore = 0;
+    let isCustomMatch  = false;
 
     for (const ref of references) {
       const score = cosineSimilarity(queryVector, ref.vector);
       if (score > bestMatchScore) {
         bestMatchScore = score;
         bestMatchKey   = ref.key;
+        isCustomMatch  = !!ref.isCustom;
       }
     }
 
     const SEMANTIC_THRESHOLD = 0.50;
-    console.log(`GovConnect Offscreen: Best match → "${bestMatchKey}" (score: ${bestMatchScore.toFixed(4)}) untuk label: "${labelText}"`);
+    console.log(`GovConnect Offscreen: Best match → "${bestMatchKey}" (score: ${bestMatchScore.toFixed(4)}, custom: ${isCustomMatch}) untuk label: "${labelText}"`);
 
     if (bestMatchScore >= SEMANTIC_THRESHOLD) {
       // 4. Kirim SEMANTIC_RESULT ke background.js agar diteruskan ke content script
@@ -319,7 +431,8 @@ async function processSemanticFallback(labelText, targetElementId) {
         action: "SEMANTIC_RESULT",
         targetElementId: targetElementId,
         profileKey: bestMatchKey,
-        score: bestMatchScore
+        score: bestMatchScore,
+        isCustom: isCustomMatch
       }).catch(() => {});
 
       return bestMatchKey;

@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.postMessage({
           type: 'GOVCONNECT_WEB_AUTH_SYNC',
           authenticated: true,
+          isLogout: false,
           email: res.data.email
         }, WEB_ORIGIN);
       })
@@ -123,19 +124,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me.data);
 
     // Broadcast ke extension content script (one-time in-memory relay untuk sinkronisasi instan)
-        window.postMessage({
-          type: 'GOVCONNECT_WEB_AUTH_SYNC',
-          token: access_token,
-          email: email
-        }, WEB_ORIGIN);
+    window.postMessage({
+      type: 'GOVCONNECT_WEB_AUTH_SYNC',
+      authenticated: true,
+      isLogout: false,
+      token: access_token,
+      email: email
+    }, WEB_ORIGIN);
 
-        return me.data;
-      };
+    return me.data;
+  };
 
-      const register = async (email: string, password: string) => {
-        await authApi.register(email, password);
-        return await login(email, password);
-      };
+  const register = async (email: string, password: string) => {
+    await authApi.register(email, password);
+    return await login(email, password);
+  };
 
   const logout = async () => {
     try {
@@ -151,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Broadcast logout ke extension content script
     window.postMessage({
       type: 'GOVCONNECT_WEB_AUTH_SYNC',
+      authenticated: false,
+      isLogout: true,
       token: null,
       email: null
     }, WEB_ORIGIN);

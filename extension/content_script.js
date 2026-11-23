@@ -75,6 +75,9 @@ const SHORT_KEYWORDS = new Set([
   "wa", "hp", "kab", "kot", "zip", "nim", "nip", "nrp", "dob", "sex", "job", "telp", "age", "sim", "day"
 ]);
 
+// Set global untuk mencatat kunci-kunci kolom kustom yang terdaftar dari profil pengguna
+const customFieldKeySet = new Set();
+
 // ============================================================
 // HTML5 Standard Autocomplete Attribute Map (W3C Standard)
 // Menjamin deteksi instan 100% akurat untuk web modern
@@ -793,6 +796,136 @@ function registerDocumentPhotos(profile) {
   }
 }
 
+/**
+ * Menghasilkan variasi kata kunci leksikal cerdas untuk kolom kustom:
+ * 1. Key mentah & variasi stripped/underscored
+ * 2. Aliases eksplisit dari profil pengguna
+ * 3. Tokenisasi kata tunggal dan bi-gram dari label kolom
+ * 4. Ekspansi singkatan umum (nomor <-> no, tanggal <-> tgl, telepon <-> telp, dll.)
+ */
+function generateCustomFieldKeywords(item) {
+  if (!item || !item.key) return [];
+  const key = item.key.toLowerCase().trim();
+  const label = (item.label || "").toLowerCase().trim();
+  const keywordsSet = new Set();
+
+  // 1. Key dasar dan variasinya
+  keywordsSet.add(key);
+  keywordsSet.add(key.replace(/_/g, ""));
+  keywordsSet.add(key.replace(/_/g, " "));
+
+  // 2. Explicit aliases dari profil/dasbor
+  if (Array.isArray(item.aliases)) {
+    item.aliases.forEach(a => {
+      if (!a || typeof a !== "string") return;
+      const cleanAlias = a.toLowerCase().trim();
+      if (!cleanAlias) return;
+      keywordsSet.add(cleanAlias);
+      keywordsSet.add(cleanAlias.replace(/[^a-z0-9]/g, "_"));
+      keywordsSet.add(cleanAlias.replace(/[^a-z0-9]/g, ""));
+      keywordsSet.add(cleanAlias.replace(/[^a-z0-9]/g, " ").trim());
+    });
+  }
+
+  // 3. Tokenisasi dan bi-gram dari label kolom
+  if (label) {
+    const cleanLabel = label.replace(/[^a-z0-9\s]/g, " ").trim();
+    keywordsSet.add(cleanLabel);
+    keywordsSet.add(cleanLabel.replace(/\s+/g, "_"));
+    keywordsSet.add(cleanLabel.replace(/\s+/g, ""));
+
+    const tokens = cleanLabel.split(/\s+/).filter(t => t.length > 1);
+    // Masukkan token individual jika bermakna (bukan stopword)
+    tokens.forEach(t => {
+      if (t.length > 2 && !["dan", "atau", "dari", "untuk", "the", "and", "for", "with"].includes(t)) {
+        keywordsSet.add(t);
+      }
+    });
+
+    // Bi-gram generation (misal: "nomor paspor", "izin usaha")
+    for (let i = 0; i < tokens.length - 1; i++) {
+      keywordsSet.add(`${tokens[i]}_${tokens[i + 1]}`);
+      keywordsSet.add(`${tokens[i]} ${tokens[i + 1]}`);
+      keywordsSet.add(`${tokens[i]}${tokens[i + 1]}`);
+    }
+  }
+
+  // 4. Ekspansi singkatan umum Bahasa Indonesia & Inggris
+  const baseList = Array.from(keywordsSet);
+  baseList.forEach(kw => {
+    // nomor <-> no
+    if (kw.includes("nomor")) {
+      keywordsSet.add(kw.replace(/\bnomor\b/g, "no"));
+      keywordsSet.add(kw.replace(/nomor_/g, "no_"));
+      keywordsSet.add(kw.replace(/_nomor/g, "_no"));
+    } else if (kw.includes("no_") || kw.startsWith("no")) {
+      keywordsSet.add(kw.replace(/\bno\b/g, "nomor"));
+      keywordsSet.add(kw.replace(/no_/g, "nomor_"));
+      keywordsSet.add(kw.replace(/_no/g, "_nomor"));
+    }
+
+    // tanggal <-> tgl
+    if (kw.includes("tanggal")) {
+      keywordsSet.add(kw.replace(/\btanggal\b/g, "tgl"));
+      keywordsSet.add(kw.replace(/tanggal_/g, "tgl_"));
+    } else if (kw.includes("tgl")) {
+      keywordsSet.add(kw.replace(/\btgl\b/g, "tanggal"));
+      keywordsSet.add(kw.replace(/tgl_/g, "tanggal_"));
+    }
+
+    // telepon <-> telp / phone
+    if (kw.includes("telepon")) {
+      keywordsSet.add(kw.replace(/telepon/g, "telp"));
+      keywordsSet.add(kw.replace(/telepon/g, "phone"));
+    } else if (kw.includes("telp")) {
+      keywordsSet.add(kw.replace(/telp/g, "telepon"));
+      keywordsSet.add(kw.replace(/telp/g, "phone"));
+    }
+
+    // kode <-> kd
+    if (kw.includes("kode")) {
+      keywordsSet.add(kw.replace(/kode/g, "kd"));
+    } else if (kw.includes("kd_")) {
+      keywordsSet.add(kw.replace(/kd_/g, "kode_"));
+    }
+
+    // kartu <-> card
+    if (kw.includes("kartu")) {
+      keywordsSet.add(kw.replace(/kartu/g, "card"));
+    } else if (kw.includes("card")) {
+      keywordsSet.add(kw.replace(/card/g, "kartu"));
+    }
+  });
+
+  // 5. Ekspansi Akronim dan Sinonim Khusus Instansi Indonesia & Internasional
+  const lowerAll = `${key} ${label}`.toLowerCase();
+  if (
+    lowerAll.includes("sim") ||
+    lowerAll.includes("mengemudi") ||
+    lowerAll.includes("driving") ||
+    lowerAll.includes("driver")
+  ) {
+    ["sim", "no_sim", "nomor_sim", "driver_license", "driving_license", "driv_lic", "driver", "license"].forEach(k => keywordsSet.add(k));
+  }
+  if (lowerAll.includes("paspor") || lowerAll.includes("passport")) {
+    ["paspor", "passport", "no_paspor", "passport_number", "passport_no", "pass_no"].forEach(k => keywordsSet.add(k));
+  }
+  if (lowerAll.includes("ktp") || lowerAll.includes("nik") || lowerAll.includes("kependudukan")) {
+    ["nik", "no_ktp", "nomor_ktp", "citizen_id", "identity_number", "ssn"].forEach(k => keywordsSet.add(k));
+  }
+  if (lowerAll.includes("npwp") || lowerAll.includes("pajak") || lowerAll.includes("tax")) {
+    ["npwp", "nomor_npwp", "no_npwp", "tax_id", "tin"].forEach(k => keywordsSet.add(k));
+  }
+  if (lowerAll.includes("stnk") || lowerAll.includes("kendaraan")) {
+    ["stnk", "nomor_stnk", "no_stnk", "plat", "plat_nomor", "nopol", "vehicle_registration"].forEach(k => keywordsSet.add(k));
+  }
+  if (lowerAll.includes("bpjs")) {
+    ["bpjs", "no_bpjs", "nomor_bpjs", "bpjs_kesehatan", "bpjs_ketenagakerjaan"].forEach(k => keywordsSet.add(k));
+  }
+
+  return Array.from(keywordsSet).filter(k => k && k.length >= 2);
+}
+
 function registerCustomProfileFields(profile) {
   if (!profile) return;
   registerDocumentPhotos(profile);
@@ -863,7 +996,8 @@ function registerCustomProfileFields(profile) {
         items = Object.entries(cf).map(([k, v]) => ({
           key: k,
           label: typeof v === "object" ? (v.label || k) : k,
-          value: typeof v === "object" ? v.value : v
+          value: typeof v === "object" ? v.value : v,
+          aliases: typeof v === "object" && Array.isArray(v.aliases) ? v.aliases : undefined
         }));
       }
     }
@@ -875,15 +1009,38 @@ function registerCustomProfileFields(profile) {
         if (!MARKER_LABELS[key]) {
           MARKER_LABELS[key] = item.label || key;
         }
+
+        // Tandai sebagai kolom kustom aktif untuk Pass 2 & Pass 3
+        customFieldKeySet.add(key);
+
+        // Auto-Cross-Binding cerdas: jika field standar profil masih kosong,
+        // isi secara otomatis dari custom field yang semakna
+        const valStr = (item.value || "").toString().trim();
+        const lowerK = `${key} ${item.label || ""}`.toLowerCase();
+        if (valStr) {
+          if (!profile.driver_license && (lowerK.includes("sim") || lowerK.includes("mengemudi") || lowerK.includes("driver"))) {
+            profile.driver_license = item.value;
+          }
+          if (!profile.npwp && (lowerK.includes("npwp") || lowerK.includes("tax") || lowerK.includes("wajib_pajak"))) {
+            profile.npwp = item.value;
+          }
+          if (!profile.bpjs_number && lowerK.includes("bpjs")) {
+            profile.bpjs_number = item.value;
+          }
+          if (!profile.passport && (lowerK.includes("paspor") || lowerK.includes("passport"))) {
+            profile.passport = item.value;
+          }
+          if (!profile.nik && (lowerK.includes("nik") || lowerK.includes("ktp") || lowerK.includes("kependudukan"))) {
+            profile.nik = item.value;
+          }
+        }
+
+        const generatedKws = generateCustomFieldKeywords(item);
         if (!KEYWORD_MAP[key]) {
-          const kLower = key.toLowerCase();
-          const cleanLabel = (item.label || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
-          KEYWORD_MAP[key] = Array.from(new Set([
-            kLower,
-            kLower.replace(/_/g, ""),
-            cleanLabel,
-            (item.label || "").toLowerCase()
-          ])).filter(Boolean);
+          KEYWORD_MAP[key] = generatedKws;
+        } else {
+          // Gabungkan kata kunci yang sudah ada dengan variasi leksikal cerdas baru
+          KEYWORD_MAP[key] = Array.from(new Set([...KEYWORD_MAP[key], ...generatedKws]));
         }
       }
     });
@@ -1130,19 +1287,18 @@ function highlightFieldOnPage(profileKey, name, id) {
                     (id && el.id === id);
     if (isMatch) {
       el.classList.add("govconnect-field-focus");
-      const rect = el.getBoundingClientRect();
-      if (rect.top < 60 || rect.bottom > window.innerHeight - 60) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      if (badge) badge.classList.add("govconnect-badge-hover");
     } else {
       el.classList.remove("govconnect-field-focus");
+      if (badge) badge.classList.remove("govconnect-badge-hover");
     }
   });
 }
 
 function unhighlightFieldOnPage() {
-  activeMarkers.forEach(({ el }) => {
+  activeMarkers.forEach(({ el, badge }) => {
     if (el) el.classList.remove("govconnect-field-focus");
+    if (badge) badge.classList.remove("govconnect-badge-hover");
   });
 }
 
@@ -1790,10 +1946,23 @@ async function fillForm(profile, targetFields = null) {
   let filledCount = 0;
 
   for (const el of inputs) {
-    const profileKey = await matchProfileKey(el);
+    let profileKey = await matchProfileKey(el);
     const hostEl = el.closest("p-dropdown, mat-select") || el;
     const formControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
     const fieldIdentifier = el.id || hostEl.id || el.name || formControl || "";
+
+    // Manual Override / Target Fields Fallback: jika matchProfileKey leksikal belum mengenali,
+    // namun pengguna secara eksplisit memetakan kolom ini di sidepanel
+    if (!profileKey && Array.isArray(targetFields)) {
+      const explicitTarget = targetFields.find(tf => {
+        if (tf.id && (el.id === tf.id || hostEl.id === tf.id)) return true;
+        if (tf.name && (el.name === tf.name || formControl === tf.name)) return true;
+        return false;
+      });
+      if (explicitTarget?.profileKey) {
+        profileKey = explicitTarget.profileKey;
+      }
+    }
 
     if (!profileKey) {
       results.push({ id: fieldIdentifier, status: "not_found" });
@@ -2698,13 +2867,31 @@ async function matchProfileKey(el) {
   }
   if (hasTanggal && !hasLahir) {
     for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
-      if (profileKey.startsWith("custom_") || profileKey.includes("tgl") || profileKey.includes("date")) {
+      if (
+        customFieldKeySet.has(profileKey) ||
+        profileKey.startsWith("custom_") ||
+        profileKey.includes("tgl") ||
+        profileKey.includes("date") ||
+        profileKey.includes("expire") ||
+        profileKey.includes("berlaku")
+      ) {
         for (const kw of keywords) {
-          if (inputTokens.includes(kw) || elName === kw || elId === kw) return profileKey;
+          const kwTokens = tokenize(kw);
+          if (
+            inputTokens.includes(kw) ||
+            elName === kw ||
+            elId === kw ||
+            (kwTokens.length > 0 && kwTokens.every(t => inputTokens.includes(t)))
+          ) {
+            return profileKey;
+          }
         }
       }
     }
-    return null;
+    // Jika tidak ada custom field tanggal yang cocok, jangan langsung me-veto jika ada custom field terdaftar
+    if (customFieldKeySet.size === 0) {
+      return null;
+    }
   }
 
   // 7. Tempat Lahir
@@ -2798,9 +2985,9 @@ async function matchProfileKey(el) {
     if (hasMahasiswaSiswa && profileKey === "nik") continue;
     if (inputTokens.includes("first") && profileKey === "full_name") continue;
     if (inputTokens.includes("last") && profileKey === "full_name") continue;
-    if (hasFax && profileKey !== "fax") continue;
-    if (hasHome && (profileKey === "phone" || profileKey === "work_telephone")) continue;
-    if (hasWork && (profileKey === "phone" || profileKey === "home_phone")) continue;
+    if (hasFax && profileKey !== "fax" && !customFieldKeySet.has(profileKey)) continue;
+    if (hasHome && (profileKey === "phone" || profileKey === "work_telephone") && !customFieldKeySet.has(profileKey)) continue;
+    if (hasWork && (profileKey === "phone" || profileKey === "home_phone") && !customFieldKeySet.has(profileKey)) continue;
 
     let candidateMaxScore = 0;
 
@@ -2851,6 +3038,13 @@ async function matchProfileKey(el) {
       if (hasHome && profileKey === "home_phone") score += 0.35;
       if (hasWork && profileKey === "work_telephone") score += 0.35;
       if (hasCell && profileKey === "phone") score += 0.30;
+
+      // 5. Custom Field Affinity Boost: Memberikan daya tangkap leksikal setara core keys
+      if (customFieldKeySet.has(profileKey)) {
+        if (overlapScore >= 0.5 || (overlapTokens.length > 0 && overlapTokens.some(t => t.length >= 3))) {
+          score += 0.20;
+        }
+      }
 
       // Clamp ke batas maksimum 1.0 agar konsisten dengan ruang metrik probabilitas
       score = Math.min(score, 1.0);
@@ -3135,11 +3329,30 @@ if (!IS_INSIDE_IFRAME) {
 }
 
 const visibilityObserver = new MutationObserver((mutations) => {
-  const revealedForm = mutations.some(m =>
-    m.type === "attributes" &&
-    (m.target.tagName === "FORM" || m.target.closest("form, [role='dialog'], [role='tabpanel']"))
-  );
-  if (revealedForm && !isFillingProcess) {
+  if (isFillingProcess) return;
+
+  const revealedForm = mutations.some(m => {
+    const t = m.target;
+    if (!t || isGovConnectElement(t)) return false;
+    if (t.id === "govconnect-markers-layer" || t.closest?.("#govconnect-markers-layer")) return false;
+
+    // Abaikan mutasi jika terjadi pada elemen input kontrol biasa di dalam formulir
+    const tag = t.tagName ? t.tagName.toUpperCase() : "";
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") {
+      return false;
+    }
+
+    if (m.type === "attributes") {
+      if (m.attributeName === "class") {
+        const cls = typeof t.className === "string" ? t.className : "";
+        if (cls.includes("govconnect-")) return false;
+      }
+      return tag === "FORM" || t.matches?.("form, [role='dialog'], [role='tabpanel']");
+    }
+    return false;
+  });
+
+  if (revealedForm) {
     debouncedFormUpdate();
   }
 });
@@ -3204,13 +3417,28 @@ document.addEventListener("change", (e) => {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "GOVCONNECT_WEB_AUTH_SYNC") {
-        if (event.data.token) {
+        if (event.data.isLogout || event.data.authenticated === false) {
+          chrome.storage.local.remove(["govconnect_token", "govconnect_email", "govconnect_cached_profile"]);
+          chrome.runtime.sendMessage({ action: "CLEAR_TOKEN" }).catch(() => {});
+        } else if (event.data.token) {
           chrome.storage.local.set({
             govconnect_token: event.data.token,
             govconnect_email: event.data.email || ""
           });
-        } else {
-          chrome.storage.local.remove(["govconnect_token", "govconnect_email"]);
+          chrome.runtime.sendMessage({
+            action: "SYNC_AUTH_FROM_COOKIE",
+            token: event.data.token,
+            email: event.data.email || ""
+          }).catch(() => {});
+        } else if (event.data.authenticated === true) {
+          // Dashboard aktif terotentikasi via HttpOnly cookie: minta background menyinkronkan token cookie
+          if (event.data.email) {
+            chrome.storage.local.set({ govconnect_email: event.data.email });
+          }
+          chrome.runtime.sendMessage({
+            action: "SYNC_AUTH_FROM_COOKIE",
+            email: event.data.email || ""
+          }).catch(() => {});
         }
       }
 
@@ -3279,7 +3507,10 @@ document.addEventListener("change", (e) => {
     if (!isGovConnectDashboardPage() && !IS_INSIDE_IFRAME) {
       try {
         const resp = await chrome.runtime.sendMessage({ action: "GET_CACHED_PROFILE" });
-        if (resp?.profile) cachedLastProfile = resp.profile;
+        if (resp?.profile) {
+          cachedLastProfile = resp.profile;
+          registerCustomProfileFields(resp.profile);
+        }
         await detectFields();
       } catch (e) {}
     }

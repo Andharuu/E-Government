@@ -81,6 +81,83 @@ const CATEGORY_BY_ANCHOR: Record<string, string> = {
 
 const sectionIdFor = (catId: string) => SECTION_ANCHOR_BY_CATEGORY[catId] ?? `section-${catId}`;
 
+function getSmartAliasSuggestions(label: string, key: string, presetAliases?: string[]): string[] {
+  const set = new Set<string>();
+  if (presetAliases && Array.isArray(presetAliases)) {
+    presetAliases.forEach(a => {
+      const clean = a.toLowerCase().trim();
+      if (clean) set.add(clean);
+    });
+  }
+  const cleanKey = key.toLowerCase().trim();
+  if (cleanKey) {
+    set.add(cleanKey);
+    if (cleanKey.includes('_')) {
+      set.add(cleanKey.replace(/_/g, ' '));
+    }
+  }
+  const cleanLabel = label.toLowerCase().trim();
+  if (cleanLabel) {
+    set.add(cleanLabel);
+    const words = cleanLabel.split(/[\s_-]+/);
+    words.forEach(w => {
+      if (w.length > 2) set.add(w);
+    });
+  }
+
+  const lower = `${cleanLabel} ${cleanKey}`.toLowerCase();
+  if (lower.includes('paspor') || lower.includes('passport')) {
+    ['paspor', 'passport', 'no_paspor', 'passport_number', 'passport_no', 'pass_no'].forEach(x => set.add(x));
+  }
+  if (lower.includes('rekening') || lower.includes('bank') || lower.includes('account')) {
+    ['rekening', 'nomor_rekening', 'no_rekening', 'account_number', 'bank_account', 'acc_number'].forEach(x => set.add(x));
+  }
+  if (lower.includes('sim') || lower.includes('driving')) {
+    ['sim', 'no_sim', 'nomor_sim', 'driving_license', 'driver_license', 'sim_a', 'sim_c'].forEach(x => set.add(x));
+  }
+  if (lower.includes('plat') || lower.includes('kendaraan') || lower.includes('vehicle') || lower.includes('nopol')) {
+    ['plat', 'plat_nomor', 'nopol', 'nomor_polisi', 'license_plate', 'plat_kendaraan'].forEach(x => set.add(x));
+  }
+  if (lower.includes('stnk')) {
+    ['stnk', 'nomor_stnk', 'no_stnk', 'vehicle_registration'].forEach(x => set.add(x));
+  }
+  if (lower.includes('bpkb')) {
+    ['bpkb', 'nomor_bpkb', 'no_bpkb'].forEach(x => set.add(x));
+  }
+  if (lower.includes('npwp') || lower.includes('tax')) {
+    ['npwp', 'nomor_npwp', 'tax_id', 'tin'].forEach(x => set.add(x));
+  }
+  if (lower.includes('bpjs')) {
+    ['bpjs', 'no_bpjs', 'nomor_bpjs', 'bpjs_ketenagakerjaan', 'bpjs_kesehatan'].forEach(x => set.add(x));
+  }
+  if (lower.includes('nip') || lower.includes('pegawai') || lower.includes('employee')) {
+    ['nip', 'nomor_induk_pegawai', 'employee_id', 'id_pegawai'].forEach(x => set.add(x));
+  }
+  if (lower.includes('nisn') || lower.includes('siswa')) {
+    ['nisn', 'nomor_induk_siswa_nasional', 'student_id'].forEach(x => set.add(x));
+  }
+  if (lower.includes('nim') || lower.includes('mahasiswa')) {
+    ['nim', 'nomor_induk_mahasiswa', 'student_id'].forEach(x => set.add(x));
+  }
+  if (lower.includes('ijazah') || lower.includes('diploma') || lower.includes('degree')) {
+    ['ijazah', 'nomor_ijazah', 'no_ijazah', 'diploma_number', 'degree_certificate'].forEach(x => set.add(x));
+  }
+  if (lower.includes('linkedin')) {
+    ['linkedin', 'linkedin_url', 'profil_linkedin', 'profile_linkedin'].forEach(x => set.add(x));
+  }
+  if (lower.includes('github')) {
+    ['github', 'github_url', 'profil_github', 'github_profile'].forEach(x => set.add(x));
+  }
+  if (lower.includes('darurat') || lower.includes('emergency')) {
+    ['kontak_darurat', 'emergency_contact', 'emergency_phone'].forEach(x => set.add(x));
+  }
+  if (lower.includes('wa') || lower.includes('whatsapp')) {
+    ['whatsapp', 'wa', 'no_wa', 'nomor_whatsapp', 'wa_number'].forEach(x => set.add(x));
+  }
+
+  return Array.from(set).filter(s => s.trim().length > 0);
+}
+
 export function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [customFields, setCustomFields] = useState<CustomFieldItem[]>([]);
@@ -103,6 +180,8 @@ export function ProfilePage() {
   const [newLabel, setNewLabel] = useState('');
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [newAliases, setNewAliases] = useState('');
+  const [suggestedAliases, setSuggestedAliases] = useState<string[]>([]);
   const [newPhotoData, setNewPhotoData] = useState<DocumentPhoto | null>(null);
   const [fieldError, setFieldError] = useState('');
 
@@ -117,6 +196,7 @@ export function ProfilePage() {
   const [editLabel, setEditLabel] = useState('');
   const [editKey, setEditKey] = useState('');
   const [editValue, setEditValue] = useState('');
+  const [editAliases, setEditAliases] = useState('');
 
   // Image Preview Lightbox Modal
   const [previewPhoto, setPreviewPhoto] = useState<{ title: string; data: string; name: string } | null>(null);
@@ -137,9 +217,14 @@ export function ProfilePage() {
 
   const handleLabelChange = (val: string) => {
     setNewLabel(val);
+    const generatedKey = slugify(val);
+    let targetKey = newKey;
     if (!newKey || newKey === slugify(newLabel)) {
-      setNewKey(slugify(val));
+      targetKey = generatedKey;
+      setNewKey(generatedKey);
     }
+    const suggestions = getSmartAliasSuggestions(val, targetKey);
+    setSuggestedAliases(suggestions);
   };
 
   // Peringatan sebelum meninggalkan halaman jika ada perubahan belum disimpan (F-M3)
@@ -181,6 +266,7 @@ export function ProfilePage() {
                   label: item.label || item.key,
                   value: item.value || '',
                   type: item.type || 'text',
+                  aliases: Array.isArray(item.aliases) ? item.aliases : undefined,
                   photoData: item.photoData,
                   photoName: item.photoName,
                   photoSize: item.photoSize,
@@ -338,6 +424,8 @@ export function ProfilePage() {
     setNewLabel('');
     setNewKey('');
     setNewValue('');
+    setNewAliases('');
+    setSuggestedAliases([]);
     setNewPhotoData(null);
     setFieldError('');
     setShowAddFieldModal(true);
@@ -350,6 +438,10 @@ export function ProfilePage() {
     setNewValue(preset.type === 'image' ? '' : (preset.placeholder || ''));
     setNewPhotoData(null);
     setFieldError('');
+
+    const suggestions = getSmartAliasSuggestions(preset.label, preset.key, preset.aliases);
+    setSuggestedAliases(suggestions);
+    setNewAliases(preset.aliases && preset.aliases.length > 0 ? preset.aliases.join(', ') : suggestions.slice(0, 4).join(', '));
   };
 
   const handleSaveNewField = (e: React.FormEvent) => {
@@ -384,6 +476,12 @@ export function ProfilePage() {
       return;
     }
 
+    const parsedAliases = newAliases
+      .split(/[,;\n]+/)
+      .map(s => s.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, ''))
+      .filter(Boolean);
+    const finalAliases = Array.from(new Set([finalKey, ...parsedAliases]));
+
     const newItem: CustomFieldItem = {
       id: `cf_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       category: targetCategory,
@@ -391,6 +489,7 @@ export function ProfilePage() {
       label: trimmedLabel,
       value: newFieldType === 'image' ? (newPhotoData?.name || 'document.jpg') : newValue.trim(),
       type: newFieldType,
+      aliases: finalAliases,
       photoData: newFieldType === 'image' ? newPhotoData?.data : undefined,
       photoName: newFieldType === 'image' ? newPhotoData?.name : undefined,
       photoSize: newFieldType === 'image' ? newPhotoData?.size : undefined,
@@ -446,12 +545,29 @@ export function ProfilePage() {
     setEditLabel(field.label);
     setEditKey(field.key);
     setEditValue(field.value);
+    setEditAliases((field.aliases || []).join(', '));
   };
 
   const saveEditField = (id: string) => {
     if (!editLabel.trim() || !editKey.trim() || !editValue.trim()) return;
+    const parsedAliases = editAliases
+      .split(/[,;\n]+/)
+      .map(s => s.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, ''))
+      .filter(Boolean);
+    const finalAliases = Array.from(new Set([editKey.trim(), ...parsedAliases]));
+
     setCustomFields(prev =>
-      prev.map(f => f.id === id ? { ...f, label: editLabel.trim(), key: editKey.trim(), value: editValue.trim() } : f)
+      prev.map(f =>
+        f.id === id
+          ? {
+            ...f,
+            label: editLabel.trim(),
+            key: editKey.trim(),
+            value: editValue.trim(),
+            aliases: finalAliases,
+          }
+          : f
+      )
     );
     setEditingFieldId(null);
     setHasUnsavedChanges(true);
@@ -930,11 +1046,10 @@ export function ProfilePage() {
                   return (
                     <div
                       key={slot.id}
-                      className={`flex flex-col justify-between rounded-lg border p-3 transition-colors ${
-                        hasPhoto
-                          ? 'border-line bg-surface'
-                          : 'border-dashed border-line-2 bg-surface-2'
-                      }`}
+                      className={`flex flex-col justify-between rounded-lg border p-3 transition-colors ${hasPhoto
+                        ? 'border-line bg-surface'
+                        : 'border-dashed border-line-2 bg-surface-2'
+                        }`}
                     >
                       <input
                         type="file"
@@ -1090,6 +1205,15 @@ export function ProfilePage() {
                           onChange={e => setEditValue(e.target.value)}
                           placeholder="Nilai data"
                         />
+                        <div>
+                          <Input
+                            className="h-8 font-mono text-[11px]"
+                            value={editAliases}
+                            onChange={e => setEditAliases(e.target.value)}
+                            placeholder="Alias deteksi (contoh: paspor, passport, no_paspor)"
+                          />
+                          <p className="mt-0.5 text-[10px] text-ink-3">Pisahkan alias deteksi dengan koma</p>
+                        </div>
                         <div className="flex justify-end gap-1.5">
                           <Button size="sm" variant="ghost" onClick={() => setEditingFieldId(null)}>
                             Batal
@@ -1107,6 +1231,18 @@ export function ProfilePage() {
                             <span className="mono shrink-0 text-ink-3">({field.key})</span>
                           </div>
                           <p className="mt-0.5 truncate text-[11.5px] text-ink-2">{field.value || '-'}</p>
+                          {field.aliases && field.aliases.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                              {field.aliases.map(al => (
+                                <span
+                                  key={al}
+                                  className="inline-flex items-center rounded bg-surface px-1.5 py-0.5 font-mono text-[9.5px] text-ink-3 border border-line"
+                                >
+                                  {al}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-0.5">
                           <Button
@@ -1231,17 +1367,15 @@ export function ProfilePage() {
                 type="button"
                 onClick={() => setActiveCategoryId('all')}
                 data-active={activeCategoryId === 'all'}
-                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${
-                  activeCategoryId === 'all'
-                    ? 'border-accent-line bg-accent-soft'
-                    : 'border-transparent hover:bg-surface-3'
-                }`}
+                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${activeCategoryId === 'all'
+                  ? 'border-accent-line bg-accent-soft'
+                  : 'border-transparent hover:bg-surface-3'
+                  }`}
               >
                 <FontAwesome
                   name="layer-group"
-                  className={`w-4 shrink-0 text-center text-[12px] ${
-                    activeCategoryId === 'all' ? 'text-accent-text' : 'text-ink-3'
-                  }`}
+                  className={`w-4 shrink-0 text-center text-[12px] ${activeCategoryId === 'all' ? 'text-accent-text' : 'text-ink-3'
+                    }`}
                 />
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-[12.5px] ${activeCategoryId === 'all' ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
@@ -1261,11 +1395,10 @@ export function ProfilePage() {
                     type="button"
                     onClick={() => setActiveCategoryId(cat.id)}
                     data-active={isActive}
-                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${
-                      isActive
-                        ? 'border-accent-line bg-accent-soft'
-                        : 'border-transparent hover:bg-surface-3'
-                    }`}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${isActive
+                      ? 'border-accent-line bg-accent-soft'
+                      : 'border-transparent hover:bg-surface-3'
+                      }`}
                   >
                     <FontAwesome
                       name={cat.isCustom ? 'folder' : (CATEGORY_ICON[cat.id] ?? 'folder')}
@@ -1278,11 +1411,10 @@ export function ProfilePage() {
                       <span className="block truncate text-[11px] text-ink-3">{cat.desc}</span>
                     </span>
                     <span
-                      className={`shrink-0 rounded-full border px-1.5 py-0.5 tabular-nums text-[10.5px] font-semibold ${
-                        isActive
-                          ? 'border-accent-line bg-surface text-accent-text'
-                          : 'border-line bg-surface-3 text-ink-3'
-                      }`}
+                      className={`shrink-0 rounded-full border px-1.5 py-0.5 tabular-nums text-[10.5px] font-semibold ${isActive
+                        ? 'border-accent-line bg-surface text-accent-text'
+                        : 'border-line bg-surface-3 text-ink-3'
+                        }`}
                     >
                       {catStats.filled}/{catStats.total}
                     </span>
@@ -1363,11 +1495,10 @@ export function ProfilePage() {
         <div className="pointer-events-auto fixed right-4 top-4 z-50 w-full max-w-sm">
           <div className="card flex items-start gap-2.5 p-3">
             <span
-              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-                message.type === 'success'
-                  ? 'border-ok-line bg-ok-soft text-ok'
-                  : 'border-danger-line bg-danger-soft text-danger'
-              }`}
+              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${message.type === 'success'
+                ? 'border-ok-line bg-ok-soft text-ok'
+                : 'border-danger-line bg-danger-soft text-danger'
+                }`}
             >
               <FontAwesome name={message.type === 'success' ? 'check' : 'circle-exclamation'} className="text-[10px]" />
             </span>
@@ -1504,6 +1635,52 @@ export function ProfilePage() {
                     required
                   />
                 </FormField>
+
+                {/* Kata Kunci / Alias Deteksi Formulir */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="label">Kata Kunci / Alias Deteksi Formulir (Opsional)</span>
+                    <span className="text-[10.5px] text-ink-3">Pisahkan dengan koma</span>
+                  </div>
+                  <Input
+                    value={newAliases}
+                    onChange={e => setNewAliases(e.target.value)}
+                    placeholder="contoh: paspor, passport, no_paspor, passport_number"
+                    className="mono text-[12px]"
+                  />
+                  {suggestedAliases.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                      <span className="text-[10px] text-ink-3">Saran Alias:</span>
+                      {suggestedAliases.slice(0, 6).map(alias => {
+                        const currentArr = newAliases.split(',').map(s => s.trim().toLowerCase());
+                        const isSelected = currentArr.includes(alias.toLowerCase());
+                        return (
+                          <button
+                            key={alias}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setNewAliases(currentArr.filter(s => s !== alias.toLowerCase()).join(', '));
+                              } else {
+                                const next = newAliases.trim() ? `${newAliases.trim()}, ${alias}` : alias;
+                                setNewAliases(next);
+                              }
+                            }}
+                            className={`cursor-pointer rounded px-1.5 py-0.5 text-[10.5px] transition-colors ${isSelected
+                              ? 'bg-accent text-white font-medium'
+                              : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
+                              }`}
+                          >
+                            +{alias}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="mt-1 text-[11px] text-ink-3 leading-relaxed">
+                    Sistem Hybrid Cascade akan mengenali field pada formulir web jika nama, label, placeholder, atau atribut ID cocok dengan salah satu alias ini.
+                  </p>
+                </div>
 
                 {/* Value or Photo Upload */}
                 {newFieldType === 'image' ? (

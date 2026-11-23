@@ -41,6 +41,39 @@
       } catch {
         return false;
       }
+    },
+
+    async findAuthCookie() {
+      if (typeof chrome === "undefined" || !chrome.cookies) return null;
+      try {
+        const cookies = await chrome.cookies.getAll({ name: "govconnect_access_token" });
+        if (cookies && cookies.length > 0) {
+          const now = Date.now() / 1000;
+          const validCookie = cookies.find(c => !c.expirationDate || c.expirationDate > now);
+          if (validCookie?.value) {
+            return validCookie.value;
+          }
+        }
+      } catch (_) {}
+
+      const candidates = [
+        ...this.WEB_ORIGINS,
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+      ];
+      if (this.API_BASE) {
+        try {
+          candidates.push(new URL(this.API_BASE).origin);
+        } catch (_) {}
+      }
+
+      for (const origin of candidates) {
+        try {
+          const c = await chrome.cookies.get({ url: origin, name: "govconnect_access_token" });
+          if (c?.value) return c.value;
+        } catch (_) {}
+      }
+      return null;
     }
   };
 
