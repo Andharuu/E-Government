@@ -1,25 +1,27 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { activityApi, type Activity } from '../services/api';
 import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  FontAwesome,
-  StatCard,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  ConfirmDialog,
-} from '../components/ui';
+  RotateCcw,
+  Trash2,
+  Globe,
+  Clock,
+  Zap,
+  CheckCheck,
+  AlertTriangle,
+  ExternalLink,
+  Search,
+  CheckCircle2,
+  X,
+} from 'lucide-react';
 
 export function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'partial' | 'failed'>('all');
 
   // Action feedback
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -33,11 +35,10 @@ export function ActivityPage() {
     message: string;
   } | null>(null);
 
-  // Load activities - langsung tampil semua & sinkron dengan aktivitas dashboard
+  // Load activities
   const fetchActivities = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      // 1. Ambil dari endpoint list aktivitas
       const res = await activityApi.get({
         limit: 100,
         offset: 0,
@@ -45,7 +46,6 @@ export function ActivityPage() {
 
       let data = res?.data || [];
 
-      // 2. Jika list kosong atau ingin memastikan konektivitas dengan recent_activities dasbor
       if (!data || data.length === 0) {
         const analyticsRes = await activityApi.getAnalytics().catch(() => null);
         if (analyticsRes?.data?.recent_activities && analyticsRes.data.recent_activities.length > 0) {
@@ -55,7 +55,7 @@ export function ActivityPage() {
 
       setActivities(data);
     } catch {
-      // Diamkan kegagalan fetch agar UI menampilkan state kosong yang bersih tanpa leak log ke console
+      // Quiet fail to preserve clean UI
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,7 +77,7 @@ export function ActivityPage() {
       type: 'single',
       targetId: id,
       title: 'Hapus Catatan Aktivitas',
-      message: 'Apakah Anda yakin ingin menghapus catatan riwayat autofill ini dari riwayat?',
+      message: 'Apakah Anda yakin ingin menghapus catatan riwayat autofill ini dari riwayat akun Anda?',
     });
   };
 
@@ -86,7 +86,7 @@ export function ActivityPage() {
       isOpen: true,
       type: 'all',
       title: 'Bersihkan Seluruh Riwayat',
-      message: 'Apakah Anda yakin ingin menghapus SELURUH catatan riwayat aktivitas autofill? Tindakan ini tidak dapat dibatalkan.',
+      message: 'Apakah Anda yakin ingin menghapus SELURUH catatan riwayat aktivitas autofill? Tindakan ini permanen dan tidak dapat dibatalkan.',
     });
   };
 
@@ -118,7 +118,7 @@ export function ActivityPage() {
         setActivities([]);
         setActionFeedback({
           type: 'success',
-          text: res.data.detail || 'Seluruh riwayat berhasil dibersihkan.',
+          text: res.data.detail || 'Seluruh riwayat aktivitas berhasil dibersihkan.',
         });
         setTimeout(() => setActionFeedback(null), 3500);
       } catch (err: any) {
@@ -133,205 +133,336 @@ export function ActivityPage() {
     }
   };
 
-  // Ringkasan tampilan - diturunkan dari data yang sudah dimuat, tanpa state baru
-  const totalFields = activities.reduce((sum, a) => sum + a.fields_filled, 0);
+  // Metrics
+  const totalFields = activities.reduce((sum, a) => sum + (a.fields_filled || 0), 0);
   const successCount = activities.filter((a) => a.status === 'success').length;
-  const attentionCount = activities.length - successCount;
+  const partialCount = activities.filter((a) => a.status === 'partial').length;
+  const failedCount = activities.filter((a) => a.status === 'failed').length;
+
+  // Filtered List
+  const filteredActivities = useMemo(() => {
+    return activities.filter((act) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        (act.website_domain && act.website_domain.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (act.target_url && act.target_url.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (act.action && act.action.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesStatus =
+        statusFilter === 'all' || act.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [activities, searchQuery, statusFilter]);
 
   return (
-    <div className="page page-enter w-full max-w-5xl mx-auto pb-12">
-      <div className="page-head">
-        <div className="min-w-0">
-          <h1 className="page-title">Riwayat Aktivitas</h1>
-          <p className="page-sub">Audit log dan jejak privasi pengisian formulir autofill</p>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-line">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-ink">
+            Riwayat Aktivitas Autofill
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-2 mt-1">
+            Audit log transparan mengenai pengisian formulir instansi oleh ekstensi browser GovConnect.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
             type="button"
-            variant="secondary"
-            size="sm"
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            loading={refreshing}
-            icon={<FontAwesome name="rotate-right" />}
+            className="px-4 h-11 rounded-xl text-xs sm:text-sm font-semibold border border-line bg-surface hover:bg-surface-2 text-ink flex items-center gap-2 transition-colors disabled:opacity-60"
           >
-            {refreshing ? 'Memperbarui...' : 'Perbarui data'}
-          </Button>
+            <RotateCcw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Memperbarui...' : 'Perbarui'}</span>
+          </button>
 
           {activities.length > 0 && (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
               onClick={handleClearAll}
               disabled={clearingAll}
-              loading={clearingAll}
-              icon={<FontAwesome name="trash" />}
-              className="text-danger"
+              className="px-4 h-11 rounded-xl text-xs sm:text-sm font-semibold border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 flex items-center gap-2 transition-colors disabled:opacity-60"
             >
-              {clearingAll ? 'Membersihkan...' : 'Bersihkan riwayat'}
-            </Button>
+              <Trash2 className="w-4 h-4" />
+              <span>{clearingAll ? 'Membersihkan...' : 'Bersihkan Riwayat'}</span>
+            </button>
           )}
         </div>
       </div>
 
+      {/* Action Feedback Banner */}
       {actionFeedback && (
         <div
-          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-md border text-[12.5px] font-medium ${
+          className={`p-4 rounded-xl border text-xs sm:text-sm flex items-center gap-2.5 animate-fadeIn ${
             actionFeedback.type === 'success'
-              ? 'bg-ok-soft text-ok border-ok-line'
-              : 'bg-danger-soft text-danger border-danger-line'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
           }`}
         >
-          <FontAwesome
-            name={actionFeedback.type === 'success' ? 'check-pure' : 'info'}
-            className="text-[12px] shrink-0"
-          />
+          {actionFeedback.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+          )}
           <span>{actionFeedback.text}</span>
         </div>
       )}
 
-      {!loading && activities.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total catatan" value={activities.length} />
-          <StatCard title="Field terisi" value={totalFields} />
-          <StatCard title="Sukses" value={successCount} />
-          <StatCard title="Perlu perhatian" value={attentionCount} />
+      {/* 4 KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-5 rounded-[20px] border border-line bg-surface shadow-xs">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Total Log</span>
+            <Clock className="w-3.5 h-3.5 text-blue-400" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-ink tabular-nums">{activities.length}</div>
+          <p className="text-xs text-ink-2 mt-1">Sesi pengisian terarsip</p>
         </div>
-      )}
 
-      <Card className="overflow-hidden">
+        <div className="p-5 rounded-[20px] border border-line bg-surface shadow-xs">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Field Terisi</span>
+            <Zap className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-ink tabular-nums">{totalFields}</div>
+          <p className="text-xs text-ink-2 mt-1">Kolom berhasil dipetakan</p>
+        </div>
+
+        <div className="p-5 rounded-[20px] border border-line bg-surface shadow-xs">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Sukses Penuh</span>
+            <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-emerald-400 tabular-nums">{successCount}</div>
+          <p className="text-xs text-ink-2 mt-1">Seluruh kolom cocok</p>
+        </div>
+
+        <div className="p-5 rounded-[20px] border border-line bg-surface shadow-xs">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Parsial / Gagal</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+          </div>
+          <div className="text-3xl font-bold font-mono text-amber-400 tabular-nums">
+            {partialCount + failedCount}
+          </div>
+          <p className="text-xs text-ink-2 mt-1">Kolom dilewati / tidak cocok</p>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="p-4 rounded-[20px] border border-line bg-surface shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Search Input (Tinggi 48px, Radius 12px) */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-ink-3 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari domain instansi, formulir, atau aksi..."
+            className="w-full h-12 pl-11 pr-4 rounded-xl border border-line bg-surface-2 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/80 transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="inline-flex p-1 rounded-xl border border-line bg-surface-2 text-xs font-semibold self-start sm:self-auto">
+          {[
+            { id: 'all', label: 'Semua' },
+            { id: 'success', label: 'Sukses' },
+            { id: 'partial', label: 'Parsial' },
+            { id: 'failed', label: 'Gagal' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id as any)}
+              className={`px-3 py-2 rounded-lg transition-colors ${
+                statusFilter === tab.id
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Activity Table Container */}
+      <div className="rounded-[20px] border border-line bg-surface shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-4 space-y-2">
+          <div className="p-8 space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="skeleton h-9" />
+              <div key={i} className="h-12 rounded-xl bg-white/[0.04] animate-pulse" />
             ))}
           </div>
-        ) : activities.length === 0 ? (
-          <EmptyState
-            icon={<FontAwesome name="inbox" />}
-            title="Tidak ada riwayat aktivitas"
-            description="Gunakan ekstensi GovConnect di formulir layanan publik untuk merekam riwayat pengisian."
-          />
+        ) : filteredActivities.length === 0 ? (
+          <div className="p-12 text-center text-ink-2">
+            <Clock className="w-10 h-10 text-ink-3 mx-auto mb-3 opacity-60" />
+            <h3 className="text-base font-bold text-ink">Tidak Ada Riwayat Ditemukan</h3>
+            <p className="text-xs text-ink-3 mt-1 max-w-sm mx-auto">
+              {searchQuery || statusFilter !== 'all'
+                ? 'Tidak ada aktivitas yang sesuai dengan filter pencarian Anda.'
+                : 'Ekstensi GovConnect belum merekam aktivitas pengisian formulir di akun ini.'}
+            </p>
+          </div>
         ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Website Target</TableHead>
-                  <TableHead>Field Terisi</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activities.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell className="cell-mono">
-                      {new Date(activity.created_at).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </TableCell>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead className="border-b border-line bg-surface-2 text-ink-3 font-mono uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th className="py-3.5 px-4 sm:px-6">Waktu Eksekusi</th>
+                  <th className="py-3.5 px-4">Portal / Domain Target</th>
+                  <th className="py-3.5 px-4">Kolom Terisi</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {filteredActivities.map((act) => {
+                  const hostname =
+                    act.website_domain ||
+                    (act.target_url && !act.target_url.startsWith('file:')
+                      ? new URL(act.target_url).hostname
+                      : 'Formulir Web Instansi');
 
-                    <TableCell>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FontAwesome name="globe" className="text-[11px] text-ink-3 shrink-0" />
-                        <span className="cell-strong lowercase truncate max-w-[240px]">
-                          {activity.website_domain ||
-                            (activity.target_url
-                              ? new URL(activity.target_url).hostname
-                              : 'formulir web')}
-                        </span>
-                      </div>
-                    </TableCell>
+                  const isSuccess = act.status === 'success';
+                  const isPartial = act.status === 'partial';
 
-                    <TableCell className="tabular-nums whitespace-nowrap">
-                      <span className="cell-strong">{activity.fields_filled}</span>
-                      <span className="text-ink-3"> dari </span>
-                      <span>{activity.fields_detected}</span>
-                      <span className="text-ink-3"> field</span>
-                    </TableCell>
+                  return (
+                    <tr key={act.id} className="hover:bg-surface-2/60 transition-colors">
+                      {/* Monospace Timestamp */}
+                      <td className="py-4 px-4 sm:px-6 font-mono text-xs text-ink-2 whitespace-nowrap">
+                        {new Date(act.created_at).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
 
-                    <TableCell>
-                      <Badge
-                        variant={
-                          activity.status === 'success'
-                            ? 'ok'
-                            : activity.status === 'partial'
-                            ? 'warn'
-                            : 'danger'
-                        }
-                        dot
-                      >
-                        {activity.status === 'success'
-                          ? 'Sukses'
-                          : activity.status === 'partial'
-                          ? 'Parsial'
-                          : 'Gagal'}
-                      </Badge>
-                    </TableCell>
+                      {/* Domain / Target Website */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span className="font-semibold text-ink truncate max-w-[240px]">
+                            {hostname}
+                          </span>
+                        </div>
+                      </td>
 
-                    <TableCell className="text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {activity.target_url && !activity.target_url.startsWith('file:') && (
-                          <a
-                            href={activity.target_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn btn-ghost btn-icon btn-sm"
-                            title="Buka situs formulir sasaran"
-                            aria-label="Buka situs formulir sasaran"
-                          >
-                            <FontAwesome name="paper-plane" className="text-[11px]" />
-                          </a>
+                      {/* Field Filled Count */}
+                      <td className="py-4 px-4 font-mono text-xs tabular-nums text-ink-2">
+                        <span className="font-bold text-ink">{act.fields_filled}</span>
+                        <span className="text-ink-3"> / </span>
+                        <span>{act.fields_detected || act.fields_filled} kolom</span>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="py-4 px-4">
+                        {isSuccess ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            Sukses
+                          </span>
+                        ) : isPartial ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            Parsial
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                            Gagal
+                          </span>
                         )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          iconOnly
-                          icon={<FontAwesome name="trash" className="text-[11px]" />}
-                          onClick={() => handleDeleteItem(activity.id)}
-                          disabled={deletingId === activity.id}
-                          loading={deletingId === activity.id}
-                          className="hover:text-danger"
-                          title="Hapus catatan riwayat aktivitas"
-                          aria-label="Hapus catatan riwayat aktivitas"
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </td>
 
-            <div className="card-foot">
-              <span className="text-[12px] text-ink-3">
-                Menampilkan{' '}
-                <span className="text-ink font-semibold tabular-nums">{activities.length}</span> catatan
-              </span>
-              <span className="text-[12px] text-ink-3 tabular-nums">{totalFields} field terisi</span>
-            </div>
-          </>
+                      {/* Actions */}
+                      <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          {act.target_url && !act.target_url.startsWith('file:') && (
+                            <a
+                              href={act.target_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 rounded-lg border border-line bg-surface hover:bg-surface-3 text-ink-2 hover:text-ink transition-colors"
+                              title="Kunjungi website formulir"
+                              aria-label="Kunjungi website formulir"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(act.id)}
+                            disabled={deletingId === act.id}
+                            className="p-1.5 rounded-lg border border-line bg-surface hover:bg-rose-500/10 text-ink-3 hover:text-rose-400 transition-colors"
+                            title="Hapus riwayat ini"
+                            aria-label="Hapus riwayat ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </Card>
+      </div>
 
-      <ConfirmDialog
-        isOpen={Boolean(confirmModal?.isOpen)}
-        onClose={() => setConfirmModal(null)}
-        onConfirm={executeConfirmedAction}
-        title={confirmModal?.title || ''}
-        message={confirmModal?.message || ''}
-        confirmLabel="Ya, Hapus"
-        confirmVariant="danger"
-        confirmLoading={deletingId !== null || clearingAll}
-      />
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-[20px] border border-line bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-ink">{confirmModal.title}</h3>
+                <p className="text-xs text-ink-3 mt-0.5">Konfirmasi penghapusan data audit</p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-ink-2 leading-relaxed">
+              {confirmModal.message}
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="px-4 h-10 rounded-xl text-xs sm:text-sm font-semibold border border-line bg-surface hover:bg-surface-2 text-ink transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={executeConfirmedAction}
+                className="px-4 h-10 rounded-xl text-xs sm:text-sm font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md transition-colors"
+              >
+                Ya, Hapus Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

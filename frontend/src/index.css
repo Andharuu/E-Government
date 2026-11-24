@@ -57,6 +57,25 @@
   --r-xl: 16px;
 }
 
+/* Chrome / Safari / Edge Autofill Fix (Prevent Yellow Background) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover, 
+.dark input:-webkit-autofill:focus, 
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0b1e38 inset !important;
+  -webkit-text-fill-color: #f2f6fb !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .dark {
   /* Dark mode = navy institusional, bukan hitam */
   --canvas: #06182c;
@@ -149,7 +168,7 @@
 
   html {
     scroll-behavior: smooth;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans);
     color: var(--ink);
     background-color: var(--canvas);
     -webkit-font-smoothing: antialiased;
@@ -159,19 +178,31 @@
 
   body {
     margin: 0;
+    font-family: var(--font-sans);
     background-color: var(--canvas);
     color: var(--ink);
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--ink);
+    font-family: var(--font-sans);
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
   p {
     text-wrap: pretty;
+  }
+
+  button, input, optgroup, select, textarea {
+    font-family: inherit;
+  }
+
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
   }
 
   ::selection {

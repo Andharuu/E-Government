@@ -80,6 +80,7 @@ export function useNotifications(
   const markRead = useCallback(async (id: number) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
     setUnreadCount(prev => Math.max(0, prev - 1));
+    window.dispatchEvent(new CustomEvent('GOVCONNECT_NOTIF_READ', { detail: { id } }));
     try {
       await notificationApi.markRead(id);
     } catch (e) {
@@ -91,6 +92,7 @@ export function useNotifications(
   const markAllRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
+    window.dispatchEvent(new CustomEvent('GOVCONNECT_NOTIF_ALL_READ'));
     try {
       await notificationApi.markAllRead();
     } catch (e) {
@@ -105,6 +107,7 @@ export function useNotifications(
     if (target && !target.read) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
+    window.dispatchEvent(new CustomEvent('GOVCONNECT_NOTIF_REMOVED', { detail: { id, wasUnread: target ? !target.read : false } }));
     try {
       await notificationApi.delete(id);
     } catch (e) {
@@ -116,6 +119,7 @@ export function useNotifications(
   const clearAll = useCallback(async () => {
     setNotifications([]);
     setUnreadCount(0);
+    window.dispatchEvent(new CustomEvent('GOVCONNECT_NOTIF_CLEAR_ALL'));
     try {
       await notificationApi.clearAll();
     } catch (e) {
@@ -128,6 +132,48 @@ export function useNotifications(
     setNotifications(prev => [n, ...prev]);
     if (!n.read) setUnreadCount(prev => prev + 1);
     lastIdRef.current = Math.max(lastIdRef.current, n.id);
+  }, []);
+
+  // Cross-component realtime sync
+  useEffect(() => {
+    const handleReadEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ id: number }>;
+      const id = custom.detail?.id;
+      if (id !== undefined) {
+        setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    };
+    const handleAllReadEvent = () => {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    };
+    const handleRemovedEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ id: number; wasUnread: boolean }>;
+      const { id, wasUnread } = custom.detail || {};
+      if (id !== undefined) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        if (wasUnread) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      }
+    };
+    const handleClearAllEvent = () => {
+      setNotifications([]);
+      setUnreadCount(0);
+    };
+
+    window.addEventListener('GOVCONNECT_NOTIF_READ', handleReadEvent);
+    window.addEventListener('GOVCONNECT_NOTIF_ALL_READ', handleAllReadEvent);
+    window.addEventListener('GOVCONNECT_NOTIF_REMOVED', handleRemovedEvent);
+    window.addEventListener('GOVCONNECT_NOTIF_CLEAR_ALL', handleClearAllEvent);
+
+    return () => {
+      window.removeEventListener('GOVCONNECT_NOTIF_READ', handleReadEvent);
+      window.removeEventListener('GOVCONNECT_NOTIF_ALL_READ', handleAllReadEvent);
+      window.removeEventListener('GOVCONNECT_NOTIF_REMOVED', handleRemovedEvent);
+      window.removeEventListener('GOVCONNECT_NOTIF_CLEAR_ALL', handleClearAllEvent);
+    };
   }, []);
 
   // Initial load

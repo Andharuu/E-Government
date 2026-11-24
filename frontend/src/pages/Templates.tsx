@@ -1,7 +1,29 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { profileApi, type Profile } from '../services/api';
-import { FontAwesome, Button, Card, Badge, FormField, Input, Textarea, Select, Modal } from '../components/ui';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { profileApi, type Profile } from '../services/api';
+import {
+  Plus,
+  Search,
+  Layers,
+  Shield,
+  GraduationCap,
+  Receipt,
+  HeartPulse,
+  Compass,
+  FolderPlus,
+  Folder,
+  Copy,
+  Check,
+  Trash2,
+  FileText,
+  X,
+  Info,
+  ChevronRight,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 
 export interface ServiceTemplate {
   id: string;
@@ -112,7 +134,7 @@ const DEFAULT_TEMPLATES: ServiceTemplate[] = [
     description: 'Template formulir portal CoreTax DJP untuk pelaporan SPT Tahunan, verifikasi NPWP 16 digit, dan validasi pajak.',
     badgeColor: 'emerald',
     iconName: 'file-invoice-dollar',
-    logoUrl: '/logos/djp.svg',
+    logoUrl: '/logos/pajak.svg',
     fields: [
       { key: 'npwp', label: 'NPWP (16 Digit NIK Terpadu)', required: true, categoryGroup: 'Dokumen' },
       { key: 'nik', label: 'Nomor Induk Kependudukan (NIK)', required: true, categoryGroup: 'Identitas' },
@@ -217,6 +239,7 @@ export function TemplatesPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [customTemplates, setCustomTemplates] = useState<ServiceTemplate[]>([]);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<ServiceTemplate | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
@@ -260,37 +283,49 @@ export function TemplatesPage() {
     return [...customTemplates, ...DEFAULT_TEMPLATES];
   }, [customTemplates]);
 
-  // Kategori filter pills with icons and item counts
+  // Category filter tabs
   const templateCategories = useMemo(() => {
     return [
-      { id: 'all', label: 'Semua Template', icon: 'layer-group', count: allTemplates.length },
-      { id: 'dukcapil', label: 'Dukcapil', icon: 'id-card', count: allTemplates.filter(t => t.category === 'dukcapil').length },
-      { id: 'polisi', label: 'Kepolisian', icon: 'shield-halved', count: allTemplates.filter(t => t.category === 'polisi').length },
-      { id: 'bkn', label: 'SSCASN / BKN', icon: 'graduation-cap', count: allTemplates.filter(t => t.category === 'bkn').length },
-      { id: 'pajak', label: 'Perpajakan', icon: 'file-invoice-dollar', count: allTemplates.filter(t => t.category === 'pajak').length },
-      { id: 'bpjs', label: 'BPJS', icon: 'heart', count: allTemplates.filter(t => t.category === 'bpjs').length },
-      { id: 'imigrasi', label: 'Imigrasi', icon: 'passport', count: allTemplates.filter(t => t.category === 'imigrasi').length },
-      { id: 'custom', label: 'Template Pribadi', icon: 'folder-plus', count: allTemplates.filter(t => t.isCustom).length },
+      { id: 'all', label: 'Semua Template', icon: Layers, count: allTemplates.length },
+      { id: 'dukcapil', label: 'Dukcapil', icon: FileText, count: allTemplates.filter(t => t.category === 'dukcapil').length },
+      { id: 'polisi', label: 'Kepolisian', icon: Shield, count: allTemplates.filter(t => t.category === 'polisi').length },
+      { id: 'bkn', label: 'SSCASN / BKN', icon: GraduationCap, count: allTemplates.filter(t => t.category === 'bkn').length },
+      { id: 'pajak', label: 'Perpajakan', icon: Receipt, count: allTemplates.filter(t => t.category === 'pajak').length },
+      { id: 'bpjs', label: 'BPJS', icon: HeartPulse, count: allTemplates.filter(t => t.category === 'bpjs').length },
+      { id: 'imigrasi', label: 'Imigrasi', icon: Compass, count: allTemplates.filter(t => t.category === 'imigrasi').length },
+      { id: 'custom', label: 'Template Pribadi', icon: FolderPlus, count: allTemplates.filter(t => t.isCustom).length },
     ];
   }, [allTemplates]);
 
-  // Filtered templates
+  // Filtered templates by category and search query
   const filteredTemplates = useMemo(() => {
     return allTemplates.filter(t => {
-      if (activeCategoryFilter === 'all') return true;
-      if (activeCategoryFilter === 'custom') return t.isCustom;
-      return t.category === activeCategoryFilter;
+      const matchCat = activeCategoryFilter === 'all'
+        ? true
+        : activeCategoryFilter === 'custom'
+          ? t.isCustom
+          : t.category === activeCategoryFilter;
+
+      if (!matchCat) return false;
+      if (!searchQuery.trim()) return true;
+
+      const q = searchQuery.toLowerCase();
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.agency.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.fields.some(f => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q))
+      );
     });
-  }, [allTemplates, activeCategoryFilter]);
+  }, [allTemplates, activeCategoryFilter, searchQuery]);
 
   // Helper to check value from profile
-  const getProfileValue = (key: string): string => {
+  const getProfileValue = useCallback((key: string): string => {
     if (!profile) return '';
     const val = (profile as unknown as Record<string, unknown>)[key];
     if (val !== null && val !== undefined && String(val).trim() !== '') {
       return String(val);
     }
-    // Check extended JSON fields if stored
     if (profile.extended_fields && typeof profile.extended_fields === 'object') {
       const ext = profile.extended_fields as Record<string, unknown>;
       if (ext[key] && typeof ext[key] === 'object' && 'value' in (ext[key] as Record<string, unknown>)) {
@@ -298,10 +333,10 @@ export function TemplatesPage() {
       }
     }
     return '';
-  };
+  }, [profile]);
 
   // Calculate readiness % for a template
-  const getReadiness = (template: ServiceTemplate) => {
+  const getReadiness = useCallback((template: ServiceTemplate) => {
     if (template.fields.length === 0) return { filled: 0, total: 0, percent: 100 };
     let filled = 0;
     template.fields.forEach(f => {
@@ -310,7 +345,14 @@ export function TemplatesPage() {
     });
     const percent = Math.round((filled / template.fields.length) * 100);
     return { filled, total: template.fields.length, percent };
-  };
+  }, [getProfileValue]);
+
+  // Overall average readiness
+  const averageReadiness = useMemo(() => {
+    if (allTemplates.length === 0) return 0;
+    const totalPercent = allTemplates.reduce((acc, t) => acc + getReadiness(t).percent, 0);
+    return Math.round(totalPercent / allTemplates.length);
+  }, [allTemplates, getReadiness]);
 
   // Handle Copy summary
   const handleCopySummary = (template: ServiceTemplate) => {
@@ -384,248 +426,377 @@ export function TemplatesPage() {
   };
 
   return (
-    <div className="page page-enter">
-      {/* Top Banner / Header */}
-      <div className="page-head">
-        <div className="min-w-0">
-          <h1 className="page-title">Grup Layanan &amp; Template Formulir</h1>
-          <p className="page-sub max-w-2xl">
-            Atur kumpulan data profil sesuai instansi tujuan (Dukcapil, Kepolisian, Seleksi ASN, Perpajakan, BPJS, dll). GovConnect akan otomatis memetakan bidang saat Anda membuka formulir terkait.
+    <div className="page page-enter max-w-7xl mx-auto space-y-8 pb-16">
+      {/* ── Page Header ── */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-line">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Katalog Grup Formulir</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink">
+            Grup Layanan &amp; Template
+          </h1>
+          <p className="text-base text-ink-2 max-w-3xl leading-relaxed">
+            Petakan dan atur kelompok data profil sesuai kebutuhan portal instansi (Dukcapil, Polri, SSCASN, DJP, BPJS).
+            GovConnect mendeteksi dan memetakan bidang secara presisi dalam satu klik persetujuan.
           </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <Button
-            variant="primary"
-            icon={<FontAwesome name="plus" className="text-[11px]" />}
+          <button
+            type="button"
             onClick={() => setIsCreateModalOpen(true)}
+            className="h-12 px-5 rounded-xl bg-accent text-accent-fg font-semibold text-sm inline-flex items-center gap-2 hover:bg-accent-hover transition-all shadow-sm active:scale-[0.98] cursor-pointer"
           >
-            Buat Template Baru
-          </Button>
+            <Plus className="w-4 h-4" strokeWidth={2} />
+            <span>Buat Template Baru</span>
+          </button>
         </div>
       </div>
 
-      {/* Kategori Filter Pills & Counter (Mirrors PublicServices design) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="segmented no-scrollbar max-w-full">
-          {templateCategories.map(cat => (
+      {/* ── Metric Summary Strip ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-[20px] border border-line bg-surface flex flex-col justify-between">
+          <span className="text-xs font-medium text-ink-3">Total Template</span>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-ink tracking-tight">
+              {allTemplates.length}
+            </span>
+            <span className="text-xs text-ink-3 font-medium">Aktif</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-[20px] border border-line bg-surface flex flex-col justify-between">
+          <span className="text-xs font-medium text-ink-3">Instansi Resmi</span>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-ink tracking-tight">
+              {DEFAULT_TEMPLATES.length}
+            </span>
+            <span className="text-xs text-ok font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" /> Terverifikasi
+            </span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-[20px] border border-line bg-surface flex flex-col justify-between">
+          <span className="text-xs font-medium text-ink-3">Template Kustom</span>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-ink tracking-tight">
+              {customTemplates.length}
+            </span>
+            <span className="text-xs text-ink-3 font-medium">Mandiri</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-[20px] border border-line bg-surface flex flex-col justify-between">
+          <span className="text-xs font-medium text-ink-3">Rata-rata Kesiapan</span>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-accent-text tracking-tight">
+              {averageReadiness}%
+            </span>
+            <span className="text-xs text-ink-3 font-medium">Profil</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Filter Bar & Search ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
+          {templateCategories.map(cat => {
+            const Icon = cat.icon;
+            const isActive = activeCategoryFilter === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActiveCategoryFilter(cat.id)}
+                className={`h-10 px-3.5 rounded-xl border text-xs font-medium inline-flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'border-blue-500/40 bg-blue-500/10 text-accent-text font-semibold shadow-xs'
+                    : 'border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-accent-text' : 'text-ink-3'}`} strokeWidth={1.5} />
+                <span>{cat.label}</span>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-blue-500/20 text-accent-text font-bold' : 'bg-surface-3 text-ink-3'
+                }`}>
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full md:w-72 shrink-0">
+          <Search className="w-4 h-4 text-ink-3 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cari template atau kolom..."
+            className="w-full h-10 pl-10 pr-9 rounded-xl border border-line bg-surface text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all"
+          />
+          {searchQuery && (
             <button
-              key={cat.id}
               type="button"
-              onClick={() => setActiveCategoryFilter(cat.id)}
-              data-active={activeCategoryFilter === cat.id}
-              className="segmented-item"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink p-0.5"
             >
-              <FontAwesome name={cat.icon} className="text-[11px] opacity-70" />
-              <span>{cat.label}</span>
-              <span className="tabular-nums text-[11px] opacity-60">{cat.count}</span>
+              <X className="w-3.5 h-3.5" />
             </button>
-          ))}
-        </div>
-
-        <div className="text-[12px] text-ink-3 shrink-0 hidden sm:block">
-          Menampilkan <span className="font-semibold text-ink tabular-nums">{filteredTemplates.length}</span> grup template
+          )}
         </div>
       </div>
 
-      {/* Grid of Templates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-        {filteredTemplates.map(template => {
-          const readiness = getReadiness(template);
-          const isCopied = copySuccessId === template.id;
+      {/* ── Grid of Template Cards ── */}
+      {filteredTemplates.length === 0 ? (
+        <div className="p-12 text-center rounded-[20px] border border-line bg-surface space-y-3">
+          <Folder className="w-10 h-10 text-ink-3 mx-auto opacity-50" strokeWidth={1.5} />
+          <h3 className="text-base font-semibold text-ink">Tidak Ada Template yang Cocok</h3>
+          <p className="text-xs text-ink-3 max-w-sm mx-auto">
+            Tidak ditemukan template dengan filter atau kata kunci &quot;{searchQuery}&quot;. Silakan ubah filter atau buat template kustom baru.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setActiveCategoryFilter('all'); setSearchQuery(''); }}
+            className="h-9 px-4 rounded-xl border border-line bg-surface-2 text-xs font-semibold text-ink hover:bg-surface-3 transition-colors mt-2"
+          >
+            Reset Filter
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredTemplates.map(template => {
+            const readiness = getReadiness(template);
+            const isCopied = copySuccessId === template.id;
 
-          return (
-            <Card
-              key={template.id}
-              hover
-              onClick={() => setSelectedTemplate(template)}
-              className="flex flex-col justify-between overflow-hidden cursor-pointer group"
-            >
-              <div className="card-body flex-1 space-y-3.5">
+            return (
+              <div
+                key={template.id}
+                onClick={() => setSelectedTemplate(template)}
+                className="group rounded-[20px] border border-line bg-surface hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-200 flex flex-col justify-between overflow-hidden cursor-pointer p-5 space-y-5"
+              >
                 {/* Header Card */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {template.logoUrl ? (
-                      <div className="w-11 h-11 min-w-[44px] flex items-center justify-center shrink-0 rounded-md border border-line bg-surface-2 p-1.5">
-                        <img
-                          src={template.logoUrl}
-                          alt={template.agency}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            const img = e.target as HTMLImageElement;
-                            if (!img.src.includes('bkn.png')) {
-                              img.src = '/logos/bkn.png';
-                            }
-                          }}
-                        />
+                <div className="space-y-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {template.logoUrl ? (
+                        <div className="w-12 h-12 rounded-xl border border-line bg-surface-2 p-2 flex items-center justify-center shrink-0">
+                          <img
+                            src={template.logoUrl}
+                            alt={template.agency}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              if (!img.src.includes('bkn.png')) {
+                                img.src = '/logos/bkn.png';
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl border border-line bg-surface-2 flex items-center justify-center shrink-0 text-accent-text">
+                          <Folder className="w-6 h-6" strokeWidth={1.5} />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-ink group-hover:text-accent-text transition-colors truncate">
+                          {template.name}
+                        </h3>
+                        <p className="text-xs text-ink-3 truncate mt-0.5">
+                          {template.agency}
+                        </p>
                       </div>
-                    ) : (
-                      <div className="w-11 h-11 min-w-[44px] flex items-center justify-center shrink-0 rounded-md border border-line bg-surface-2 text-ink-3">
-                        <FontAwesome name={template.iconName || 'folder'} variant="solid" className="text-[15px]" />
-                      </div>
+                    </div>
+
+                    {template.isCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteCustomTemplate(template.id, e)}
+                        className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger-soft transition-colors shrink-0"
+                        title="Hapus template kustom ini"
+                      >
+                        <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                      </button>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-[14px] leading-snug font-semibold text-ink group-hover:text-accent-text transition-colors line-clamp-1">
-                        {template.name}
-                      </h3>
-                      <p className="text-[12px] leading-[18px] font-normal text-ink-3 line-clamp-1 mt-0.5">{template.agency}</p>
+                  </div>
+
+                  <p className="text-xs text-ink-2 leading-relaxed line-clamp-2 min-h-[34px]">
+                    {template.description}
+                  </p>
+
+                  {/* Fields pill list */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {template.fields.slice(0, 3).map(f => (
+                      <span
+                        key={f.key}
+                        className="px-2 py-0.5 rounded-md border border-line bg-surface-2 text-[11px] font-medium text-ink-2"
+                      >
+                        {f.label.split('(')[0].trim()}
+                      </span>
+                    ))}
+                    {template.fields.length > 3 && (
+                      <span className="px-2 py-0.5 rounded-md border border-blue-500/20 bg-blue-500/10 text-[11px] font-semibold text-accent-text">
+                        +{template.fields.length - 3} kolom
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer: Readiness meter & Quick Action */}
+                <div className="pt-4 border-t border-line flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-medium text-ink-3">
+                      <span>Kesiapan data</span>
+                      <span className="tabular-nums font-semibold text-ink">
+                        {readiness.filled}/{readiness.total} siap ({readiness.percent}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-surface-3 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          readiness.percent === 100
+                            ? 'bg-ok'
+                            : readiness.percent > 50
+                              ? 'bg-accent'
+                              : 'bg-warn'
+                        }`}
+                        style={{ width: `${readiness.percent}%` }}
+                      />
                     </div>
                   </div>
 
-                  {template.isCustom && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      iconOnly
-                      onClick={(e) => handleDeleteCustomTemplate(template.id, e)}
-                      className="text-ink-3 hover:text-danger shrink-0"
-                      title="Hapus template kustom ini"
-                      icon={<FontAwesome name="trash" className="text-[11px]" />}
-                    />
-                  )}
-                </div>
-
-                {/* Description */}
-                <p className="text-[12.5px] leading-relaxed font-normal text-ink-2 line-clamp-2">
-                  {template.description}
-                </p>
-
-                {/* Fields pill list */}
-                <div className="flex flex-wrap gap-1.5">
-                  {template.fields.slice(0, 4).map(f => (
-                    <Badge key={f.key} variant="neutral" size="sm">
-                      {f.label.split('(')[0].trim()}
-                    </Badge>
-                  ))}
-                  {template.fields.length > 4 && (
-                    <Badge variant="primary" size="sm">
-                      +{template.fields.length - 4} kolom lain
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Card Footer: Readiness & Quick Action */}
-              <div className="card-foot">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-16 h-1.5 bg-surface-3 rounded-full overflow-hidden shrink-0">
-                    <div
-                      className="h-full rounded-full transition-all duration-300 bg-accent"
-                      style={{ width: `${readiness.percent}%` }}
-                    />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopySummary(template);
+                      }}
+                      className="h-8 px-2.5 rounded-lg border border-line bg-surface-2 text-xs font-semibold text-ink-2 hover:text-ink hover:bg-surface-3 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                      title="Salin ringkasan data template"
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-ok" strokeWidth={2} />
+                          <span className="text-ok">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-ink-3" strokeWidth={1.5} />
+                          <span>Salin</span>
+                        </>
+                      )}
+                    </button>
+                    <span className="text-xs font-semibold text-accent-text group-hover:translate-x-0.5 transition-transform inline-flex items-center">
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
                   </div>
-                  <span className="text-[11px] font-medium text-ink-3 tabular-nums whitespace-nowrap">
-                    {readiness.filled}/{readiness.total} siap
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopySummary(template);
-                    }}
-                    title="Salin ringkasan data template ini"
-                    icon={<FontAwesome name={isCopied ? 'check-pure' : 'copy'} className={`text-[11px] ${isCopied ? 'text-ok' : ''}`} />}
-                  >
-                    {isCopied ? 'Tersalin' : 'Salin'}
-                  </Button>
-                  <span className="text-[12px] font-semibold text-accent-text group-hover:underline">
-                    Detail
-                  </span>
                 </div>
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* DETAIL MODAL / DRAWER */}
+      {/* ── DETAIL MODAL ── */}
       {selectedTemplate && (
-        <Modal isOpen onClose={() => setSelectedTemplate(null)}>
-          <div className="card w-full max-w-[640px] max-h-[90vh] flex flex-col overflow-hidden shadow-lg">
-            {/* Modal Header */}
-            <div className="card-head">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedTemplate(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-2xl max-h-[90vh] rounded-[24px] border border-line bg-surface shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-line flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
                 {selectedTemplate.logoUrl ? (
-                  <div className="w-12 h-12 min-w-[48px] flex items-center justify-center shrink-0 rounded-md border border-line bg-surface-2 p-1.5">
+                  <div className="w-14 h-14 rounded-2xl border border-line bg-surface-2 p-2 flex items-center justify-center shrink-0">
                     <img
                       src={selectedTemplate.logoUrl}
                       alt={selectedTemplate.agency}
                       className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        if (!img.src.includes('bkn.png')) {
-                          img.src = '/logos/bkn.png';
-                        }
-                      }}
                     />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 flex items-center justify-center shrink-0 rounded-md border border-line bg-surface-2 text-ink-3">
-                    <FontAwesome name={selectedTemplate.iconName || 'folder'} variant="solid" className="text-[16px]" />
+                  <div className="w-14 h-14 rounded-2xl border border-line bg-surface-2 flex items-center justify-center shrink-0 text-accent-text">
+                    <Folder className="w-7 h-7" strokeWidth={1.5} />
                   </div>
                 )}
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-[15px] leading-snug font-semibold text-ink">{selectedTemplate.name}</h2>
-                  <p className="text-[12px] leading-[18px] font-normal text-ink-3 mt-0.5 truncate">{selectedTemplate.agency}</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-ink truncate">
+                    {selectedTemplate.name}
+                  </h2>
+                  <p className="text-xs text-ink-3 truncate mt-0.5">
+                    {selectedTemplate.agency}
+                  </p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
+
+              <button
+                type="button"
                 onClick={() => setSelectedTemplate(null)}
-                className="text-ink-3 shrink-0"
-                icon={<FontAwesome name="xmark" className="text-[12px]" />}
-              />
+                className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              <div className="rounded-md border border-line bg-surface-2 p-3.5 flex items-start gap-2.5">
-                <FontAwesome name="circle-info" className="text-accent-text text-[13px] shrink-0 mt-0.5" />
-                <p className="text-[12.5px] leading-relaxed text-ink-2">
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              <div className="p-4 rounded-xl border border-line bg-surface-2 flex items-start gap-3">
+                <Info className="w-4 h-4 text-accent-text shrink-0 mt-0.5" strokeWidth={1.5} />
+                <p className="text-xs text-ink-2 leading-relaxed">
                   {selectedTemplate.description}
                 </p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-2.5">
-                  <h3 className="text-[13px] leading-[20px] font-semibold text-ink">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-ink">
                     Kolom yang Dibutuhkan ({selectedTemplate.fields.length} Kolom)
-                  </h3>
-                  <span className="text-[11.5px] leading-[18px] font-medium text-ink-3 shrink-0">
-                    Status profil Anda
+                  </span>
+                  <span className="text-ink-3">
+                    Status Data Profil Anda
                   </span>
                 </div>
 
-                <div className="rounded-md border border-line divide-y divide-line overflow-hidden">
+                <div className="rounded-xl border border-line divide-y divide-line overflow-hidden bg-surface-2">
                   {selectedTemplate.fields.map(field => {
                     const value = getProfileValue(field.key);
                     const isFilled = value !== '';
 
                     return (
-                      <div key={field.key} className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-surface-2 transition-colors">
+                      <div key={field.key} className="p-3.5 flex items-center justify-between gap-3 hover:bg-surface-3 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[12.5px] leading-[18px] font-medium text-ink truncate">{field.label}</span>
-                            <Badge variant="neutral" size="sm" className="shrink-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-ink truncate">{field.label}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface border border-line text-ink-3">
                               {field.categoryGroup}
-                            </Badge>
+                            </span>
                           </div>
-                          <p className={`text-[12px] leading-[18px] truncate mt-0.5 ${isFilled ? 'text-ink-2' : 'text-ink-3'}`}>
-                            {isFilled ? value : 'Belum terisi di profil'}
+                          <p className={`text-xs mt-0.5 truncate font-mono ${isFilled ? 'text-ink-2' : 'text-ink-3 italic'}`}>
+                            {isFilled ? value : 'Belum terisi di profil Anda'}
                           </p>
                         </div>
 
                         <div className="shrink-0">
                           {isFilled ? (
-                            <Badge variant="ok" dot>Terisi</Badge>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Cocok</span>
+                            </span>
                           ) : (
-                            <Badge variant="neutral">Kosong</Badge>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-3 text-ink-3 border border-line">
+                              <AlertCircle className="w-3 h-3 text-amber-500" />
+                              <span>Kosong</span>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -635,73 +806,97 @@ export function TemplatesPage() {
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="card-foot">
-              <Button
-                variant="secondary"
+            {/* Modal Actions */}
+            <div className="p-6 border-t border-line bg-surface-2 flex items-center justify-between gap-3">
+              <button
+                type="button"
                 onClick={() => handleCopySummary(selectedTemplate)}
-                icon={<FontAwesome name="copy" className="text-[11px]" />}
+                className="h-11 px-4 rounded-xl border border-line bg-surface hover:bg-surface-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-2 cursor-pointer"
               >
-                Salin ringkasan data
-              </Button>
+                <Copy className="w-4 h-4 text-ink-3" />
+                <span>Salin Ringkasan Data</span>
+              </button>
 
-              <Link to="/profile" className="btn btn-primary">
-                <FontAwesome name="pen-to-square" className="text-[11px]" />
-                <span>Lengkapi data di profil</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  className="h-11 px-5 rounded-xl bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold transition-colors inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Lengkapi di Profil</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </div>
-        </Modal>
+        </div>
       )}
 
-      {/* CREATE TEMPLATE MODAL */}
+      {/* ── CREATE CUSTOM TEMPLATE MODAL ── */}
       {isCreateModalOpen && (
-        <Modal isOpen onClose={() => setIsCreateModalOpen(false)}>
-          <div className="card w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-lg">
-            <div className="card-head items-start">
-              <div className="min-w-0">
-                <h2 className="text-[15px] leading-snug font-semibold text-ink">Buat Template / Grup Layanan Baru</h2>
-                <p className="text-[12px] leading-[18px] font-normal text-ink-3 mt-0.5">Susun kumpulan kolom profil untuk kebutuhan instansi atau portal tertentu.</p>
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsCreateModalOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-xl max-h-[90vh] rounded-[24px] border border-line bg-surface shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            <div className="p-6 border-b border-line flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-ink">
+                  Buat Template Formulir Baru
+                </h2>
+                <p className="text-xs text-ink-3 mt-1">
+                  Kelompokkan kolom profil spesifik untuk kebutuhan portal pendaftaran atau instansi lain.
+                </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
+              <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-ink-3 shrink-0"
-                icon={<FontAwesome name="xmark" className="text-[12px]" />}
-              />
+                className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <form onSubmit={handleCreateTemplate} className="flex-1 flex flex-col overflow-hidden">
-              <div className="p-5 overflow-y-auto space-y-4 flex-1">
-                <FormField label="Nama Template / Grup" required htmlFor="tpl-name">
-                  <Input
-                    id="tpl-name"
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Nama Template / Grup <span className="text-danger">*</span>
+                  </label>
+                  <input
                     type="text"
                     required
                     value={newTemplateName}
                     onChange={e => setNewTemplateName(e.target.value)}
                     placeholder="Contoh: Pendaftaran Beasiswa LPDP / Formulir Bank Mandiri"
+                    className="w-full h-12 px-4 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all"
                   />
-                </FormField>
+                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField label="Nama Instansi / Sasaran" htmlFor="tpl-agency">
-                    <Input
-                      id="tpl-agency"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1.5">
+                      Instansi / Sasaran
+                    </label>
+                    <input
                       type="text"
                       value={newTemplateAgency}
                       onChange={e => setNewTemplateAgency(e.target.value)}
                       placeholder="Contoh: LPDP Kemenkeu"
+                      className="w-full h-12 px-4 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all"
                     />
-                  </FormField>
+                  </div>
 
-                  <FormField label="Ikon Grup" htmlFor="tpl-icon">
-                    <Select
-                      id="tpl-icon"
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1.5">
+                      Ikon Template
+                    </label>
+                    <select
                       value={newTemplateIcon}
                       onChange={e => setNewTemplateIcon(e.target.value)}
+                      className="w-full h-12 px-4 rounded-xl border border-line bg-surface-2 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all cursor-pointer"
                     >
                       <option value="folder">Folder Umum</option>
                       <option value="document">Dokumen / Form</option>
@@ -711,64 +906,67 @@ export function TemplatesPage() {
                       <option value="shield">Keamanan / Kepolisian</option>
                       <option value="bank">Perbankan / Finansial</option>
                       <option value="heart">Kesehatan / BPJS</option>
-                    </Select>
-                  </FormField>
+                    </select>
+                  </div>
                 </div>
 
-                <FormField label="Deskripsi Singkat" htmlFor="tpl-desc">
-                  <Textarea
-                    id="tpl-desc"
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Deskripsi Singkat
+                  </label>
+                  <textarea
                     rows={2}
                     value={newTemplateDescription}
                     onChange={e => setNewTemplateDescription(e.target.value)}
                     placeholder="Jelaskan kebutuhan pengisian formulir ini..."
+                    className="w-full p-3 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all"
                   />
-                </FormField>
+                </div>
 
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <label className="text-[12px] leading-[18px] font-medium text-ink-2">
-                      Pilih kolom data ({selectedFieldKeys.length} terpilih)
-                    </label>
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-ink">
+                      Pilih Kolom Data ({selectedFieldKeys.length} terpilih)
+                    </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setSelectedFieldKeys(AVAILABLE_PROFILE_FIELDS.map(f => f.key))}
-                        className="text-[11px] text-accent-text hover:underline font-semibold"
+                        className="text-accent-text hover:underline font-semibold"
                       >
                         Pilih Semua
                       </button>
-                      <span className="text-line-2">|</span>
+                      <span className="text-ink-3">·</span>
                       <button
                         type="button"
                         onClick={() => setSelectedFieldKeys([])}
-                        className="text-[11px] text-ink-3 hover:underline"
+                        className="text-ink-3 hover:underline"
                       >
                         Reset
                       </button>
                     </div>
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto rounded-md border border-line bg-surface-2 divide-y divide-line">
+                  <div className="max-h-56 overflow-y-auto rounded-xl border border-line bg-surface-2 divide-y divide-line p-1">
                     {AVAILABLE_PROFILE_FIELDS.map(field => {
                       const isChecked = selectedFieldKeys.includes(field.key);
                       return (
                         <label
                           key={field.key}
-                          className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-surface-3 cursor-pointer transition-colors"
+                          className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-3 cursor-pointer transition-colors"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
                             <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => toggleFieldSelection(field.key)}
-                              className="accent-accent cursor-pointer shrink-0"
+                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/40 cursor-pointer shrink-0"
                             />
-                            <span className="text-[12.5px] font-medium text-ink truncate">{field.label}</span>
+                            <span className="text-xs font-medium text-ink truncate">{field.label}</span>
                           </div>
-                          <Badge variant="neutral" size="sm" className="shrink-0">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-surface border border-line text-ink-3 shrink-0">
                             {field.categoryGroup}
-                          </Badge>
+                          </span>
                         </label>
                       );
                     })}
@@ -776,25 +974,28 @@ export function TemplatesPage() {
                 </div>
               </div>
 
-              <div className="card-foot justify-end">
-                <Button
-                  variant="ghost"
+              <div className="p-6 border-t border-line bg-surface-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
                   onClick={() => setIsCreateModalOpen(false)}
+                  className="h-11 px-4 rounded-xl border border-line bg-surface hover:bg-surface-3 text-xs font-semibold text-ink transition-colors cursor-pointer"
                 >
                   Batal
-                </Button>
-                <Button
+                </button>
+                <button
                   type="submit"
-                  variant="primary"
                   disabled={!newTemplateName.trim() || selectedFieldKeys.length === 0}
+                  className="h-11 px-5 rounded-xl bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Simpan Template
-                </Button>
+                </button>
               </div>
             </form>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );
 }
+
+export default TemplatesPage;

@@ -10,8 +10,6 @@ export default {
       fontFamily: {
         sans: [
           '"Plus Jakarta Sans"',
-          '"Outfit"',
-          '"Inter"',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -20,6 +18,17 @@ export default {
           'Helvetica',
           'Arial',
           'sans-serif',
+        ],
+        mono: [
+          '"JetBrains Mono"',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Monaco',
+          'Consolas',
+          '"Liberation Mono"',
+          '"Courier New"',
+          'monospace',
         ],
       },
       colors: {

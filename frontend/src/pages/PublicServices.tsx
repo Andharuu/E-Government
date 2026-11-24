@@ -1,7 +1,36 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { publicServicesApi, profileApi, type PublicServicesResponse, type PublicServiceAgenda, type Profile } from '../services/api';
-import { Card, EmptyState, Badge, FontAwesome } from '../components/ui';
+import {
+  Building2,
+  Calendar,
+  ArrowLeft,
+  ExternalLink,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+  FileText,
+  Sparkles,
+  Search,
+  X,
+  ChevronRight,
+  Users,
+  CreditCard,
+  User,
+  Mail,
+  Image as ImageIcon,
+  GraduationCap,
+  Receipt,
+  MapPin,
+  Key,
+  Wallet,
+  Phone,
+  HeartPulse,
+  Briefcase,
+  Stamp,
+  Landmark,
+} from 'lucide-react';
 
 // ─── MAPPING LOGO RESMI ASLI DARI INSTANSI PEMERINTAH ──────────
 const AGENCY_LOGO_MAP: Record<string, string> = {
@@ -65,7 +94,6 @@ function resolveAgencyLogo(agency: string, rawSrc?: string): string {
   return '/logos/kemendikbud.svg';
 }
 
-// Format jadwal & periode tanpa kata 'varies', menggunakan data operasional resmi Indonesia
 function formatDeadlineText(deadline?: string, category?: string, title?: string): string {
   if (!deadline || deadline.toLowerCase().includes('varies')) {
     const t = (title || '').toLowerCase();
@@ -102,13 +130,13 @@ interface RequirementDetail {
   name: string;
   fieldCode: string;
   desc: string;
-  icon: string;
+  IconComponent: typeof User;
 }
 
 function isFieldFilled(fieldCode: string, profile: Profile | null): boolean {
   if (!profile) return false;
 
-  let docsMap: Record<string, any> = {};
+  let docsMap: Record<string, unknown> = {};
   if (profile.document_photos) {
     try {
       docsMap = typeof profile.document_photos === 'string'
@@ -146,16 +174,18 @@ function isFieldFilled(fieldCode: string, profile: Profile | null): boolean {
 
   const hasDoc = (matchKey: string) => {
     const k = matchKey.toLowerCase();
-    return Object.keys(docsMap).some((key) => key.toLowerCase().includes(k) && Boolean(docsMap[key]?.data || docsMap[key]));
+    return Object.keys(docsMap).some((key) => key.toLowerCase().includes(k) && Boolean((docsMap[key] as { data?: string })?.data || docsMap[key]));
   };
 
-  const hasVal = (val: any) => (typeof val === 'string' ? val.trim().length > 0 : Boolean(val));
+  const hasVal = (val: unknown) => (typeof val === 'string' ? val.trim().length > 0 : Boolean(val));
+
+  const pAny = profile as unknown as Record<string, unknown>;
 
   switch (fieldCode) {
     case 'nik':
       return hasVal(profile.nik);
     case 'no_kk':
-      return hasVal((profile as any).no_kk) || hasVal(profile.father_name) || hasVal(profile.mother_name) || hasCustomValue('kk') || hasDoc('kk');
+      return hasVal(pAny.no_kk) || hasVal(profile.father_name) || hasVal(profile.mother_name) || hasCustomValue('kk') || hasDoc('kk');
     case 'full_name_dob':
       return hasVal(profile.full_name) && hasVal(profile.birth_date);
     case 'contact':
@@ -174,19 +204,19 @@ function isFieldFilled(fieldCode: string, profile: Profile | null): boolean {
     case 'full_address':
       return hasVal(profile.address);
     case 'efin':
-      return hasCustomValue('efin') || hasVal((profile as any).efin);
+      return hasCustomValue('efin') || hasVal(pAny.efin);
     case 'bank_account':
-      return hasCustomValue('bank') || hasCustomValue('rekening') || hasVal((profile as any).bank_account);
+      return hasCustomValue('bank') || hasCustomValue('rekening') || hasVal(pAny.bank_account);
     case 'doc_scan':
       return Object.keys(docsMap).length > 0 || hasCustomValue('dokumen');
     case 'no_bpjs':
       return hasVal(profile.bpjs_number) || hasCustomValue('bpjs');
     case 'fktp':
-      return hasCustomValue('fktp') || hasCustomValue('puskesmas') || hasCustomValue('klinik') || hasVal((profile as any).fktp);
+      return hasCustomValue('fktp') || hasCustomValue('puskesmas') || hasCustomValue('klinik') || hasVal(pAny.fktp);
     case 'autodebet':
-      return hasCustomValue('autodebet') || hasCustomValue('rekening') || hasCustomValue('bank') || hasVal((profile as any).autodebet);
+      return hasCustomValue('autodebet') || hasCustomValue('rekening') || hasCustomValue('bank') || hasVal(pAny.autodebet);
     case 'nib':
-      return hasCustomValue('nib') || hasVal((profile as any).nib);
+      return hasCustomValue('nib') || hasVal(pAny.nib);
     case 'kbli':
       return hasCustomValue('kbli') || hasVal(profile.occupation);
     case 'business_location':
@@ -194,11 +224,11 @@ function isFieldFilled(fieldCode: string, profile: Profile | null): boolean {
     case 'env_doc':
       return hasCustomValue('sppl') || hasCustomValue('lingkungan') || hasCustomValue('amdal') || hasDoc('sppl') || hasDoc('env');
     case 'kks_number':
-      return hasCustomValue('kks') || hasVal((profile as any).kks_number);
+      return hasCustomValue('kks') || hasVal(pAny.kks_number);
     case 'home_photo':
       return hasDoc('rumah') || hasDoc('home') || hasDoc('bangunan') || hasCustomValue('rumah');
     default:
-      return hasVal((profile as any)[fieldCode]) || hasCustomValue(fieldCode);
+      return hasVal(pAny[fieldCode]) || hasCustomValue(fieldCode);
   }
 }
 
@@ -208,37 +238,37 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Induk Kependudukan (NIK)',
       fieldCode: 'nik',
       desc: 'Validasi identitas pendaftar terintegrasi langsung dengan database kependudukan Ditjen Dukcapil.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Kartu Keluarga (KK)',
       fieldCode: 'no_kk',
       desc: 'Verifikasi susunan keluarga, hubungan perwalian, dan domisili pendaftar seleksi perguruan tinggi.',
-      icon: 'users',
+      IconComponent: Users,
     },
     {
       name: 'Nama Lengkap & Tanggal Lahir',
       fieldCode: 'full_name_dob',
       desc: 'Pencocokan data ijazah nasional, akun SNPMB, dan database Dapodik Kemendikbudristek.',
-      icon: 'user',
+      IconComponent: User,
     },
     {
       name: 'Email Aktif & Nomor WhatsApp',
       fieldCode: 'contact',
-      desc: 'Penerimaan token autentikasi 2FA, jadwal ujian berbasis komputer (UTBK), dan status kelulusan.',
-      icon: 'envelope',
+      desc: 'Penerimaan token autentikasi 2FA, jadwal ujian UTBK, dan pengumuman seleksi.',
+      IconComponent: Mail,
     },
     {
       name: 'Pasfoto Digital Resmi (JPG/PNG)',
       fieldCode: 'photo',
       desc: 'Pasfoto formal ukuran 4x6 latar belakang polos terstandar untuk pencetakan kartu peserta ujian.',
-      icon: 'image',
+      IconComponent: ImageIcon,
     },
     {
       name: 'NISN / NPSN Sekolah Asal',
       fieldCode: 'nisn',
       desc: 'Sinkronisasi riwayat nilai rapor dan akreditasi sekolah asal dari Pusat Data & Informasi (Pusdatin).',
-      icon: 'graduation-cap',
+      IconComponent: GraduationCap,
     },
   ],
   ekonomi: [
@@ -246,37 +276,37 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Pokok Wajib Pajak (NPWP 16 Digit)',
       fieldCode: 'npwp',
       desc: 'Identitas perpajakan 16 digit terintegrasi NIK untuk autentikasi sistem CoreTax dan DJP Online.',
-      icon: 'file-invoice-dollar',
+      IconComponent: Receipt,
     },
     {
       name: 'Nomor Induk Kependudukan (NIK KTP)',
       fieldCode: 'nik',
       desc: 'Autentikasi pemotong pajak atau penanggung jawab SPT Masa / Tahunan secara realtime ke DJP.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Alamat Domisili & Kode Pos KPP',
       fieldCode: 'address',
-      desc: 'Penentuan yurisdiksi Kantor Pelayanan Pajak (KPP) Pratama dan korespondensi surat ketetapan pajak.',
-      icon: 'map-pin',
+      desc: 'Penentuan yurisdiksi Kantor Pelayanan Pajak (KPP) Pratama dan korespondensi resmi.',
+      IconComponent: MapPin,
     },
     {
       name: 'Email & Nomor HP Terverifikasi',
       fieldCode: 'contact',
       desc: 'Penerimaan kode verifikasi token SMS/Email dan Bukti Penerimaan Elektronik (BPE) resmi.',
-      icon: 'envelope',
+      IconComponent: Mail,
     },
     {
       name: 'Kode Otorisasi EFIN / Sertifikat Elektronik',
       fieldCode: 'efin',
       desc: 'Kunci enkripsi penandatanganan dokumen pelaporan elektronik dan e-Filing DJP.',
-      icon: 'key',
+      IconComponent: Key,
     },
     {
       name: 'Nomor Rekening Bank Terdaftar',
       fieldCode: 'bank_account',
       desc: 'Rekening bank atas nama Wajib Pajak untuk keperluan restitusi / pengembalian kelebihan bayar pajak.',
-      icon: 'wallet',
+      IconComponent: Wallet,
     },
   ],
   administrasi: [
@@ -284,37 +314,37 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Induk Kependudukan (NIK)',
       fieldCode: 'nik',
       desc: 'Kunci induk database kependudukan nasional untuk penerbitan berkas resmi Disdukcapil.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Kartu Keluarga (KK)',
       fieldCode: 'no_kk',
-      desc: 'Verifikasi status kepala keluarga dan anggota dalam database Sistem Informasi Administrasi Kependudukan (SIAK).',
-      icon: 'users',
+      desc: 'Verifikasi status kepala keluarga dan anggota dalam database SIAK Kemendagri.',
+      IconComponent: Users,
     },
     {
       name: 'Alamat Domisili Lengkap (RT/RW, Desa/Kel)',
       fieldCode: 'full_address',
       desc: 'Pencetakan alamat domisili resmi pada dokumen KTP-El, KK baru, atau surat pindah.',
-      icon: 'map-pin',
+      IconComponent: MapPin,
     },
     {
       name: 'Nomor HP & WhatsApp Aktif',
       fieldCode: 'phone',
       desc: 'Penerimaan notifikasi SMS jadwal pengambilan blangko fisik atau barcode verifikasi berkas.',
-      icon: 'phone',
+      IconComponent: Phone,
     },
     {
       name: 'Alamat Email Terdaftar BSrE',
       fieldCode: 'email',
       desc: 'Pengiriman salinan berkas digital resmi dengan Tanda Tangan Elektronik (TTE) Balai Sertifikasi Elektronik.',
-      icon: 'envelope',
+      IconComponent: Mail,
     },
     {
       name: 'Berkas Dokumen Pendukung (PDF/JPG)',
       fieldCode: 'doc_scan',
       desc: 'Unggah berkas akta lahir, buku nikah, atau surat keterangan pengantar RT/RW dalam format terstandar.',
-      icon: 'file-lines',
+      IconComponent: FileText,
     },
   ],
   kesehatan: [
@@ -322,37 +352,37 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Kartu BPJS Kesehatan / KIS',
       fieldCode: 'no_bpjs',
       desc: 'Nomor identitas kepesertaan jaminan kesehatan nasional terintegrasi fasilitas kesehatan se-Indonesia.',
-      icon: 'heart-pulse',
+      IconComponent: HeartPulse,
     },
     {
       name: 'Nomor Induk Kependudukan (NIK KTP)',
       fieldCode: 'nik',
       desc: 'Pengecekan keaktifan kepesertaan melalui bridging system BPJS Kesehatan dengan Dukcapil.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Kartu Keluarga (KK)',
       fieldCode: 'no_kk',
       desc: 'Pendaftaran anggota keluarga dalam satu tanggungan premi iuran bulanan jaminan sosial.',
-      icon: 'users',
+      IconComponent: Users,
     },
     {
       name: 'Fasilitas Kesehatan Tingkat 1 (FKTP)',
       fieldCode: 'fktp',
       desc: 'Puskesmas atau klinik dokter keluarga terdaftar sebagai rujukan fasilitas pelayanan primer peserta.',
-      icon: 'hospital',
+      IconComponent: Building2,
     },
     {
       name: 'Nomor HP & WhatsApp Aktif',
       fieldCode: 'phone',
       desc: 'Pengambilan nomor antrean online melalui Mobile JKN dan pengingat skrining kesehatan berkala.',
-      icon: 'phone',
+      IconComponent: Phone,
     },
     {
       name: 'Rekening Autodebet Iuran',
       fieldCode: 'autodebet',
       desc: 'Informasi rekening bank Himbara atau dompet digital untuk pembayaran iuran bulanan peserta mandiri.',
-      icon: 'credit-card',
+      IconComponent: CreditCard,
     },
   ],
   perizinan: [
@@ -360,37 +390,37 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Induk Berusaha (NIB OSS RBA)',
       fieldCode: 'nib',
       desc: 'Identitas legalitas usaha tunggal terintegrasi perizinan berbasis risiko Kementerian Investasi/BKPM.',
-      icon: 'briefcase',
+      IconComponent: Briefcase,
     },
     {
       name: 'Nomor Induk Kependudukan (NIK Pemohon)',
       fieldCode: 'nik',
       desc: 'Validasi pemohon, penanggung jawab badan usaha, atau direksi sesuai akta notaris Kemenkumham.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Pokok Wajib Pajak (NPWP Usaha/Pribadi)',
       fieldCode: 'npwp',
       desc: 'Konfirmasi Status Wajib Pajak (KSWP) aktif sebagai syarat penerbitan izin berusaha.',
-      icon: 'file-invoice-dollar',
+      IconComponent: Receipt,
     },
     {
       name: 'Klasifikasi Baku Lapangan Usaha (KBLI)',
       fieldCode: 'kbli',
       desc: 'Kode 5 digit klasifikasi kegiatan usaha resmi untuk menentukan tingkat risiko dan sertifikasi teknis.',
-      icon: 'file-contract',
+      IconComponent: FileText,
     },
     {
       name: 'Alamat Lokasi & Titik Koordinat Usaha',
       fieldCode: 'business_location',
       desc: 'Kesesuaian Kegiatan Pemanfaatan Ruang (KKPR) dan Persetujuan Bangunan Gedung (PBG) di lokasi usaha.',
-      icon: 'map-pin',
+      IconComponent: MapPin,
     },
     {
       name: 'Dokumen Persetujuan Lingkungan / SPPL',
       fieldCode: 'env_doc',
       desc: 'Surat Pernyataan Kesanggupan Pengelolaan dan Pemantauan Lingkungan Hidup sesuai regulasi daerah.',
-      icon: 'stamp',
+      IconComponent: Stamp,
     },
   ],
   sosial: [
@@ -398,56 +428,56 @@ const SECTOR_REQUIREMENTS_MAP: Record<string, RequirementDetail[]> = {
       name: 'Nomor Induk Kependudukan (NIK Terdaftar DTKS)',
       fieldCode: 'nik',
       desc: 'Pengecekan integrasi NIK dengan Data Terpadu Kesejahteraan Sosial (DTKS) Kementerian Sosial.',
-      icon: 'id-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Kartu Keluarga (KK)',
       fieldCode: 'no_kk',
       desc: 'Verifikasi komposisi keluarga, jumlah tanggungan anak sekolah, lansia, dan penyandang disabilitas.',
-      icon: 'users',
+      IconComponent: Users,
     },
     {
       name: 'Alamat Domisili Sesuai Wilayah DTKS',
       fieldCode: 'address',
       desc: 'Penyaluran bantuan oleh petugas pendamping sosial dan verifikasi musyawarah kelurahan/desa.',
-      icon: 'map-pin',
+      IconComponent: MapPin,
     },
     {
       name: 'Nomor Kartu Keluarga Sejahtera (KKS / KIP)',
       fieldCode: 'kks_number',
       desc: 'Kartu debit kombo bansos untuk pencairan bantuan tunai program PKH, BPNT, atau KIP Kuliah.',
-      icon: 'credit-card',
+      IconComponent: CreditCard,
     },
     {
       name: 'Nomor Telepon Pendamping / Keluarga',
       fieldCode: 'phone',
       desc: 'Penyampaian informasi jadwal penyaluran di kantor pos/e-warong dan pertemuan kelompok berkala.',
-      icon: 'phone',
+      IconComponent: Phone,
     },
     {
       name: 'Foto Kondisi Rumah / Tempat Tinggal',
       fieldCode: 'home_photo',
       desc: 'Dokumentasi verifikasi faktual kelayakan penerima bantuan sosial berbasis geospasial.',
-      icon: 'image',
+      IconComponent: ImageIcon,
     },
   ],
 };
 
-// ─── KOMPONEN LOGO ASLI DARI INSTANSI ─────────────────────────
-function LogoDisplay({ src, alt, size = 'w-11 h-11' }: { src?: string; alt: string; size?: string }) {
+// ─── KOMPONEN LOGO ASLI INSTANSI ──────────────────────────────
+function LogoDisplay({ src, alt, size = 'w-12 h-12' }: { src?: string; alt: string; size?: string }) {
   const [hasError, setHasError] = useState(false);
   const targetLogo = resolveAgencyLogo(alt, src);
 
   if (hasError) {
     return (
-      <div className={`shrink-0 ${size} flex items-center justify-center rounded-md border border-line bg-surface-2 text-ink-3`}>
-        <FontAwesome name="landmark" variant="solid" className="text-[15px]" />
+      <div className={`shrink-0 ${size} flex items-center justify-center rounded-xl border border-line bg-surface-2 text-ink-3`}>
+        <Landmark className="w-5 h-5" strokeWidth={1.5} />
       </div>
     );
   }
 
   return (
-    <div className={`shrink-0 ${size} flex items-center justify-center rounded-md border border-line bg-surface-2 p-1.5`}>
+    <div className={`shrink-0 ${size} flex items-center justify-center rounded-xl border border-line bg-surface-2 p-2`}>
       <img
         src={targetLogo}
         alt={alt}
@@ -484,18 +514,18 @@ export function PublicServiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="page max-w-6xl mx-auto w-full">
-        <div className="skeleton h-4 w-44" />
-        <div className="card p-5 md:p-6 space-y-4">
+      <div className="page max-w-6xl mx-auto w-full space-y-6 pb-16">
+        <div className="h-5 w-44 bg-surface-2 rounded-lg animate-pulse" />
+        <div className="p-8 rounded-[24px] border border-line bg-surface space-y-4">
           <div className="flex items-center gap-4">
-            <div className="skeleton w-16 h-16" />
+            <div className="w-16 h-16 bg-surface-2 rounded-2xl animate-pulse" />
             <div className="flex-1 space-y-2">
-              <div className="skeleton h-5 w-2/3" />
-              <div className="skeleton h-3.5 w-1/3" />
+              <div className="h-6 w-2/3 bg-surface-2 rounded-lg animate-pulse" />
+              <div className="h-4 w-1/3 bg-surface-2 rounded-lg animate-pulse" />
             </div>
           </div>
-          <div className="skeleton h-3.5 w-full" />
-          <div className="skeleton h-3.5 w-5/6" />
+          <div className="h-4 w-full bg-surface-2 rounded-lg animate-pulse" />
+          <div className="h-4 w-5/6 bg-surface-2 rounded-lg animate-pulse" />
         </div>
       </div>
     );
@@ -503,136 +533,144 @@ export function PublicServiceDetailPage() {
 
   if (!item) {
     return (
-      <div className="page max-w-6xl mx-auto">
-        <EmptyState title="Layanan tidak ditemukan" description="Layanan yang Anda cari tidak tersedia atau telah dipindahkan." />
-        <Link to="/public-services" className="link inline-flex items-center gap-2 text-[12.5px] self-start">
-          <FontAwesome name="arrow-left" className="text-[11px]" />
-          Kembali ke Katalog Layanan Publik
+      <div className="page max-w-6xl mx-auto py-16 text-center space-y-4">
+        <Landmark className="w-12 h-12 text-ink-3 mx-auto opacity-50" strokeWidth={1.5} />
+        <h2 className="text-xl font-bold text-ink">Layanan Tidak Ditemukan</h2>
+        <p className="text-xs text-ink-3">Layanan yang Anda cari tidak tersedia atau telah dipindahkan.</p>
+        <Link
+          to="/public-services"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-accent-text hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Kembali ke Katalog Layanan Publik</span>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="page max-w-6xl mx-auto w-full pb-12 page-enter">
-      {/* Back link */}
+    <div className="page max-w-6xl mx-auto w-full pb-16 space-y-6 page-enter">
+      {/* Back button */}
       <Link
         to="/public-services"
-        className="link inline-flex items-center gap-2 text-[12.5px] self-start"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-ink-2 hover:text-ink transition-colors self-start"
       >
-        <FontAwesome name="arrow-left" className="text-[11px]" />
-        Kembali ke Katalog Layanan Publik
+        <ArrowLeft className="w-4 h-4" />
+        <span>Kembali ke Katalog Layanan Publik</span>
       </Link>
 
-      <Card className="overflow-hidden">
-        {/* Header Hero: Logo Asli & Judul Sejajar, Kategori di Pojok Kanan Atas */}
-        <div className="p-5 md:p-6 border-b border-line bg-surface-2">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            {/* Logo Asli Instansi Sejajar dengan Judul Layanan */}
+      <div className="rounded-[24px] border border-line bg-surface shadow-xs overflow-hidden">
+        {/* Header Hero */}
+        <div className="p-6 md:p-8 border-b border-line bg-surface-2">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
             <div className="flex items-center gap-4 min-w-0 flex-1">
-              <LogoDisplay src={item.logo_url} alt={item.agency} size="w-16 h-16 sm:w-18 sm:h-18" />
+              <LogoDisplay src={item.logo_url} alt={item.agency} size="w-16 h-16 sm:w-20 sm:h-20" />
               <div className="min-w-0">
-                <h1 className="text-[20px] md:text-[22px] font-bold text-ink leading-tight tracking-[-0.025em]">{item.title}</h1>
-                <p className="text-[12.5px] text-ink-3 font-medium mt-1 flex items-center gap-1.5 min-w-0">
-                  <FontAwesome name="building-columns" className="text-[11px] shrink-0" />
-                  <span className="truncate">{item.agency}</span>
+                <h1 className="text-xl sm:text-2xl font-bold text-ink tracking-tight">
+                  {item.title}
+                </h1>
+                <p className="text-xs text-ink-3 font-medium mt-1 flex items-center gap-1.5 truncate">
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{item.agency}</span>
                 </p>
               </div>
             </div>
 
-            {/* Kategori di Pojok Kanan Atas */}
-            <Badge variant="info" className="uppercase tracking-wider shrink-0 self-start">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-blue-500/10 text-accent-text border border-blue-500/20 shrink-0 self-start">
               Sektor {item.category}
-            </Badge>
+            </span>
           </div>
         </div>
 
-        {/* Body Informasi Terstruktur */}
-        <div className="card-body space-y-6">
-          {/* Info Grid 3 Kolom Terstruktur */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
-              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="layer-group" className="text-[10px]" />
-                Sektor Layanan
+        {/* Body Content */}
+        <div className="p-6 md:p-8 space-y-8">
+          {/* 3-Column Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl border border-line bg-surface-2 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Sektor Layanan</span>
               </p>
-              <p className="font-semibold text-ink capitalize text-[13px]">{item.category}</p>
+              <p className="text-xs font-bold text-ink capitalize">
+                {item.category}
+              </p>
             </div>
 
-            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
-              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="calendar-days" className="text-[10px]" />
-                Jadwal &amp; Periode
+            <div className="p-4 rounded-xl border border-line bg-surface-2 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Jadwal &amp; Periode</span>
               </p>
-              <p className="font-semibold text-ink text-[13px]">
+              <p className="text-xs font-bold text-ink">
                 {formatDeadlineText(item.deadline, item.category, item.title)}
               </p>
             </div>
 
-            <div className="bg-surface-2 rounded-md p-3.5 border border-line">
-              <p className="text-[11px] text-ink-3 font-semibold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <FontAwesome name="building-columns" className="text-[10px]" />
-                Instansi Penyelenggara
+            <div className="p-4 rounded-xl border border-line bg-surface-2 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Instansi Penyelenggara</span>
               </p>
-              <p className="font-semibold text-ink text-[13px] truncate">{item.agency}</p>
+              <p className="text-xs font-bold text-ink truncate">
+                {item.agency}
+              </p>
             </div>
           </div>
 
-          {/* Deskripsi Layanan */}
-          <div>
-            <h3 className="font-semibold text-[13px] text-ink mb-2 flex items-center gap-2">
-              <FontAwesome name="circle-info" className="text-[12px] text-ink-3" />
+          {/* Deskripsi */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-3">
               Deskripsi Layanan Resmi
             </h3>
-            <p className="text-ink-2 leading-relaxed text-[13px] bg-surface-2 p-4 rounded-md border border-line">
+            <p className="text-xs text-ink-2 leading-relaxed p-4 rounded-xl border border-line bg-surface-2">
               {item.description}
             </p>
           </div>
 
           {/* Persyaratan & Kelengkapan Data */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-[13px] text-ink flex items-center gap-2">
-                <FontAwesome name="file-lines" className="text-[12px] text-ink-3" />
-                Persyaratan &amp; Kelengkapan Data
+              <h3 className="text-base font-bold text-ink">
+                Persyaratan &amp; Status Kesiapan Autofill
               </h3>
-              <p className="text-[12px] text-ink-3 mt-1">
-                Status kelengkapan data profil Anda untuk keperluan pengisian formulir {item.agency}.
+              <p className="text-xs text-ink-3 mt-0.5">
+                Evaluasi otomatis kesiapan kolom data profil Anda untuk pengisian formulir {item.agency}.
               </p>
             </div>
 
-            {/* Grid Kartu Persyaratan */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger">
-              {requirements.map((req) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {requirements.map(req => {
                 const filled = isFieldFilled(req.fieldCode, profile);
+                const IconComp = req.IconComponent;
+
                 return (
                   <div
                     key={req.fieldCode}
-                    className="bg-surface rounded-md border border-line p-3.5 transition-colors hover:border-line-2 flex flex-col justify-between"
+                    className="p-4 rounded-2xl border border-line bg-surface hover:border-blue-500/40 transition-colors flex flex-col justify-between space-y-3"
                   >
                     <div>
-                      {/* Baris Atas: Icon FontAwesome tanpa pembungkus, Nama Informasi, dan Badge Terisi / Belum Terisi */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <FontAwesome name={req.icon} className="text-[13px] text-ink-3 shrink-0" />
-                          <h4 className="text-[12.5px] font-semibold text-ink leading-snug">
+                          <IconComp className="w-4 h-4 text-ink-3 shrink-0" strokeWidth={1.5} />
+                          <h4 className="text-xs font-bold text-ink truncate">
                             {req.name}
                           </h4>
                         </div>
 
                         {filled ? (
-                          <Badge variant="ok" dot className="shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <CheckCircle2 className="w-3 h-3" />
                             <span>Terisi</span>
-                          </Badge>
+                          </span>
                         ) : (
-                          <Badge variant="danger" dot className="shrink-0">
-                            <span>Belum Terisi</span>
-                          </Badge>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>Perlu Ditinjau</span>
+                          </span>
                         )}
                       </div>
 
-                      {/* Deskripsi Keperluan */}
-                      <p className="text-[12px] text-ink-3 leading-relaxed pl-7 mt-1.5">
+                      <p className="text-xs text-ink-3 leading-relaxed mt-2">
                         {req.desc}
                       </p>
                     </div>
@@ -643,28 +681,28 @@ export function PublicServiceDetailPage() {
           </div>
 
           {/* CTA Akses Portal Resmi */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-5 border-t border-line">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-line">
             <a
               href={item.agency_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-secondary btn-lg"
+              className="h-12 px-5 rounded-xl border border-line bg-surface hover:bg-surface-2 text-ink font-semibold text-xs inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <FontAwesome name="globe" className="text-[12px]" />
+              <Globe className="w-4 h-4 text-ink-3" />
               <span>Website Portal Resmi</span>
             </a>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary btn-lg"
+              className="h-12 px-5 rounded-xl bg-accent hover:bg-accent-hover text-accent-fg font-semibold text-xs inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <FontAwesome name="arrow-up-right-from-square" className="text-[12px]" />
-              <span>Akses Formulir Layanan</span>
+              <ExternalLink className="w-4 h-4" />
+              <span>Buka Formulir Layanan (Aktifkan Asisten)</span>
             </a>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -674,6 +712,7 @@ export function PublicServicesPage() {
   const [data, setData] = useState<PublicServicesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = async () => {
     try {
@@ -692,28 +731,32 @@ export function PublicServicesPage() {
 
   const filteredAgendas = useMemo(() => {
     if (!data) return [];
-    if (selectedCategory === 'all') return data.agendas;
-    return data.agendas.filter((a) => a.category === selectedCategory);
-  }, [data, selectedCategory]);
+    return data.agendas.filter(a => {
+      const matchCat = selectedCategory === 'all' || a.category === selectedCategory;
+      if (!matchCat) return false;
+      if (!searchQuery.trim()) return true;
+
+      const q = searchQuery.toLowerCase();
+      return (
+        a.title.toLowerCase().includes(q) ||
+        a.agency.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.category.toLowerCase().includes(q)
+      );
+    });
+  }, [data, selectedCategory, searchQuery]);
 
   if (loading) {
     return (
-      <div className="page pb-12 w-full max-w-6xl mx-auto">
+      <div className="page max-w-7xl mx-auto space-y-6 pb-16">
         <div className="space-y-2">
-          <div className="skeleton h-6 w-72" />
-          <div className="skeleton h-3.5 w-full max-w-2xl" />
+          <div className="h-8 w-72 bg-surface-2 rounded-xl animate-pulse" />
+          <div className="h-4 w-96 bg-surface-2 rounded-lg animate-pulse" />
         </div>
-        <div className="skeleton h-9 w-full max-w-xl" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="h-10 w-full max-w-md bg-surface-2 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="card p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="skeleton w-11 h-11" />
-                <div className="skeleton h-4 flex-1" />
-              </div>
-              <div className="skeleton h-3 w-2/3" />
-              <div className="skeleton h-3 w-full" />
-            </div>
+            <div key={i} className="h-48 rounded-[20px] bg-surface-2 animate-pulse" />
           ))}
         </div>
       </div>
@@ -721,111 +764,163 @@ export function PublicServicesPage() {
   }
 
   if (!data) {
-    return <EmptyState title="Gagal memuat data" description="Koneksi ke server terputus. Silakan coba beberapa saat lagi." />;
+    return (
+      <div className="page max-w-7xl mx-auto py-16 text-center space-y-3">
+        <Landmark className="w-12 h-12 text-ink-3 mx-auto opacity-50" strokeWidth={1.5} />
+        <h2 className="text-lg font-bold text-ink">Gagal Memuat Data Layanan</h2>
+        <p className="text-xs text-ink-3">Koneksi ke server terputus. Silakan periksa koneksi lalu coba kembali.</p>
+        <button
+          type="button"
+          onClick={fetchData}
+          className="h-10 px-4 rounded-xl bg-accent text-accent-fg text-xs font-semibold"
+        >
+          Muat Ulang
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="page pb-12 w-full max-w-6xl mx-auto page-enter">
-      {/* Header Halaman */}
-      <div className="page-head">
-        <div className="min-w-0">
-          <h1 className="page-title">
+    <div className="page page-enter max-w-7xl mx-auto space-y-8 pb-16">
+      {/* ── Page Header ── */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-line">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Katalog Resmi Republik Indonesia</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink">
             Portal Layanan Publik Terpadu
           </h1>
-          <p className="page-sub max-w-3xl">
-            Katalog resmi agenda, perizinan, dan portal administrasi kementerian &amp; lembaga negara Republik Indonesia yang terintegrasi dengan ekstensi autofill GovConnect.
+          <p className="text-base text-ink-2 max-w-3xl leading-relaxed">
+            Katalog resmi agenda, perizinan, dan portal administrasi kementerian &amp; lembaga negara yang terintegrasi dengan ekstensi autofill GovConnect.
           </p>
         </div>
       </div>
 
-      {/* Kategori Filter Pills & Counter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="segmented no-scrollbar max-w-full">
+      {/* ── Filter Bar & Search ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
           <button
             type="button"
             onClick={() => setSelectedCategory('all')}
-            data-active={selectedCategory === 'all'}
-            className="segmented-item"
+            className={`h-10 px-3.5 rounded-xl border text-xs font-medium inline-flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              selectedCategory === 'all'
+                ? 'border-blue-500/40 bg-blue-500/10 text-accent-text font-semibold shadow-xs'
+                : 'border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink'
+            }`}
           >
-            <FontAwesome name="layer-group" className="text-[11px] opacity-70" />
+            <Layers className="w-3.5 h-3.5" />
             <span>Semua Sektor</span>
-            <span className="tabular-nums text-[11px] opacity-60">
+            <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+              selectedCategory === 'all' ? 'bg-blue-500/20 text-accent-text font-bold' : 'bg-surface-3 text-ink-3'
+            }`}>
               {data.agendas.length}
             </span>
           </button>
 
-          {data.categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              data-active={selectedCategory === cat.id}
-              className="segmented-item"
-            >
-              <FontAwesome name={cat.icon || 'landmark'} className="text-[11px] opacity-70" />
-              <span>{cat.label}</span>
-              <span className="tabular-nums text-[11px] opacity-60">
-                {cat.count}
-              </span>
-            </button>
-          ))}
+          {data.categories.map((cat) => {
+            const isActive = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`h-10 px-3.5 rounded-xl border text-xs font-medium inline-flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'border-blue-500/40 bg-blue-500/10 text-accent-text font-semibold shadow-xs'
+                    : 'border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink'
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-blue-500/20 text-accent-text font-bold' : 'bg-surface-3 text-ink-3'
+                }`}>
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="text-[12px] text-ink-3 shrink-0">
-          Menampilkan <span className="font-semibold text-ink tabular-nums">{filteredAgendas.length}</span> layanan
+        {/* Search Input */}
+        <div className="relative w-full md:w-72 shrink-0">
+          <Search className="w-4 h-4 text-ink-3 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cari portal atau instansi..."
+            className="w-full h-10 pl-10 pr-9 rounded-xl border border-line bg-surface text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Grid Kartu Layanan Publik Terstruktur */}
+      {/* ── Grid of Services ── */}
       {filteredAgendas.length === 0 ? (
-        <EmptyState title="Tidak ada layanan yang sesuai" description="Tidak ada agenda yang terdaftar pada sektor ini saat ini." />
+        <div className="p-12 text-center rounded-[20px] border border-line bg-surface space-y-3">
+          <Landmark className="w-10 h-10 text-ink-3 mx-auto opacity-50" strokeWidth={1.5} />
+          <h3 className="text-base font-semibold text-ink">Tidak Ada Layanan Ditemukan</h3>
+          <p className="text-xs text-ink-3 max-w-sm mx-auto">
+            Tidak ditemukan agenda atau portal yang cocok dengan &quot;{searchQuery}&quot;. Silakan coba kata kunci lain.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
+            className="h-9 px-4 rounded-xl border border-line bg-surface-2 text-xs font-semibold text-ink hover:bg-surface-3 transition-colors mt-2"
+          >
+            Reset Filter
+          </button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredAgendas.map((item) => (
             <Link
               key={item.id}
               to={`/public-services/${item.id}`}
-              className="group card card-hover flex flex-col justify-between overflow-hidden"
+              className="group rounded-[20px] border border-line bg-surface hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-200 flex flex-col justify-between overflow-hidden p-5 space-y-4"
             >
-              <div className="card-body space-y-3">
-                {/* Header Card: Logo Asli & Judul Sejajar, Kategori di Pojok Kanan Atas */}
+              <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <LogoDisplay src={item.logo_url} alt={item.agency} size="w-11 h-11" />
-                    <h3 className="font-semibold text-[13.5px] leading-snug text-ink group-hover:text-accent-text transition-colors line-clamp-2">
-                      {item.title}
-                    </h3>
+                    <LogoDisplay src={item.logo_url} alt={item.agency} size="w-12 h-12" />
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-ink group-hover:text-accent-text transition-colors line-clamp-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-ink-3 truncate mt-0.5">
+                        {item.agency}
+                      </p>
+                    </div>
                   </div>
-                  <Badge variant="neutral" size="sm" className="capitalize shrink-0 self-start">
+                  <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold uppercase tracking-wider bg-surface-2 border border-line text-ink-3 shrink-0">
                     {item.category}
-                  </Badge>
+                  </span>
                 </div>
 
-                {/* Nama Instansi Resmi */}
-                <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink-3 min-w-0">
-                  <FontAwesome name="building-columns" className="text-[10px] shrink-0" />
-                  <span className="truncate">{item.agency}</span>
-                </div>
-
-                {/* Deskripsi Ringkas */}
-                <p className="text-[12.5px] leading-relaxed text-ink-2 line-clamp-2 font-normal">
+                <p className="text-xs text-ink-2 leading-relaxed line-clamp-2 min-h-[34px]">
                   {item.description}
                 </p>
               </div>
 
-              {/* Footer Terstruktur: Jadwal / Periode Realtime & Tombol Aksi */}
-              <div className="card-foot">
-                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-ink-3 min-w-0">
-                  <FontAwesome name="calendar-days" className="text-[10px] shrink-0" />
-                  <span className="truncate" title={formatDeadlineText(item.deadline, item.category, item.title)}>
-                    {formatDeadlineText(item.deadline, item.category, item.title)}
-                  </span>
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-accent-text shrink-0">
+              <div className="pt-3 border-t border-line flex items-center justify-between text-xs">
+                <span className="text-[11px] text-ink-3 font-medium truncate max-w-[200px]">
+                  {formatDeadlineText(item.deadline, item.category, item.title)}
+                </span>
+                <span className="text-xs font-semibold text-accent-text group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
                   <span>Detail</span>
-                  <FontAwesome name="chevron-right" className="text-[9px]" />
-                </div>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
               </div>
             </Link>
           ))}
@@ -834,3 +929,5 @@ export function PublicServicesPage() {
     </div>
   );
 }
+
+export default PublicServicesPage;

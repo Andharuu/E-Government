@@ -1,6 +1,54 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { profileApi, type Profile } from '../services/api';
-import { FontAwesome, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, EmptyState, Input, Textarea, Select, FormField, Modal } from '../components/ui';
+import type {
+  CustomFieldType,
+  CustomFieldItem,
+  UserCategory,
+  DocumentPhoto,
+  DocumentPhotosMap,
+} from '../types/profile';
+import {
+  STANDARD_CATEGORIES,
+  PHOTO_DOCUMENT_SLOTS,
+  RICH_CATEGORY_PRESETS,
+  type RichPreset,
+} from '../constants/profilePresets';
+import { compressImage } from '../utils/image';
+import {
+  User,
+  MapPin,
+  Phone,
+  GraduationCap,
+  Building2,
+  Heart,
+  FileText,
+  Folder,
+  FolderPlus,
+  Search,
+  Copy,
+  Check,
+  Camera,
+  UploadCloud,
+  Eye,
+  Trash2,
+  Edit3,
+  Plus,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Layers,
+  Save,
+  Sparkles,
+} from 'lucide-react';
+
+export type {
+  CustomFieldType,
+  CustomFieldItem,
+  UserCategory,
+  DocumentPhoto,
+  DocumentPhotosMap,
+  RichPreset,
+};
 
 const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
   identity: [
@@ -27,40 +75,18 @@ const ALL_CATEGORY_FIELD_KEYS: Record<string, string[]> = {
     'npwp', 'bpjs_number', 'driver_license'
   ],
 };
-import type {
-  CustomFieldType,
-  CustomFieldItem,
-  UserCategory,
-  DocumentPhoto,
-  DocumentPhotosMap,
-} from '../types/profile';
-import {
-  STANDARD_CATEGORIES,
-  PHOTO_DOCUMENT_SLOTS,
-  RICH_CATEGORY_PRESETS,
-  type RichPreset,
-} from '../constants/profilePresets';
-import { compressImage } from '../utils/image';
 
-export type {
-  CustomFieldType,
-  CustomFieldItem,
-  UserCategory,
-  DocumentPhoto,
-  DocumentPhotosMap,
-  RichPreset,
-};
-const CATEGORY_ICON: Record<string, string> = {
-  identity: 'user',
-  address: 'map-pin',
-  contact: 'phone',
-  education: 'graduation-cap',
-  career: 'building',
-  family: 'heart',
-  documents: 'file-lines',
+const CATEGORY_ICON_COMPONENT: Record<string, typeof User> = {
+  identity: User,
+  address: MapPin,
+  contact: Phone,
+  education: GraduationCap,
+  career: Building2,
+  family: Heart,
+  documents: FileText,
 };
 
-// Anchor global yang dipakai indeks pencarian (Layout) — jangan diubah
+// Global anchors used by Layout search index
 const SECTION_ANCHOR_BY_CATEGORY: Record<string, string> = {
   identity: 'section-identity',
   address: 'section-address',
@@ -169,11 +195,11 @@ export function ProfilePage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Active Category Workspace State ('all' or category id like 'identity', 'address', etc.)
+  // Active Category State
   const [activeCategoryId, setActiveCategoryId] = useState<string>('identity');
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
 
-  // Modal / Form Tambah Custom Field
+  // Modal Custom Field
   const [showAddFieldModal, setShowAddFieldModal] = useState(false);
   const [targetCategory, setTargetCategory] = useState('identity');
   const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
@@ -185,7 +211,7 @@ export function ProfilePage() {
   const [newPhotoData, setNewPhotoData] = useState<DocumentPhoto | null>(null);
   const [fieldError, setFieldError] = useState('');
 
-  // Modal Standalone Buat Kategori Baru
+  // Modal Category Standalone
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryTitle, setNewCategoryTitle] = useState('');
   const [newCategoryDesc, setNewCategoryDesc] = useState('');
@@ -200,7 +226,6 @@ export function ProfilePage() {
 
   // Image Preview Lightbox Modal
   const [previewPhoto, setPreviewPhoto] = useState<{ title: string; data: string; name: string } | null>(null);
-
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const modalPhotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -227,7 +252,7 @@ export function ProfilePage() {
     setSuggestedAliases(suggestions);
   };
 
-  // Peringatan sebelum meninggalkan halaman jika ada perubahan belum disimpan (F-M3)
+  // Warning before leave
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -330,13 +355,13 @@ export function ProfilePage() {
     setHasUnsavedChanges(true);
   };
 
-  const getExtendedField = (key: string, defaultVal: string = '') => {
-    if (profile && (profile as any)[key] !== undefined && (profile as any)[key] !== null && String((profile as any)[key]).trim() !== '') {
-      return String((profile as any)[key]);
+  const getExtendedField = useCallback((key: string, defaultVal: string = '') => {
+    if (profile && (profile as unknown as Record<string, unknown>)[key] !== undefined && (profile as unknown as Record<string, unknown>)[key] !== null && String((profile as unknown as Record<string, unknown>)[key]).trim() !== '') {
+      return String((profile as unknown as Record<string, unknown>)[key]);
     }
     const cf = customFields.find(f => f.key === key);
     return cf?.value !== undefined && cf?.value !== null ? cf.value : defaultVal;
-  };
+  }, [profile, customFields]);
 
   const handleExtendedChange = (key: string, value: string, category: string, label: string, type: CustomFieldType = 'text') => {
     setProfile(prev => {
@@ -375,7 +400,7 @@ export function ProfilePage() {
     setHasUnsavedChanges(true);
   };
 
-  // Upload Foto Dokumen Resmi Standar
+  // Upload Foto Dokumen Resmi
   const handleStandardPhotoUpload = async (slotId: string, file: File) => {
     try {
       const compressed = await compressImage(file);
@@ -401,7 +426,7 @@ export function ProfilePage() {
     setHasUnsavedChanges(true);
   };
 
-  // Upload Foto untuk Kolom Kustom di Modal
+  // Upload Foto untuk Modal
   const handleModalPhotoSelected = async (file: File) => {
     try {
       const compressed = await compressImage(file);
@@ -591,7 +616,7 @@ export function ProfilePage() {
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
-  // Simpan Seluruh Profil ke Backend
+  // Save profile to backend
   const handleSave = useCallback(async () => {
     if (isSavingRef.current || !profile) return;
     const now = Date.now();
@@ -639,11 +664,12 @@ export function ProfilePage() {
         console.warn('Gagal sinkronisasi event ekstensi:', storageErr);
       }
 
-      setMessage({ type: 'success', text: 'Semua perubahan profil berhasil disimpan.' });
+      setMessage({ type: 'success', text: 'Semua perubahan data profil berhasil disimpan.' });
       setTimeout(() => setMessage(null), 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving profile:', err);
-      setMessage({ type: 'error', text: err?.response?.data?.detail || 'Gagal menyimpan profil. Silakan coba kembali.' });
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setMessage({ type: 'error', text: detail || 'Gagal menyimpan profil. Silakan coba kembali.' });
     } finally {
       isSavingRef.current = false;
       setSaving(false);
@@ -707,7 +733,7 @@ export function ProfilePage() {
   const isKeyFilled = useCallback((key: string): boolean => {
     const extVal = getExtendedField(key);
     if (extVal && extVal.trim() !== '') return true;
-    const rawVal = profile ? (profile as any)[key] : null;
+    const rawVal = profile ? (profile as unknown as Record<string, unknown>)[key] : null;
     return Boolean(rawVal && String(rawVal).trim() !== '');
   }, [profile, getExtendedField]);
 
@@ -774,14 +800,14 @@ export function ProfilePage() {
         id: c.id,
         title: c.title,
         desc: c.desc,
-        icon: c.iconName,
+        IconComp: CATEGORY_ICON_COMPONENT[c.id] || Folder,
         isCustom: false,
       })),
       ...userCategories.map(c => ({
         id: c.id,
         title: c.title,
         desc: c.description,
-        icon: 'folder',
+        IconComp: Folder,
         isCustom: true,
       }))
     ];
@@ -797,7 +823,7 @@ export function ProfilePage() {
     );
   }, [allCategories, categorySearchQuery]);
 
-  // Sinkronisasi anchor global (#section-identity, #section-address, ...) ke kategori aktif
+  // Sinkronisasi anchor global (#section-identity, ...)
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
@@ -814,7 +840,7 @@ export function ProfilePage() {
     return () => window.removeEventListener('hashchange', syncFromHash);
   }, [loading]);
 
-  // Render input field reusable dengan copy button dan PII masking
+  // Render input field reusable dengan 48px height, WCAG AA contrast, copy button
   const renderField = (
     label: string,
     key: string,
@@ -831,35 +857,36 @@ export function ProfilePage() {
     const type = options?.type ?? 'text';
     const fieldId = `field-${key}`;
     const placeholder = options?.placeholder || `Masukkan ${label.toLowerCase()}...`;
+    const isCopied = copiedKey === key;
 
     return (
-      <div className="min-w-0" key={key}>
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <label htmlFor={fieldId} className="label mb-0 leading-snug">
+      <div className="space-y-1.5" key={key}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <label htmlFor={fieldId} className="text-xs font-semibold text-ink truncate">
               {label}
             </label>
             {options?.badge && (
-              <Badge variant="neutral" size="sm" className="shrink-0">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-2 border border-line text-ink-3">
                 {options.badge}
-              </Badge>
+              </span>
             )}
           </div>
           {value && (
             <button
               type="button"
               onClick={() => handleCopy(value, key)}
-              title="Salin nilai"
-              className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-ink-3 transition-colors hover:text-accent-text"
+              title="Salin nilai ke clipboard"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-accent-text transition-colors cursor-pointer"
             >
-              {copiedKey === key ? (
+              {isCopied ? (
                 <>
-                  <FontAwesome name="check" className="text-[10px] text-ok" />
-                  <span className="text-ok">Tersalin</span>
+                  <Check className="w-3 h-3 text-ok" />
+                  <span className="text-ok font-semibold">Tersalin</span>
                 </>
               ) : (
                 <>
-                  <FontAwesome name="copy" className="text-[10px]" />
+                  <Copy className="w-3 h-3" />
                   <span>Salin</span>
                 </>
               )}
@@ -868,36 +895,46 @@ export function ProfilePage() {
         </div>
 
         {type === 'select' ? (
-          <Select id={fieldId} value={value} onChange={e => onValueChange(e.target.value)}>
+          <select
+            id={fieldId}
+            value={value}
+            onChange={e => onValueChange(e.target.value)}
+            className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface text-xs text-ink focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all cursor-pointer"
+          >
             <option value="">Pilih opsi...</option>
             {options?.selectOptions?.map(opt => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
             ))}
-          </Select>
+          </select>
         ) : type === 'date' ? (
-          <Input
+          <input
             id={fieldId}
             type="date"
             value={value}
             onChange={e => onValueChange(e.target.value)}
+            className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface text-xs text-ink focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all cursor-pointer"
           />
         ) : type === 'textarea' ? (
-          <Textarea
+          <textarea
             id={fieldId}
             value={value}
             onChange={e => onValueChange(e.target.value)}
             placeholder={placeholder}
             rows={3}
+            className="w-full p-3.5 rounded-xl border border-line bg-surface text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all"
           />
         ) : (
-          <Input
+          <input
             id={fieldId}
             type={type}
             value={value}
             onChange={e => onValueChange(e.target.value)}
             placeholder={placeholder}
+            className={`w-full h-12 px-3.5 rounded-xl border border-line bg-surface text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-all ${
+              options?.isPii ? 'font-mono' : ''
+            }`}
           />
         )}
       </div>
@@ -906,17 +943,16 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="page">
+      <div className="page max-w-7xl mx-auto space-y-6 pb-16">
         <div className="space-y-2">
-          <div className="skeleton h-6 w-44" />
-          <div className="skeleton h-3.5 w-[320px] max-w-full" />
+          <div className="h-8 w-64 bg-surface-2 rounded-xl animate-pulse" />
+          <div className="h-4 w-96 bg-surface-2 rounded-lg animate-pulse" />
         </div>
-        <div className="skeleton h-[74px] w-full" />
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-          <div className="skeleton h-[280px] lg:col-span-4 xl:col-span-3" />
-          <div className="skeleton h-[420px] lg:col-span-8 xl:col-span-9" />
+        <div className="h-24 w-full bg-surface-2 rounded-[20px] animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="h-80 lg:col-span-4 bg-surface-2 rounded-[20px] animate-pulse" />
+          <div className="h-96 lg:col-span-8 bg-surface-2 rounded-[20px] animate-pulse" />
         </div>
-        <p className="text-[12px] font-medium text-ink-3">Memuat profil kependudukan...</p>
       </div>
     );
   }
@@ -926,12 +962,11 @@ export function ProfilePage() {
     const fieldsInCat = customFields.filter(f => f.category === catId);
 
     return (
-      <div className="space-y-5" key={catId}>
-        {/* Konten Standar berdasarkan ID */}
+      <div className="space-y-6" key={catId}>
         {catId === 'identity' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {renderField('Nama Lengkap (Sesuai KTP)', 'full_name', profile?.full_name || '', v => handleChange('full_name', v), { badge: 'Wajib KTP' })}
-            {renderField('NIK (Nomor Induk Kependudukan)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
+            {renderField('NIK (16 Digit Angka)', 'nik', profile?.nik || '', v => handleChange('nik', v), { isPii: true, badge: '16 Digit' })}
             {renderField('Tempat Lahir', 'birth_place', profile?.birth_place || '', v => handleChange('birth_place', v))}
             {renderField('Tanggal Lahir', 'birth_date', profile?.birth_date || '', v => handleChange('birth_date', v), { type: 'date' })}
             {renderField('Umur / Usia', 'age', profile?.age || '', v => handleChange('age', v), { placeholder: 'Contoh: 28' })}
@@ -959,9 +994,9 @@ export function ProfilePage() {
         )}
 
         {catId === 'address' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="min-w-0 sm:col-span-2 xl:col-span-3">
-              {renderField('Alamat Domisili Utama', 'address', profile?.address || '', v => handleChange('address', v), { isPii: true, type: 'textarea' })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="sm:col-span-2 xl:col-span-3">
+              {renderField('Alamat Domisili KTP Utama', 'address', profile?.address || '', v => handleChange('address', v), { isPii: true, type: 'textarea' })}
             </div>
             {renderField('Alamat Baris 2 (Gedung/Kavling)', 'address_line_2', getExtendedField('address_line_2'), v => handleExtendedChange('address_line_2', v, 'address', 'Address Line 2'))}
             {renderField('RT / RW', 'rt_rw', getExtendedField('rt_rw'), v => handleExtendedChange('rt_rw', v, 'address', 'RT / RW'))}
@@ -975,8 +1010,8 @@ export function ProfilePage() {
         )}
 
         {catId === 'contact' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-            {renderField('Nomor HP / WhatsApp Utama', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {renderField('Nomor Handphone / WhatsApp', 'phone', profile?.phone || '', v => handleChange('phone', v), { isPii: true, badge: 'Kontak Utama' })}
             {renderField('Alamat Surel / Email', 'email', profile?.email || '', v => handleChange('email', v))}
             {renderField('Telepon Rumah', 'home_phone', profile?.home_phone ?? getExtendedField('home_phone'), v => { handleChange('home_phone', v); handleExtendedChange('home_phone', v, 'contact', 'Telepon Rumah'); }, { isPii: true })}
             {renderField('Telepon Kantor', 'work_telephone', profile?.work_telephone ?? getExtendedField('work_telephone'), v => { handleChange('work_telephone', v); handleExtendedChange('work_telephone', v, 'contact', 'Telepon Kantor'); })}
@@ -986,31 +1021,31 @@ export function ProfilePage() {
         )}
 
         {catId === 'education' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {renderField('Jenjang Pendidikan Terakhir', 'education_level', profile?.education_level || '', v => handleChange('education_level', v), {
               type: 'select',
               selectOptions: ['SD/Sederajat', 'SMP/Sederajat', 'SMA/SMK/Sederajat', 'D1/D2/D3', 'D4/S1', 'S2', 'S3', 'Lainnya']
             })}
             {renderField('Nama Universitas / Sekolah', 'institution', profile?.institution || '', v => handleChange('institution', v))}
             {renderField('Program Studi / Jurusan', 'major_field', getExtendedField('major_field'), v => handleExtendedChange('major_field', v, 'education', 'Jurusan'))}
-            {renderField('Nomor Induk Mahasiswa (NIM/NPM)', 'student_id', profile?.student_id || '', v => handleChange('student_id', v))}
-            {renderField('NISN (Nomor Induk Siswa Nasional)', 'nisn', profile?.nisn || '', v => handleChange('nisn', v), { isPii: true })}
-            {renderField('Nilai IPK / Nilai Akhir', 'gpa_score', getExtendedField('gpa_score'), v => handleExtendedChange('gpa_score', v, 'education', 'IPK'))}
+            {renderField('Nomor Induk Mahasiswa (NIM)', 'student_id', profile?.student_id || '', v => handleChange('student_id', v))}
+            {renderField('NISN (Nomor Induk Siswa)', 'nisn', profile?.nisn || '', v => handleChange('nisn', v), { isPii: true })}
+            {renderField('Indeks Prestasi Kumulatif (IPK)', 'gpa_score', getExtendedField('gpa_score'), v => handleExtendedChange('gpa_score', v, 'education', 'IPK'))}
           </div>
         )}
 
         {catId === 'career' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {renderField('Profesi / Pekerjaan Saat Ini', 'occupation', profile?.occupation || '', v => handleChange('occupation', v))}
-            {renderField('Nama Lembaga / Perusahaan', 'organization', profile?.organization || '', v => handleChange('organization', v))}
-            {renderField('Alamat Kantor / Tempat Kerja', 'work_address', profile?.work_address || '', v => handleChange('work_address', v))}
+            {renderField('Instansi / Perusahaan', 'organization', profile?.organization || '', v => handleChange('organization', v))}
+            {renderField('Alamat Tempat Kerja', 'work_address', profile?.work_address || '', v => handleChange('work_address', v))}
             {renderField('Penghasilan Bulanan (Est.)', 'income', getExtendedField('income'), v => handleExtendedChange('income', v, 'career', 'Penghasilan'), { isPii: true })}
           </div>
         )}
 
         {catId === 'family' && (
-          <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-            {renderField('Nama Ibu Kandung', 'mother_name', profile?.mother_name || '', v => handleChange('mother_name', v), { isPii: true, badge: 'Validasi Bank/Dukcapil' })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {renderField('Nama Ibu Kandung', 'mother_name', profile?.mother_name || '', v => handleChange('mother_name', v), { isPii: true, badge: 'Validasi Resmi' })}
             {renderField('Nama Ayah Kandung', 'father_name', profile?.father_name || '', v => handleChange('father_name', v))}
             {renderField('Nama Kontak Darurat', 'emergency_contact_name', profile?.emergency_contact_name || '', v => handleChange('emergency_contact_name', v))}
             {renderField('Nomor Kontak Darurat', 'emergency_contact_phone', profile?.emergency_contact_phone || '', v => handleChange('emergency_contact_phone', v), { isPii: true })}
@@ -1019,37 +1054,34 @@ export function ProfilePage() {
         )}
 
         {catId === 'documents' && (
-          <div className="space-y-5">
-            {/* Nomor Dokumen Resmi */}
-            <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-              {renderField('Nomor Pokok Wajib Pajak (NPWP)', 'npwp', profile?.npwp || '', v => handleChange('npwp', v), { isPii: true, badge: '16/15 Digit' })}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {renderField('Nomor Pokok Wajib Pajak (NPWP)', 'npwp', profile?.npwp || '', v => handleChange('npwp', v), { isPii: true, badge: '16 Digit' })}
               {renderField('Nomor BPJS Kesehatan', 'bpjs_number', profile?.bpjs_number || '', v => handleChange('bpjs_number', v), { isPii: true, badge: '13 Digit' })}
               {renderField('Nomor SIM (Surat Izin Mengemudi)', 'driver_license', getExtendedField('driver_license'), v => handleExtendedChange('driver_license', v, 'documents', 'Nomor SIM'), { isPii: true })}
             </div>
 
-            <div className="divider" />
-
-            {/* Berkas Foto Dokumen Resmi */}
-            <div className="space-y-3">
+            <div className="pt-4 border-t border-line space-y-4">
               <div>
-                <h3 className="text-[13px] font-semibold text-ink">Berkas Foto Resmi &amp; Lampiran Autofill</h3>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-3">
-                  Foto dienkripsi secara lokal dan otomatis diunggah oleh ekstensi GovConnect pada formulir pendaftaran.
+                <h3 className="text-sm font-bold text-ink">
+                  Berkas Foto Resmi &amp; Lampiran Autofill
+                </h3>
+                <p className="text-xs text-ink-3 mt-0.5">
+                  Foto dienkripsi secara lokal di peramban dan otomatis diunggah saat Anda menyetujui pengisian berkas formulir.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {PHOTO_DOCUMENT_SLOTS.map(slot => {
                   const photo = documentPhotos[slot.id];
-                  const hasPhoto = !!photo?.data;
+                  const hasPhoto = Boolean(photo?.data);
 
                   return (
                     <div
                       key={slot.id}
-                      className={`flex flex-col justify-between rounded-lg border p-3 transition-colors ${hasPhoto
-                        ? 'border-line bg-surface'
-                        : 'border-dashed border-line-2 bg-surface-2'
-                        }`}
+                      className={`rounded-2xl border p-4 flex flex-col justify-between transition-all ${
+                        hasPhoto ? 'border-line bg-surface' : 'border-dashed border-line-2 bg-surface-2'
+                      }`}
                     >
                       <input
                         type="file"
@@ -1062,58 +1094,62 @@ export function ProfilePage() {
                         className="hidden"
                       />
 
-                      <div>
-                        <div className="mb-2 flex items-center gap-2">
-                          <FontAwesome name="camera" className="shrink-0 text-[11px] text-ink-3" />
-                          <span className="text-[12px] font-semibold leading-tight text-ink">{slot.title}</span>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-ink">{slot.title}</span>
+                          {hasPhoto && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Tersedia
+                            </span>
+                          )}
                         </div>
 
                         {hasPhoto ? (
-                          <div className="group relative mb-2 aspect-[16/10] overflow-hidden rounded-md border border-line bg-surface-2">
-                            <img src={photo.data} alt={slot.title} className="h-full w-full object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-canvas/85 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                icon={<FontAwesome name="eye" className="text-[10px]" />}
+                          <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-line bg-surface-2 group">
+                            <img src={photo.data} alt={slot.title} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                type="button"
                                 onClick={() => setPreviewPhoto({ title: slot.title, data: photo.data, name: photo.name })}
+                                className="h-8 px-3 rounded-lg bg-surface text-xs font-semibold text-ink hover:bg-surface-2 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                               >
-                                Lihat
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                icon={<FontAwesome name="arrow-up-from-bracket" className="text-[10px]" />}
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Lihat</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => fileInputRefs.current[slot.id]?.click()}
+                                className="h-8 px-3 rounded-lg bg-surface text-xs font-semibold text-ink hover:bg-surface-2 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                               >
-                                Ganti
-                              </Button>
+                                <UploadCloud className="w-3.5 h-3.5" />
+                                <span>Ganti</span>
+                              </button>
                             </div>
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => fileInputRefs.current[slot.id]?.click()}
-                            className="mb-2 flex aspect-[16/10] w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-2 bg-surface p-3 text-center transition-colors hover:border-accent-line hover:bg-surface-3"
+                            className="w-full aspect-[16/10] rounded-xl border border-dashed border-line-2 bg-surface hover:border-blue-500/40 hover:bg-surface-2 transition-all flex flex-col items-center justify-center gap-1.5 p-4 text-center cursor-pointer"
                           >
-                            <FontAwesome name="arrow-up-from-bracket" className="text-[14px] text-ink-3" />
-                            <span className="text-[11.5px] font-semibold text-accent-text">Unggah Foto Berkas</span>
-                            <span className="text-[10.5px] text-ink-3">JPG / PNG maksimal 5MB</span>
+                            <Camera className="w-6 h-6 text-ink-3" strokeWidth={1.5} />
+                            <span className="text-xs font-semibold text-accent-text">Unggah Foto Berkas</span>
+                            <span className="text-[11px] text-ink-3">JPG/PNG maks. 5MB</span>
                           </button>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
-                        <span className="truncate text-[11px] text-ink-3">
+                      <div className="pt-3 mt-3 border-t border-line flex items-center justify-between text-[11px]">
+                        <span className="text-ink-3 truncate max-w-[150px]">
                           {hasPhoto ? photo.name : slot.desc}
                         </span>
                         {hasPhoto && (
                           <button
                             type="button"
                             onClick={() => handleRemoveStandardPhoto(slot.id)}
-                            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+                            className="text-danger hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
                           >
-                            <FontAwesome name="trash" className="text-[10px]" />
+                            <Trash2 className="w-3 h-3" />
                             <span>Hapus</span>
                           </button>
                         )}
@@ -1126,24 +1162,29 @@ export function ProfilePage() {
           </div>
         )}
 
-        {/* Custom Fields pada Kategori ini */}
-        <div className="space-y-2.5 border-t border-line pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">
-              Kolom Kustom Tambahan ({fieldsInCat.length})
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={<FontAwesome name="plus" className="text-[10px]" />}
+        {/* Custom Fields Section */}
+        <div className="pt-6 border-t border-line space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-ink-3">
+                Kolom Kustom Tambahan ({fieldsInCat.length})
+              </h3>
+              <p className="text-xs text-ink-3 mt-0.5">
+                Data spesifik yang dapat Anda tambahkan sendiri untuk kebutuhan formulir lain.
+              </p>
+            </div>
+            <button
+              type="button"
               onClick={() => openAddFieldModal(catId)}
+              className="h-9 px-3.5 rounded-xl border border-line bg-surface hover:bg-surface-2 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5 cursor-pointer"
             >
-              Tambah Kolom
-            </Button>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tambah Kolom</span>
+            </button>
           </div>
 
           {fieldsInCat.length > 0 ? (
-            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {fieldsInCat.map(field => {
                 const isEditing = editingFieldId === field.id;
                 const isImage = field.type === 'image';
@@ -1152,124 +1193,125 @@ export function ProfilePage() {
                   return (
                     <div
                       key={field.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface-2 p-2.5"
+                      className="p-3.5 rounded-xl border border-line bg-surface-2 flex items-center justify-between gap-3"
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {field.photoData ? (
                           <button
                             type="button"
                             onClick={() => setPreviewPhoto({ title: field.label, data: field.photoData!, name: field.photoName || field.value })}
-                            className="h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line bg-surface"
+                            className="w-12 h-12 rounded-lg border border-line overflow-hidden shrink-0 cursor-pointer"
                           >
-                            <img src={field.photoData} alt={field.label} className="h-full w-full object-cover" />
+                            <img src={field.photoData} alt={field.label} className="w-full h-full object-cover" />
                           </button>
                         ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-ink-3">
-                            <FontAwesome name="camera" className="text-[12px]" />
+                          <div className="w-12 h-12 rounded-lg border border-line bg-surface flex items-center justify-center shrink-0 text-ink-3">
+                            <Camera className="w-5 h-5" strokeWidth={1.5} />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12px] font-semibold text-ink">{field.label}</p>
-                          <p className="mono truncate text-ink-3">{field.key}</p>
+                          <p className="text-xs font-semibold text-ink truncate">{field.label}</p>
+                          <p className="text-[11px] font-mono text-ink-3 truncate mt-0.5">{field.key}</p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="shrink-0 text-danger hover:text-danger"
-                        icon={<FontAwesome name="trash" className="text-[10px]" />}
+                      <button
+                        type="button"
                         onClick={() => handleDeleteField(field.id, field.key)}
+                        className="p-2 rounded-lg text-ink-3 hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+                        title="Hapus kolom ini"
                       >
-                        Hapus
-                      </Button>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 }
 
                 return (
-                  <div
-                    key={field.id}
-                    className="rounded-md border border-line bg-surface-2 p-2.5"
-                  >
+                  <div key={field.id} className="p-3.5 rounded-xl border border-line bg-surface-2 space-y-2">
                     {isEditing ? (
                       <div className="space-y-2">
-                        <Input
-                          className="h-8 text-[12.5px]"
+                        <input
+                          type="text"
                           value={editLabel}
                           onChange={e => setEditLabel(e.target.value)}
                           placeholder="Label data"
+                          className="w-full h-9 px-3 rounded-lg border border-line bg-surface text-xs text-ink"
                         />
-                        <Input
-                          className="h-8 text-[12.5px]"
+                        <input
+                          type="text"
                           value={editValue}
                           onChange={e => setEditValue(e.target.value)}
                           placeholder="Nilai data"
+                          className="w-full h-9 px-3 rounded-lg border border-line bg-surface text-xs text-ink font-mono"
                         />
-                        <div>
-                          <Input
-                            className="h-8 font-mono text-[11px]"
-                            value={editAliases}
-                            onChange={e => setEditAliases(e.target.value)}
-                            placeholder="Alias deteksi (contoh: paspor, passport, no_paspor)"
-                          />
-                          <p className="mt-0.5 text-[10px] text-ink-3">Pisahkan alias deteksi dengan koma</p>
-                        </div>
-                        <div className="flex justify-end gap-1.5">
-                          <Button size="sm" variant="ghost" onClick={() => setEditingFieldId(null)}>
+                        <input
+                          type="text"
+                          value={editAliases}
+                          onChange={e => setEditAliases(e.target.value)}
+                          placeholder="Alias deteksi (dipisah koma)"
+                          className="w-full h-9 px-3 rounded-lg border border-line bg-surface text-xs text-ink font-mono text-[11px]"
+                        />
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingFieldId(null)}
+                            className="h-8 px-3 rounded-lg border border-line bg-surface text-xs text-ink-2"
+                          >
                             Batal
-                          </Button>
-                          <Button size="sm" variant="primary" onClick={() => saveEditField(field.id)}>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveEditField(field.id)}
+                            className="h-8 px-3 rounded-lg bg-accent text-accent-fg text-xs font-semibold"
+                          >
                             Simpan
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-baseline gap-1.5">
-                            <span className="truncate text-[12px] font-semibold text-ink">{field.label}</span>
-                            <span className="mono shrink-0 text-ink-3">({field.key})</span>
+                          <div className="flex items-baseline gap-1.5 min-w-0">
+                            <span className="text-xs font-semibold text-ink truncate">{field.label}</span>
+                            <span className="text-[10px] font-mono text-ink-3 shrink-0">({field.key})</span>
                           </div>
-                          <p className="mt-0.5 truncate text-[11.5px] text-ink-2">{field.value || '-'}</p>
+                          <p className="text-xs text-ink-2 font-mono truncate mt-0.5">{field.value || '-'}</p>
                           {field.aliases && field.aliases.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                            <div className="flex flex-wrap gap-1 mt-1.5">
                               {field.aliases.map(al => (
-                                <span
-                                  key={al}
-                                  className="inline-flex items-center rounded bg-surface px-1.5 py-0.5 font-mono text-[9.5px] text-ink-3 border border-line"
-                                >
+                                <span key={al} className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-surface border border-line text-ink-3">
                                   {al}
                                 </span>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-0.5">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            iconOnly
-                            title="Salin nilai"
-                            icon={<FontAwesome name={copiedKey === field.key ? 'check' : 'copy'} className={`text-[11px] ${copiedKey === field.key ? 'text-ok' : ''}`} />}
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
                             onClick={() => handleCopy(field.value, field.key)}
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            iconOnly
-                            title="Edit data"
-                            icon={<FontAwesome name="pen" className="text-[11px]" />}
+                            className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-surface transition-colors cursor-pointer"
+                            title="Salin nilai"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => startEditField(field)}
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            iconOnly
-                            title="Hapus data"
-                            className="text-danger hover:text-danger"
-                            icon={<FontAwesome name="trash" className="text-[11px]" />}
+                            className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-surface transition-colors cursor-pointer"
+                            title="Ubah data"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleDeleteField(field.id, field.key)}
-                          />
+                            className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+                            title="Hapus data"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1278,11 +1320,9 @@ export function ProfilePage() {
               })}
             </div>
           ) : (
-            <EmptyState
-              icon={<FontAwesome name="folder-open" className="text-[15px]" />}
-              title="Belum ada kolom kustom tambahan pada kategori ini."
-              className="py-8"
-            />
+            <div className="p-8 text-center rounded-xl border border-dashed border-line-2 bg-surface text-ink-3 text-xs">
+              Belum ada kolom kustom tambahan pada kategori ini. Klik &quot;Tambah Kolom&quot; untuk menambahkan.
+            </div>
           )}
         </div>
       </div>
@@ -1290,564 +1330,595 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="page page-enter pb-24">
+    <div className="page page-enter max-w-7xl mx-auto space-y-8 pb-28">
       {/* ── Page Header ── */}
-      <div className="page-head">
-        <div className="min-w-0">
-          <h1 className="page-title">Profil Saya</h1>
-          <p className="page-sub max-w-[70ch]">
-            Kelola data identitas kependudukan, kontak, berkas foto resmi, dan kolom kustom untuk autofill resmi.
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-2 border-b border-line">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Vault Data Kependudukan</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink">
+            Profil Saya &amp; Dokumen
+          </h1>
+          <p className="text-base text-ink-2 max-w-3xl leading-relaxed">
+            Kelola data identitas kependudukan, alamat resmi, kontak, pendidikan, pekerjaan, dan berkas foto resmi.
+            GovConnect mengenkripsi seluruh data di sisi peramban dan hanya mengisi formulir atas izin Anda.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="primary"
-            icon={<FontAwesome name="folder-plus" className="text-[12px]" />}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
             onClick={() => setShowAddCategoryModal(true)}
+            className="h-12 px-5 rounded-xl border border-line bg-surface hover:bg-surface-2 text-ink font-semibold text-sm inline-flex items-center gap-2 transition-all shadow-xs cursor-pointer"
           >
-            Kategori Baru
-          </Button>
+            <FolderPlus className="w-4 h-4 text-accent-text" />
+            <span>Kategori Baru</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Profile Completeness ── */}
-      <Card>
-        <div className="card-body space-y-2.5">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="text-[12.5px] font-semibold text-ink">Kelengkapan Profil &amp; Berkas</span>
-              <span className="tabular-nums text-[11.5px] text-ink-3">
-                ({completeness.filled} dari {completeness.total} data terisi)
-              </span>
-            </div>
-            <span className="tabular-nums text-[12.5px] font-semibold text-accent-text">
+      {/* ── Profile Completeness Card ── */}
+      <div className="p-5 sm:p-6 rounded-[20px] border border-line bg-surface flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-ink">
+              Kelengkapan Profil &amp; Berkas Resmi
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-accent-text border border-blue-500/20">
               {completeness.percentage}% Lengkap
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+          <p className="text-xs text-ink-3">
+            {completeness.filled} dari total {completeness.total} kolom data terisi. Semakin lengkap profil, semakin cepat pengisian formulir instansi tanpa ketik ulang.
+          </p>
+          <div className="h-2 w-full bg-surface-3 rounded-full overflow-hidden mt-2">
             <div
-              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              className="h-full rounded-full bg-accent transition-all duration-300"
               style={{ width: `${completeness.percentage}%` }}
             />
           </div>
         </div>
-      </Card>
 
-      {/* ── Main Workspace ── */}
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-        {/* Category Navigator */}
-        <aside className="space-y-3 lg:sticky lg:top-6 lg:col-span-4 xl:col-span-3">
-          <Card className="overflow-hidden">
-            <div className="card-head">
-              <div className="flex items-center gap-2">
-                <FontAwesome name="layer-group" className="text-[11px] text-ink-3" />
-                <h2 className="card-title">Kategori Data</h2>
-              </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="p-3 rounded-xl border border-line bg-surface-2 text-center min-w-[90px]">
+            <span className="block text-lg font-bold text-ink tabular-nums">
+              {completeness.filled}
+            </span>
+            <span className="text-[10.5px] text-ink-3">Kolom Terisi</span>
+          </div>
+          <div className="p-3 rounded-xl border border-line bg-surface-2 text-center min-w-[90px]">
+            <span className="block text-lg font-bold text-accent-text tabular-nums">
+              {completeness.total - completeness.filled}
+            </span>
+            <span className="text-[10.5px] text-ink-3">Belum Terisi</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Workspace: Sidebar Navigator + Active Category Content ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Category Navigator (Left Column) */}
+        <aside className="lg:col-span-4 xl:col-span-3 space-y-3 lg:sticky lg:top-6">
+          <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
+              <span className="text-xs font-bold text-ink uppercase tracking-wider">
+                Kategori Data
+              </span>
+              <span className="text-[11px] text-ink-3 font-semibold">
+                {allCategories.length} grup
+              </span>
             </div>
 
-            <div className="px-3 pt-3">
-              <div className="relative">
-                <FontAwesome
-                  name="search"
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-ink-3"
-                />
-                <Input
-                  type="text"
-                  value={categorySearchQuery}
-                  onChange={e => setCategorySearchQuery(e.target.value)}
-                  placeholder="Cari kategori..."
-                  className="h-8 pl-8 text-[12.5px]"
-                />
-              </div>
+            {/* Category Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={categorySearchQuery}
+                onChange={e => setCategorySearchQuery(e.target.value)}
+                placeholder="Cari kategori..."
+                className="w-full h-10 pl-9 pr-3 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
             </div>
 
-            <nav className="max-h-[calc(100vh-280px)] space-y-0.5 overflow-y-auto p-2">
+            {/* Category List */}
+            <nav className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveCategoryId('all')}
-                data-active={activeCategoryId === 'all'}
-                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${activeCategoryId === 'all'
-                  ? 'border-accent-line bg-accent-soft'
-                  : 'border-transparent hover:bg-surface-3'
-                  }`}
+                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer ${
+                  activeCategoryId === 'all'
+                    ? 'border-blue-500/40 bg-blue-500/10 text-accent-text font-semibold'
+                    : 'border-transparent hover:bg-surface-2 text-ink-2'
+                }`}
               >
-                <FontAwesome
-                  name="layer-group"
-                  className={`w-4 shrink-0 text-center text-[12px] ${activeCategoryId === 'all' ? 'text-accent-text' : 'text-ink-3'
-                    }`}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-[12.5px] ${activeCategoryId === 'all' ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
-                    Semua Kategori
-                  </span>
-                  <span className="block truncate text-[11px] text-ink-3">Tampilan penuh</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Layers className={`w-4 h-4 shrink-0 ${activeCategoryId === 'all' ? 'text-accent-text' : 'text-ink-3'}`} />
+                  <span className="text-xs truncate">Semua Kategori</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-3 text-ink-3 font-medium">
+                  Full
                 </span>
               </button>
 
               {filteredCategories.map(cat => {
                 const isActive = activeCategoryId === cat.id;
-                const catStats = getCategoryStats(cat.id);
+                const stats = getCategoryStats(cat.id);
+                const IconComponent = cat.IconComp;
 
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => setActiveCategoryId(cat.id)}
-                    data-active={isActive}
-                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors ${isActive
-                      ? 'border-accent-line bg-accent-soft'
-                      : 'border-transparent hover:bg-surface-3'
-                      }`}
+                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer ${
+                      isActive
+                        ? 'border-blue-500/40 bg-blue-500/10 text-accent-text font-semibold'
+                        : 'border-transparent hover:bg-surface-2 text-ink-2'
+                    }`}
                   >
-                    <FontAwesome
-                      name={cat.isCustom ? 'folder' : (CATEGORY_ICON[cat.id] ?? 'folder')}
-                      className={`w-4 shrink-0 text-center text-[12px] ${isActive ? 'text-accent-text' : 'text-ink-3'}`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className={`block truncate text-[12.5px] ${isActive ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
-                        {cat.title}
-                      </span>
-                      <span className="block truncate text-[11px] text-ink-3">{cat.desc}</span>
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full border px-1.5 py-0.5 tabular-nums text-[10.5px] font-semibold ${isActive
-                        ? 'border-accent-line bg-surface text-accent-text'
-                        : 'border-line bg-surface-3 text-ink-3'
-                        }`}
-                    >
-                      {catStats.filled}/{catStats.total}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-accent-text' : 'text-ink-3'}`} />
+                      <div className="min-w-0">
+                        <span className="block text-xs truncate">{cat.title}</span>
+                      </div>
+                    </div>
+                    <span className={`text-[10.5px] px-1.5 py-0.5 rounded-full font-mono tabular-nums shrink-0 ${
+                      isActive ? 'bg-blue-500/20 text-accent-text font-bold' : 'bg-surface-3 text-ink-3 font-medium'
+                    }`}>
+                      {stats.filled}/{stats.total}
                     </span>
                   </button>
                 );
               })}
             </nav>
-          </Card>
+          </div>
         </aside>
 
-        {/* Active Category Editor */}
-        <div className="space-y-4 lg:col-span-8 xl:col-span-9">
+        {/* Active Category Content (Right Column) */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {activeCategoryId === 'all' ? (
             allCategories.map(cat => (
-              <Card key={cat.id} id={sectionIdFor(cat.id)}>
-                <CardHeader>
-                  <div className="min-w-0">
-                    <CardTitle>{cat.title}</CardTitle>
-                    <CardDescription>{cat.desc}</CardDescription>
+              <div key={cat.id} id={sectionIdFor(cat.id)} className="rounded-[20px] border border-line bg-surface p-6 space-y-6">
+                <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
+                  <div>
+                    <h2 className="text-base font-bold text-ink">{cat.title}</h2>
+                    <p className="text-xs text-ink-3 mt-0.5">{cat.desc}</p>
                   </div>
                   {cat.isCustom && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="shrink-0 text-danger hover:text-danger"
-                      icon={<FontAwesome name="trash" className="text-[10px]" />}
+                    <button
+                      type="button"
                       onClick={() => handleDeleteCategory(cat.id)}
+                      className="text-xs text-danger hover:underline font-semibold"
                     >
                       Hapus Kategori
-                    </Button>
+                    </button>
                   )}
-                </CardHeader>
-                <CardContent>{renderCategoryContent(cat.id)}</CardContent>
-              </Card>
+                </div>
+                {renderCategoryContent(cat.id)}
+              </div>
             ))
           ) : (
             (() => {
               const currentCat = allCategories.find(c => c.id === activeCategoryId) || allCategories[0];
               return (
-                <Card id={sectionIdFor(currentCat.id)}>
-                  <CardHeader>
-                    <div className="min-w-0">
-                      <CardTitle>{currentCat.title}</CardTitle>
-                      <CardDescription>{currentCat.desc}</CardDescription>
+                <div id={sectionIdFor(currentCat.id)} className="rounded-[20px] border border-line bg-surface p-6 space-y-6">
+                  <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
+                    <div>
+                      <h2 className="text-lg font-bold text-ink">{currentCat.title}</h2>
+                      <p className="text-xs text-ink-3 mt-0.5">{currentCat.desc}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex items-center gap-2">
                       {currentCat.isCustom && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-danger hover:text-danger"
-                          icon={<FontAwesome name="trash" className="text-[10px]" />}
+                        <button
+                          type="button"
                           onClick={() => handleDeleteCategory(currentCat.id)}
+                          className="h-10 px-3.5 rounded-xl border border-line bg-surface hover:bg-danger-soft text-danger text-xs font-semibold transition-colors cursor-pointer"
                         >
                           Hapus Kategori
-                        </Button>
+                        </button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        icon={<FontAwesome name="plus" className="text-[10px]" />}
+                      <button
+                        type="button"
                         onClick={() => openAddFieldModal(currentCat.id)}
+                        className="h-10 px-4 rounded-xl bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        Tambah Data
-                      </Button>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tambah Kolom</span>
+                      </button>
                     </div>
-                  </CardHeader>
-                  <CardContent>{renderCategoryContent(currentCat.id)}</CardContent>
-                </Card>
+                  </div>
+                  {renderCategoryContent(currentCat.id)}
+                </div>
               );
             })()
           )}
         </div>
       </div>
 
-      {/* ── Toast Notification ── */}
-      {message && (
-        <div className="pointer-events-auto fixed right-4 top-4 z-50 w-full max-w-sm">
-          <div className="card flex items-start gap-2.5 p-3">
-            <span
-              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${message.type === 'success'
-                ? 'border-ok-line bg-ok-soft text-ok'
-                : 'border-danger-line bg-danger-soft text-danger'
-                }`}
-            >
-              <FontAwesome name={message.type === 'success' ? 'check' : 'circle-exclamation'} className="text-[10px]" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold leading-tight text-ink">
-                {message.type === 'success' ? 'Berhasil Disimpan' : 'Gagal Menyimpan'}
-              </p>
-              <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink-2">{message.text}</p>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              iconOnly
-              title="Tutup notifikasi"
-              className="h-6 w-6"
-              icon={<FontAwesome name="xmark" className="text-[11px]" />}
-              onClick={() => setMessage(null)}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Sticky Action Bar: Unsaved Changes ── */}
+      {/* ── Sticky Unsaved Changes Bar ── */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-4 left-1/2 z-40 w-[94%] max-w-2xl -translate-x-1/2">
-          <div className="card flex items-center justify-between gap-3 px-3 py-2.5 shadow-lg">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
-              <p className="truncate text-[12px] font-medium text-ink-2">
-                Ada perubahan data profil yang belum disimpan
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+          <div className="rounded-2xl border border-line bg-surface shadow-2xl p-4 flex items-center justify-between gap-4 backdrop-blur-md">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <p className="text-xs font-semibold text-ink truncate">
+                Terdapat perubahan data profil yang belum disimpan
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <Button size="sm" variant="ghost" onClick={handleResetChanges}>
-                Batalkan
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                loading={saving}
-                icon={<FontAwesome name="floppy-disk" className="text-[11px]" />}
-                onClick={handleSave}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleResetChanges}
+                className="h-10 px-4 rounded-xl border border-line bg-surface hover:bg-surface-2 text-xs font-semibold text-ink transition-colors cursor-pointer"
               >
-                {saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}
-              </Button>
+                Batalkan
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="h-10 px-5 rounded-xl bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold inline-flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{saving ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Modal Tambah Custom Field ── */}
+      {/* ── Toast Feedback ── */}
+      {message && (
+        <div className="fixed top-6 right-6 z-50 max-w-sm animate-in slide-in-from-top-3 duration-200">
+          <div className={`p-4 rounded-2xl border shadow-xl flex items-start gap-3 bg-surface ${
+            message.type === 'success' ? 'border-emerald-500/40 text-ok' : 'border-red-500/40 text-danger'
+          }`}>
+            {message.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+            )}
+            <div className="text-xs flex-1">
+              <p className="font-bold text-ink">
+                {message.type === 'success' ? 'Berhasil Disimpan' : 'Perhatian'}
+              </p>
+              <p className="text-ink-2 mt-0.5 leading-relaxed">{message.text}</p>
+            </div>
+            <button type="button" onClick={() => setMessage(null)} className="text-ink-3 hover:text-ink">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tambah Kolom Kustom ── */}
       {showAddFieldModal && (
-        <Modal isOpen onClose={() => setShowAddFieldModal(false)}>
-          <div className="card w-full max-w-md overflow-hidden">
-            <div className="card-head">
-              <div className="min-w-0">
-                <h3 className="card-title">Tambah Kolom Kustom</h3>
-                <p className="card-desc">Tambahkan data spesifik untuk kebutuhan pengisian form</p>
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowAddFieldModal(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md max-h-[90vh] rounded-[24px] border border-line bg-surface shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            <div className="p-6 border-b border-line flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-ink">
+                  Tambah Kolom Kustom
+                </h3>
+                <p className="text-xs text-ink-3 mt-1">
+                  Tambahkan data spesifik untuk kebutuhan pengisian formulir.
+                </p>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                iconOnly
-                title="Tutup dialog"
-                className="h-7 w-7"
-                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+              <button
+                type="button"
                 onClick={() => setShowAddFieldModal(false)}
-              />
+                className="p-1.5 rounded-lg text-ink-3 hover:text-ink"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveNewField}>
-              <div className="card-body max-h-[68vh] space-y-4 overflow-y-auto">
-                {/* Presets Quick Selector */}
-                {RICH_CATEGORY_PRESETS[targetCategory]?.length > 0 && (
-                  <div>
-                    <label className="label">Rekomendasi Kolom Cepat</label>
-                    <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-line bg-surface-2 p-2">
-                      {RICH_CATEGORY_PRESETS[targetCategory].slice(0, 8).map(preset => (
-                        <button
-                          key={preset.key}
-                          type="button"
-                          onClick={() => applyPresetToModal(preset)}
-                          className="cursor-pointer rounded-sm border border-line bg-surface px-2 py-1 text-[11.5px] font-medium text-ink-2 transition-colors hover:border-accent-line hover:text-ink"
-                        >
-                          + {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tipe Data */}
+            <form onSubmit={handleSaveNewField} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Presets Quick Selector */}
+              {RICH_CATEGORY_PRESETS[targetCategory]?.length > 0 && (
                 <div>
-                  <span className="label">Tipe Data</span>
-                  <div className="segmented w-full">
-                    {(['text', 'date', 'textarea', 'image'] as const).map(t => (
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Rekomendasi Kolom Cepat
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 rounded-xl border border-line bg-surface-2">
+                    {RICH_CATEGORY_PRESETS[targetCategory].slice(0, 8).map(preset => (
                       <button
-                        key={t}
+                        key={preset.key}
                         type="button"
-                        onClick={() => setNewFieldType(t)}
-                        data-active={newFieldType === t}
-                        className="segmented-item flex-1 justify-center capitalize"
+                        onClick={() => applyPresetToModal(preset)}
+                        className="px-2.5 py-1 rounded-lg border border-line bg-surface text-[11px] font-medium text-ink-2 hover:border-blue-500/40 hover:text-ink transition-colors cursor-pointer"
                       >
-                        {t === 'image' ? 'Berkas' : t}
+                        + {preset.label}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {/* Label */}
-                <FormField label="Label Data" required htmlFor="new-field-label">
-                  <Input
-                    id="new-field-label"
-                    value={newLabel}
-                    onChange={e => handleLabelChange(e.target.value)}
-                    placeholder="Contoh: Nomor Paspor, Foto Ijazah"
-                    required
-                  />
-                </FormField>
-
-                {/* Key */}
-                <FormField
-                  label="Kunci Atribut Autofill"
-                  required
-                  htmlFor="new-field-key"
-                >
-                  <Input
-                    id="new-field-key"
-                    value={newKey}
-                    onChange={e => setNewKey(slugify(e.target.value))}
-                    placeholder="contoh: nomor_paspor"
-                    className="mono"
-                    required
-                  />
-                </FormField>
-
-                {/* Kata Kunci / Alias Deteksi Formulir */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="label">Kata Kunci / Alias Deteksi Formulir (Opsional)</span>
-                    <span className="text-[10.5px] text-ink-3">Pisahkan dengan koma</span>
-                  </div>
-                  <Input
-                    value={newAliases}
-                    onChange={e => setNewAliases(e.target.value)}
-                    placeholder="contoh: paspor, passport, no_paspor, passport_number"
-                    className="mono text-[12px]"
-                  />
-                  {suggestedAliases.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                      <span className="text-[10px] text-ink-3">Saran Alias:</span>
-                      {suggestedAliases.slice(0, 6).map(alias => {
-                        const currentArr = newAliases.split(',').map(s => s.trim().toLowerCase());
-                        const isSelected = currentArr.includes(alias.toLowerCase());
-                        return (
-                          <button
-                            key={alias}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                setNewAliases(currentArr.filter(s => s !== alias.toLowerCase()).join(', '));
-                              } else {
-                                const next = newAliases.trim() ? `${newAliases.trim()}, ${alias}` : alias;
-                                setNewAliases(next);
-                              }
-                            }}
-                            className={`cursor-pointer rounded px-1.5 py-0.5 text-[10.5px] transition-colors ${isSelected
-                              ? 'bg-accent text-white font-medium'
-                              : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
-                              }`}
-                          >
-                            +{alias}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <p className="mt-1 text-[11px] text-ink-3 leading-relaxed">
-                    Sistem Hybrid Cascade akan mengenali field pada formulir web jika nama, label, placeholder, atau atribut ID cocok dengan salah satu alias ini.
-                  </p>
-                </div>
-
-                {/* Value or Photo Upload */}
-                {newFieldType === 'image' ? (
-                  <div>
-                    <span className="label">
-                      Unggah Berkas Gambar <span className="text-danger">*</span>
-                    </span>
-                    <input
-                      type="file"
-                      ref={modalPhotoInputRef}
-                      accept="image/*"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) handleModalPhotoSelected(file);
-                      }}
-                      className="hidden"
-                    />
+              {/* Tipe Data */}
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">Tipe Data</label>
+                <div className="grid grid-cols-4 gap-1 p-1 rounded-xl border border-line bg-surface-2 text-xs font-medium">
+                  {(['text', 'date', 'textarea', 'image'] as const).map(t => (
                     <button
+                      key={t}
                       type="button"
-                      onClick={() => modalPhotoInputRef.current?.click()}
-                      className="flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-2 bg-surface-2 px-4 py-5 text-center transition-colors hover:border-accent-line hover:bg-surface-3"
+                      onClick={() => setNewFieldType(t)}
+                      className={`h-8 rounded-lg capitalize transition-colors ${
+                        newFieldType === t ? 'bg-surface text-ink font-bold shadow-xs' : 'text-ink-3 hover:text-ink'
+                      }`}
                     >
-                      {newPhotoData ? (
-                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ok">
-                          <FontAwesome name="check" className="text-[10px]" />
-                          <span className="max-w-[220px] truncate">{newPhotoData.name}</span>
-                        </span>
-                      ) : (
-                        <>
-                          <FontAwesome name="arrow-up-from-bracket" className="text-[14px] text-ink-3" />
-                          <span className="text-[12px] font-semibold text-accent-text">Pilih berkas foto</span>
-                        </>
-                      )}
+                      {t === 'image' ? 'Berkas' : t}
                     </button>
-                  </div>
-                ) : newFieldType === 'textarea' ? (
-                  <FormField label="Nilai Data" required htmlFor="new-field-value">
-                    <Textarea
-                      id="new-field-value"
-                      value={newValue}
-                      onChange={e => setNewValue(e.target.value)}
-                      rows={3}
-                      placeholder="Isi catatan data..."
-                      required
-                    />
-                  </FormField>
-                ) : (
-                  <FormField label="Nilai Data" required htmlFor="new-field-value">
-                    <Input
-                      id="new-field-value"
-                      type={newFieldType === 'date' ? 'date' : 'text'}
-                      value={newValue}
-                      onChange={e => setNewValue(e.target.value)}
-                      placeholder="Isi nilai data..."
-                      required
-                    />
-                  </FormField>
-                )}
-
-                {fieldError && <p className="err">{fieldError}</p>}
+                  ))}
+                </div>
               </div>
 
-              <div className="card-foot justify-end">
-                <Button variant="ghost" onClick={() => setShowAddFieldModal(false)}>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Label Data <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newLabel}
+                  onChange={e => handleLabelChange(e.target.value)}
+                  placeholder="Contoh: Nomor Paspor, Foto Ijazah"
+                  className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Kunci Atribut Autofill <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newKey}
+                  onChange={e => setNewKey(slugify(e.target.value))}
+                  placeholder="contoh: nomor_paspor"
+                  className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink font-mono placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-ink">Alias Deteksi Formulir</span>
+                  <span className="text-[11px] text-ink-3">Pisahkan koma</span>
+                </div>
+                <input
+                  type="text"
+                  value={newAliases}
+                  onChange={e => setNewAliases(e.target.value)}
+                  placeholder="contoh: paspor, passport, no_paspor"
+                  className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink font-mono placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+                {suggestedAliases.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {suggestedAliases.slice(0, 6).map(alias => (
+                      <button
+                        key={alias}
+                        type="button"
+                        onClick={() => {
+                          const next = newAliases.trim() ? `${newAliases.trim()}, ${alias}` : alias;
+                          setNewAliases(next);
+                        }}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-surface border border-line text-ink-2 hover:bg-surface-3 transition-colors"
+                      >
+                        +{alias}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Value or Photo Upload */}
+              {newFieldType === 'image' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Unggah Berkas Gambar <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={modalPhotoInputRef}
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleModalPhotoSelected(file);
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => modalPhotoInputRef.current?.click()}
+                    className="w-full h-24 rounded-xl border border-dashed border-line-2 bg-surface-2 hover:bg-surface-3 flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {newPhotoData ? (
+                      <span className="text-xs font-semibold text-ok flex items-center gap-1.5">
+                        <Check className="w-4 h-4" />
+                        <span>{newPhotoData.name}</span>
+                      </span>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-5 h-5 text-ink-3" />
+                        <span className="text-xs font-semibold text-accent-text">Pilih berkas foto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : newFieldType === 'textarea' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Nilai Data <span className="text-danger">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={newValue}
+                    onChange={e => setNewValue(e.target.value)}
+                    placeholder="Isi catatan data..."
+                    className="w-full p-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Nilai Data <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type={newFieldType === 'date' ? 'date' : 'text'}
+                    required
+                    value={newValue}
+                    onChange={e => setNewValue(e.target.value)}
+                    placeholder="Isi nilai data..."
+                    className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                </div>
+              )}
+
+              {fieldError && <p className="text-xs text-danger font-medium">{fieldError}</p>}
+
+              <div className="pt-4 border-t border-line flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddFieldModal(false)}
+                  className="h-10 px-4 rounded-xl border border-line bg-surface text-xs font-semibold text-ink-2"
+                >
                   Batal
-                </Button>
-                <Button type="submit" variant="primary">
+                </button>
+                <button
+                  type="submit"
+                  className="h-10 px-5 rounded-xl bg-accent text-accent-fg text-xs font-semibold"
+                >
                   Tambahkan Kolom
-                </Button>
+                </button>
               </div>
             </form>
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* ── Modal Tambah Kategori Baru ── */}
       {showAddCategoryModal && (
-        <Modal isOpen onClose={() => setShowAddCategoryModal(false)}>
-          <div className="card w-full max-w-md overflow-hidden">
-            <div className="card-head">
-              <div className="min-w-0">
-                <h3 className="card-title">Buat Kategori Kustom Baru</h3>
-                <p className="card-desc">Kelompokkan data khusus sesuai kebutuhan pengisian form</p>
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowAddCategoryModal(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md rounded-[24px] border border-line bg-surface shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            <div className="p-6 border-b border-line flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-ink">
+                  Buat Kategori Kustom Baru
+                </h3>
+                <p className="text-xs text-ink-3 mt-1">
+                  Kelompokkan data khusus sesuai kebutuhan instansi Anda.
+                </p>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                iconOnly
-                title="Tutup dialog"
-                className="h-7 w-7"
-                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+              <button
+                type="button"
                 onClick={() => setShowAddCategoryModal(false)}
-              />
+                className="p-1.5 rounded-lg text-ink-3 hover:text-ink"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateCategoryStandalone}>
-              <div className="card-body space-y-4">
-                <FormField label="Nama Kategori" required htmlFor="new-category-title">
-                  <Input
-                    id="new-category-title"
-                    value={newCategoryTitle}
-                    onChange={e => setNewCategoryTitle(e.target.value)}
-                    placeholder="Contoh: Dokumen Kendaraan, Rekening Bank"
-                    required
-                  />
-                </FormField>
-
-                <FormField label="Deskripsi Kategori (Opsional)" htmlFor="new-category-desc">
-                  <Input
-                    id="new-category-desc"
-                    value={newCategoryDesc}
-                    onChange={e => setNewCategoryDesc(e.target.value)}
-                    placeholder="Contoh: STNK, BPKB, dan nomor plat kendaraan"
-                  />
-                </FormField>
-
-                {categoryError && <p className="err">{categoryError}</p>}
+            <form onSubmit={handleCreateCategoryStandalone} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Nama Kategori <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCategoryTitle}
+                  onChange={e => setNewCategoryTitle(e.target.value)}
+                  placeholder="Contoh: Dokumen Kendaraan, Rekening Bank"
+                  className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
               </div>
 
-              <div className="card-foot justify-end">
-                <Button variant="ghost" onClick={() => setShowAddCategoryModal(false)}>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Deskripsi Kategori (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={newCategoryDesc}
+                  onChange={e => setNewCategoryDesc(e.target.value)}
+                  placeholder="Contoh: STNK, BPKB, dan nomor plat kendaraan"
+                  className="w-full h-12 px-3.5 rounded-xl border border-line bg-surface-2 text-xs text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+              </div>
+
+              {categoryError && <p className="text-xs text-danger font-medium">{categoryError}</p>}
+
+              <div className="pt-4 border-t border-line flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="h-10 px-4 rounded-xl border border-line bg-surface text-xs font-semibold text-ink-2"
+                >
                   Batal
-                </Button>
-                <Button type="submit" variant="primary">
+                </button>
+                <button
+                  type="submit"
+                  className="h-10 px-5 rounded-xl bg-accent text-accent-fg text-xs font-semibold"
+                >
                   Buat Kategori
-                </Button>
+                </button>
               </div>
             </form>
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* ── Lightbox Image Preview ── */}
       {previewPhoto && (
-        <Modal
-          isOpen
-          onClose={() => setPreviewPhoto(null)}
-          overlayClassName="bg-black/60 cursor-pointer"
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewPhoto(null)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="card flex max-h-[90vh] w-full max-w-3xl cursor-default flex-col overflow-hidden"
+            className="w-full max-w-3xl max-h-[90vh] rounded-[24px] border border-line bg-surface shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
           >
-            <div className="card-head">
+            <div className="p-4 px-6 border-b border-line flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <h4 className="card-title truncate">{previewPhoto.title}</h4>
-                <p className="card-desc truncate">{previewPhoto.name}</p>
+                <h4 className="text-sm font-bold text-ink truncate">{previewPhoto.title}</h4>
+                <p className="text-xs text-ink-3 truncate">{previewPhoto.name}</p>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                iconOnly
-                title="Tutup pratinjau"
-                className="h-7 w-7 shrink-0"
-                icon={<FontAwesome name="xmark" className="text-[12px]" />}
+              <button
+                type="button"
                 onClick={() => setPreviewPhoto(null)}
-              />
+                className="p-1.5 rounded-lg text-ink-3 hover:text-ink"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="flex max-h-[75vh] items-center justify-center overflow-auto bg-surface-2 p-3">
+            <div className="flex-1 bg-surface-2 p-4 flex items-center justify-center overflow-auto max-h-[75vh]">
               <img
                 src={previewPhoto.data}
                 alt={previewPhoto.title}
-                className="max-h-[70vh] max-w-full rounded-md object-contain"
+                className="max-h-[70vh] max-w-full rounded-xl object-contain shadow-lg"
               />
             </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

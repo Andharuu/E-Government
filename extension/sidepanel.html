@@ -16,7 +16,7 @@
       </div>
       <div class="brand-title-wrap">
         <span class="brand-name">GovConnect</span>
-        <span class="brand-tag">Autofill</span>
+        <span class="brand-tag"><span class="brand-tag-dot"></span>Autofill</span>
       </div>
     </div>
     <div class="header-actions">
@@ -49,13 +49,13 @@
   <!-- ====== SCREEN: AUTH ====== -->
   <div id="screenAuth" class="screen">
     <div class="card-clean">
-      <div style="width: 40px; height: 40px; border-radius: 8px; background: #EFF6FF; color: var(--gov-navy); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 16px;">
+      <div style="width: 42px; height: 42px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-text); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 16px; border: 1px solid var(--accent-line);">
         <i class="fa-regular fa-user"></i>
       </div>
-      <h2 style="font-size: 14.5px; font-weight: 700; color: var(--text-main); text-align: center; margin-bottom: 3px;">
+      <h2 style="font-size: 14.5px; font-weight: 700; color: var(--ink); text-align: center; margin-bottom: 3px;">
         Masuk ke GovConnect
       </h2>
-      <p style="font-size: 11.5px; color: var(--text-muted); text-align: center; margin-bottom: 14px;">
+      <p style="font-size: 11.5px; color: var(--ink-3); text-align: center; margin-bottom: 14px;">
         Akses data profil kependudukan untuk pengisian otomatis.
       </p>
 
@@ -74,7 +74,7 @@
         <input type="password" id="sidePassword" class="auth-input" placeholder="••••••••">
       </div>
 
-      <div id="sideAuthAlert" style="display: none; padding: 8px 12px; background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; border-radius: 6px; font-size: 11px; margin-bottom: 12px; text-align: center;"></div>
+      <div id="sideAuthAlert" style="display: none; padding: 8px 12px; background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-line); border-radius: 6px; font-size: 11px; margin-bottom: 12px; text-align: center;"></div>
 
       <button class="btn-autofill-main" id="btnSideLogin">
         <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 12px;"></i>
@@ -86,13 +86,13 @@
   <!-- ====== SCREEN: UNSUPPORTED ====== -->
   <div id="screenUnsupported" class="screen">
     <div class="card-clean" style="text-align: center; padding: 28px 16px;">
-      <div style="width: 42px; height: 42px; border-radius: 8px; background: #F1F5F9; color: var(--text-muted); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 17px;">
+      <div style="width: 42px; height: 42px; border-radius: 8px; background: var(--surface-3); color: var(--ink-3); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 17px; border: 1px solid var(--line);">
         <i class="fa-regular fa-file-lines"></i>
       </div>
-      <h3 style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">
         Belum Mendeteksi Formulir
       </h3>
-      <p style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+      <p style="font-size: 11.5px; color: var(--ink-3); line-height: 1.5; margin-bottom: 16px;">
         Halaman aktif ini tidak memiliki formulir input publik atau sedang memuat.
       </p>
 
@@ -157,41 +157,45 @@
       <div class="result-check-icon">
         <i class="fa-solid fa-check"></i>
       </div>
-      <h3 style="font-size: 14.5px; font-weight: 700; color: var(--text-main);" id="resultHeroTitle">Formulir Berhasil Diisi!</h3>
-      <p style="font-size: 11.5px; color: var(--text-muted);" id="resultHeroSub">Seluruh data yang cocok telah disuntikkan secara aman.</p>
+      <h3 style="font-size: 15px; font-weight: 800; color: var(--ink);" id="resultHeroTitle">Formulir Berhasil Diisi!</h3>
+      <p style="font-size: 11.5px; color: var(--ink-3);" id="resultHeroSub">Seluruh data yang cocok telah disuntikkan secara aman.</p>
     </div>
 
     <div class="result-metric-table">
       <div class="result-row">
         <span class="result-label">Status Autofill</span>
-        <span class="result-val text-success" id="resultStatus" style="color: #059669;">Selesai Sempurna</span>
+        <span class="result-val text-success" id="resultStatus" style="color: var(--ok);">Selesai Sempurna</span>
       </div>
       <div class="result-row">
         <span class="result-label">Kolom Terisi</span>
-        <span class="result-val" id="resultFilled" style="color: #059669;">0 kolom</span>
+        <span class="result-val" id="resultFilled" style="color: var(--ok);">0 kolom</span>
       </div>
       <div class="result-row">
         <span class="result-label">Dilewati / Tanpa Data</span>
-        <span class="result-val" id="resultSkipped" style="color: var(--text-muted);">0 kolom</span>
+        <span class="result-val" id="resultSkipped" style="color: var(--ink-3);">0 kolom</span>
       </div>
     </div>
 
     <!-- Breakdown Accordion -->
-    <div style="background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
-      <button type="button" id="btnToggleResultBreakdown" style="width: 100%; padding: 10px 14px; background: #FFFFFF; border: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left;">
-        <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">Rincian Kolom</span>
-        <span id="breakdownToggleLabel" style="font-size: 11px; color: var(--text-muted);">Tampilkan</span>
+    <div class="result-breakdown-card">
+      <button type="button" id="btnToggleResultBreakdown" class="result-breakdown-btn">
+        <span style="font-size: 12.5px; font-weight: 600; color: var(--ink);">Rincian Kolom</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span id="breakdownToggleLabel" style="font-size: 11px; font-weight: 500; color: var(--ink-3);">Tampilkan</span>
+          <i id="breakdownToggleChevron" class="fa-solid fa-chevron-down" style="font-size: 10px; color: var(--ink-3); transition: transform 0.2s ease;"></i>
+        </div>
       </button>
-      <div id="resultBreakdownContent" style="display: none; border-top: 1px solid #F1F5F9; padding: 12px 14px; max-height: 240px; overflow-y: auto;">
-        <div id="breakdownFilledSection" style="margin-bottom: 10px;">
-          <div style="font-size: 11px; font-weight: 700; color: #15803D; margin-bottom: 5px;">✓ Kolom Terisi (<span id="badgeCountFilled">0</span>)</div>
+      <div id="resultBreakdownContent" class="result-breakdown-content" style="display: none;">
+        <div id="breakdownFilledSection" style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--ok); margin-bottom: 6px;">✓ Kolom Terisi (<span id="badgeCountFilled">0</span>)</div>
           <div id="listFilled" style="display: flex; flex-direction: column; gap: 4px;"></div>
         </div>
         <div id="breakdownSkippedSection">
-          <div style="font-size: 11px; font-weight: 700; color: #B45309; margin-bottom: 5px;">— Kolom Dilewati (<span id="badgeCountSkipped">0</span>)</div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--warn); margin-bottom: 6px;">— Kolom Dilewati (<span id="badgeCountSkipped">0</span>)</div>
           <div id="listSkipped" style="display: flex; flex-direction: column; gap: 4px;"></div>
         </div>
-        <div id="breakdownFailedSection" style="display: none;">
+        <div id="breakdownFailedSection" style="display: none; margin-top: 12px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--danger); margin-bottom: 6px;">✕ Kolom Gagal (<span id="badgeCountFailed">0</span>)</div>
           <div id="listFailed" style="display: flex; flex-direction: column; gap: 4px;"></div>
         </div>
       </div>

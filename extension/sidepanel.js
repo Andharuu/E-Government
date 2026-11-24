@@ -1,4 +1,4 @@
-// Side Panel Script â€” GovConnect
+// Side Panel Script — GovConnect
 // Asisten Autofill Cerdas dengan Transisi Fluid Scanning & Sinkronisasi Real-Time
 
 var API_BASE = (typeof GovConnectConfig !== "undefined" && GovConnectConfig.API_BASE) || "http://127.0.0.1:8000/api/v1";
@@ -514,7 +514,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
     if (currentActiveScreen !== "screenResult") {
       await detectPageFieldsWithFluidScan();
     }
-    showStatus("âœ“ Data profil berhasil diperbarui!");
+    showStatus("✓ Data profil berhasil diperbarui!");
     setTimeout(() => showStatus(""), 3000);
   }
 
@@ -723,17 +723,17 @@ function updateSelectionUI() {
   const checkedCount = checkedBoxes.length;
   const summaryEl = document.getElementById("selectionSummary");
   if (summaryEl) {
-    summaryEl.textContent = `${checkedCount} dari ${detectedFields.length} dipilih`;
+    summaryEl.innerHTML = `<span><strong>${checkedCount}</strong> dari ${detectedFields.length} dipilih</span>`;
   }
 
   const btnEl = document.getElementById("btnFill");
   if (btnEl) {
     if (checkedCount === 0) {
       btnEl.disabled = true;
-      btnEl.innerHTML = '<i class="fa-regular fa-file-lines" style="margin-right: 6px;"></i> Pilih Minimal 1 Kolom';
+      btnEl.innerHTML = '<i class="fa-regular fa-file-lines" style="font-size: 11.5px; margin-right: 5px;"></i><span>Pilih Minimal 1 Kolom</span>';
     } else {
       btnEl.disabled = false;
-      btnEl.innerHTML = `<i class="fa-solid fa-bolt" style="margin-right: 6px;"></i> Isi ${checkedCount} Kolom Formulir`;
+      btnEl.innerHTML = `<i class="fa-solid fa-bolt" style="font-size: 11.5px; margin-right: 5px;"></i><span>Isi ${checkedCount} Kolom Formulir</span>`;
     }
   }
 }
@@ -1105,7 +1105,7 @@ async function executeAutofill() {
           try {
             const parsed = new URL(currentTab.url);
             domain = parsed.protocol === "file:" ? "Local File (HTML)" : (parsed.hostname || "");
-            // T7: buang query string & fragment â€” dapat memuat data sensitif/PII.
+            // T7: buang query string & fragment — dapat memuat data sensitif/PII.
             safeTargetUrl = parsed.origin && parsed.origin !== "null"
               ? `${parsed.origin}${parsed.pathname}`
               : `${parsed.protocol}//${parsed.pathname}`;
@@ -1147,7 +1147,7 @@ async function executeAutofill() {
     setFillingProgress(false);
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "âš¡ Isi Formulir Otomatis";
+      btn.innerHTML = '<i class="fa-solid fa-bolt" style="font-size: 11.5px; margin-right: 5px;"></i><span>Isi Formulir Otomatis</span>';
     }
   }
 }
@@ -1248,14 +1248,14 @@ function renderResultBreakdown(result) {
 
   // 1. Kolom Terisi
   if (filledItems.length === 0) {
-    listFilled.innerHTML = `<div style="font-size: 11px; color: #94A3B8; padding: 4px 6px;">Tidak ada kolom yang terisi</div>`;
+    listFilled.innerHTML = `<div style="font-size: 11px; color: var(--ink-3); padding: 4px 6px;">Tidak ada kolom yang terisi</div>`;
   } else {
     filledItems.forEach(item => {
       const row = document.createElement("div");
-      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: #F0FDF4; border: 1px solid #DCFCE7; border-radius: 8px;";
+      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--ok-soft); border: 1px solid var(--ok-line); border-radius: 6px;";
       row.innerHTML = `
-        <span style="font-size: 11.5px; font-weight: 600; color: #166534; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
-        <span style="font-size: 11px; color: #15803D; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${escapeHtml(truncate(item.val || "Terisi", 20))}</span>
+        <span style="font-size: 11.5px; font-weight: 600; color: var(--ok); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
+        <span style="font-size: 11px; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${escapeHtml(truncate(item.val || "Terisi", 20))}</span>
       `;
       listFilled.appendChild(row);
     });
@@ -1263,14 +1263,14 @@ function renderResultBreakdown(result) {
 
   // 2. Kolom Terlewati / Tanpa Data
   if (skippedItems.length === 0) {
-    listSkipped.innerHTML = `<div style="font-size: 11px; color: #94A3B8; padding: 4px 6px;">Tidak ada kolom yang terlewati</div>`;
+    listSkipped.innerHTML = `<div style="font-size: 11px; color: var(--ink-3); padding: 4px 6px;">Tidak ada kolom yang terlewati</div>`;
   } else {
     skippedItems.forEach(item => {
       const row = document.createElement("div");
-      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: #FFFBEB; border: 1px solid #FEF3C7; border-radius: 8px;";
+      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: 6px;";
       row.innerHTML = `
-        <span style="font-size: 11.5px; font-weight: 500; color: #92400E; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
-        <span style="font-size: 10.5px; color: #B45309; font-weight: 500;">${item.hasVal ? "Tidak dipilih" : "Data kosong"}</span>
+        <span style="font-size: 11.5px; font-weight: 500; color: var(--warn); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
+        <span style="font-size: 10.5px; color: var(--ink-3); font-weight: 500;">${item.hasVal ? "Tidak dipilih" : "Data kosong"}</span>
       `;
       listSkipped.appendChild(row);
     });
@@ -1281,10 +1281,10 @@ function renderResultBreakdown(result) {
     if (failedSection) failedSection.style.display = "block";
     failedItems.forEach(item => {
       const row = document.createElement("div");
-      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: #FEF2F2; border: 1px solid #FEE2E2; border-radius: 8px;";
+      row.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--danger-soft); border: 1px solid var(--danger-line); border-radius: 6px;";
       row.innerHTML = `
-        <span style="font-size: 11.5px; font-weight: 600; color: #991B1B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
-        <span style="font-size: 10.5px; color: #DC2626; font-weight: 500;">Gagal disuntik</span>
+        <span style="font-size: 11.5px; font-weight: 600; color: var(--danger); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.name)}</span>
+        <span style="font-size: 10.5px; color: var(--danger); font-weight: 500;">Gagal disuntik</span>
       `;
       listFailed.appendChild(row);
     });
@@ -1303,10 +1303,15 @@ function renderResultBreakdown(result) {
   if (btnToggle && !btnToggle.__hasClickListener) {
     btnToggle.__hasClickListener = true;
     btnToggle.addEventListener("click", () => {
-      const isHidden = content.style.display === "none";
+      const isHidden = content.style.display === "none" || !content.style.display;
       content.style.display = isHidden ? "block" : "none";
       if (label) label.textContent = isHidden ? "Sembunyikan" : "Tampilkan";
       if (chevron) chevron.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+      if (isHidden) {
+        setTimeout(() => {
+          content.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 50);
+      }
     });
   }
 }
@@ -1348,7 +1353,7 @@ function showStatus(msg) {
 function truncate(str, n) {
   if (!str) return "";
   const s = str.toString();
-  return s.length > n ? s.substring(0, n) + "â€¦" : s;
+  return s.length > n ? s.substring(0, n) + "..." : s;
 }
 
 function formatFieldLabel(key) {
@@ -1536,10 +1541,10 @@ function setupAuthListeners() {
   const btnSync = document.getElementById("btnAutoSyncTab");
   if (btnSync) {
     btnSync.onclick = async () => {
-      btnSync.textContent = "â³ Memeriksa Dashboard...";
+      btnSync.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 11px; margin-right: 4px;"></i> Memeriksa Dashboard...';
       const token = await tryAutoSyncFromOpenTabs();
       if (token) {
-        btnSync.textContent = "âœ“ Berhasil Tersinkron!";
+        btnSync.innerHTML = '<i class="fa-solid fa-check" style="font-size: 11px; margin-right: 4px;"></i> Berhasil Tersinkron!';
         setTimeout(() => {
           initAuthenticatedSession(token);
         }, 500);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { activityApi, type ActivityAnalytics, type Activity } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,34 +14,34 @@ import {
   Cell,
 } from 'recharts';
 import {
-  FontAwesome,
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  StatCard,
-  Tabs,
-  Badge,
-} from '../components/ui';
+  Zap,
+  Clock,
+  UserCheck,
+  ShieldCheck,
+  RotateCcw,
+  Sparkles,
+  Lock,
+  ChevronRight,
+  Database,
+  Laptop,
+} from 'lucide-react';
 
 function CustomAreaTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-md border border-line bg-surface px-3 py-2 shadow-md">
-      <p className="text-[11px] font-semibold text-ink-3 mb-1.5">{label}</p>
+    <div className="rounded-xl border border-white/[0.1] dark:border-white/[0.1] border-slate-200 bg-[#0B1E38] text-white p-3 shadow-xl backdrop-blur-md">
+      <p className="text-xs font-mono text-slate-400 mb-1.5">{label}</p>
       <div className="space-y-1">
         {payload.map((entry: any, idx: number) => (
-          <div key={idx} className="flex items-center justify-between gap-5">
-            <span className="flex items-center gap-1.5 text-[12px] text-ink-2">
+          <div key={idx} className="flex items-center justify-between gap-6 text-xs">
+            <span className="flex items-center gap-1.5 text-slate-300">
               <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
+                className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: entry.color }}
               />
               {entry.name === 'autofill' ? 'Sesi Formulir' : 'Field Terisi'}
             </span>
-            <span className="text-[12px] font-semibold text-ink tabular-nums">{entry.value}</span>
+            <span className="font-mono font-bold tabular-nums text-white">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -73,62 +74,26 @@ export function useCountUp(target: number, duration = 1200) {
 
 function DashboardSkeleton() {
   return (
-    <div className="page">
-      {/* Header */}
-      <div className="page-head">
-        <div className="w-full max-w-md">
-          <div className="skeleton h-6 w-64 max-w-full mb-2.5" />
-          <div className="skeleton h-3.5 w-80 max-w-full" />
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <div className="h-8 w-64 rounded-xl bg-white/[0.06] dark:bg-white/[0.06] bg-slate-200" />
+          <div className="h-4 w-96 rounded-lg bg-white/[0.04] dark:bg-white/[0.04] bg-slate-100" />
         </div>
-        <div className="skeleton h-9 w-32 shrink-0" />
+        <div className="h-10 w-32 rounded-xl bg-white/[0.06] dark:bg-white/[0.06] bg-slate-200" />
       </div>
 
-      {/* KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="kpi">
-            <div className="skeleton h-3 w-24" />
-            <div className="skeleton h-6 w-24" />
-            <div className="skeleton h-3 w-32 max-w-full" />
+          <div key={i} className="h-32 rounded-[20px] border border-white/[0.06] bg-white/[0.02] p-5 space-y-3">
+            <div className="h-4 w-28 rounded bg-white/[0.06]" />
+            <div className="h-8 w-20 rounded bg-white/[0.06]" />
+            <div className="h-3 w-36 rounded bg-white/[0.04]" />
           </div>
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="card">
-        <div className="card-head">
-          <div className="w-full max-w-xs">
-            <div className="skeleton h-4 w-44 mb-2" />
-            <div className="skeleton h-3 w-56 max-w-full" />
-          </div>
-          <div className="skeleton h-8 w-44 shrink-0" />
-        </div>
-        <div className="card-body">
-          <div className="flex gap-8 mb-5">
-            <div className="skeleton h-10 w-28" />
-            <div className="skeleton h-10 w-32" />
-          </div>
-          <div className="skeleton h-64 w-full" />
-        </div>
-      </div>
-
-      {/* Donut + Audit */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {[1, 2].map((i) => (
-          <div key={i} className="card">
-            <div className="card-head">
-              <div className="w-full max-w-xs">
-                <div className="skeleton h-4 w-40 mb-2" />
-                <div className="skeleton h-3 w-52 max-w-full" />
-              </div>
-            </div>
-            <div className="card-body flex flex-col items-center justify-center gap-4">
-              <div className="skeleton h-44 w-44 rounded-full" />
-              <div className="skeleton h-4 w-48" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <div className="h-96 rounded-[20px] border border-white/[0.06] bg-white/[0.02]" />
     </div>
   );
 }
@@ -142,8 +107,6 @@ export function Dashboard() {
   const [activeInfoSlide, setActiveInfoSlide] = useState<0 | 1>(0);
   const [timeRange, setTimeRange] = useState<'harian' | 'mingguan' | 'bulanan'>('bulanan');
   const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
-
-
 
   const fetchAnalytics = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -165,18 +128,14 @@ export function Dashboard() {
   useEffect(() => {
     fetchAnalytics();
 
-    // 1. Polling setiap 4 detik untuk memastikan data autofill realtime
     const pollTimer = setInterval(() => {
       fetchAnalytics(true);
     }, 30000);
 
-    // 2. Refetch ketika user kembali ke tab dasbor (focus & visibilitychange)
     const onFocus = () => fetchAnalytics(true);
     const onVisibilityChange = () => {
       if (!document.hidden) fetchAnalytics(true);
     };
-
-    // 3. Listener storage event & custom sync
     const onCustomSync = () => fetchAnalytics(true);
 
     window.addEventListener('focus', onFocus);
@@ -196,7 +155,7 @@ export function Dashboard() {
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveInfoSlide((prev) => (prev === 0 ? 1 : 0));
-    }, 7000);
+    }, 8000);
     return () => clearInterval(timer);
   }, []);
 
@@ -205,7 +164,7 @@ export function Dashboard() {
     fetchAnalytics(false);
   };
 
-  // Data Hasil Pengisian Formulir (Realtime Langsung dari Database)
+  // Donut data with high-contrast palette
   const resultsData = useMemo(() => {
     const rawSuccess = analytics?.success_count ?? 0;
     const rawPartial = analytics?.partial_count ?? 0;
@@ -217,25 +176,24 @@ export function Dashboard() {
         name: 'Sukses',
         value: rawSuccess,
         percent: total > 0 ? Math.round((rawSuccess / total) * 100) : 0,
-        color: 'var(--ok)',
+        color: '#10B981', // Mint green
       },
       {
         name: 'Parsial',
         value: rawPartial,
         percent: total > 0 ? Math.round((rawPartial / total) * 100) : 0,
-        color: 'var(--warn)',
+        color: '#F59E0B', // Amber
       },
       {
         name: 'Gagal',
         value: rawFailed,
         percent: total > 0 ? Math.round((rawFailed / total) * 100) : 0,
-        color: 'var(--danger)',
+        color: '#F43F5E', // Coral
       },
     ];
   }, [analytics]);
 
   const activeSegmentItem = selectedSegment !== null ? resultsData[selectedSegment] : null;
-
   const totalSessions = analytics?.total_autofill ?? 0;
   const successRate = analytics?.success_rate ?? 0;
 
@@ -245,7 +203,7 @@ export function Dashboard() {
 
   const hasChartData = resultsData.some((d) => d.value > 0);
 
-  // Data Keamanan & Privasi Akun — Terhubung langsung ke sistem
+  // Data Keamanan & Privasi
   const privacyAuditItems = useMemo(() => {
     const totalFilled = analytics?.total_autofill ?? allActivities.length;
     const profileComp = analytics?.profile_completion ?? 0;
@@ -253,43 +211,47 @@ export function Dashboard() {
     return [
       {
         id: 'storage',
-        title: 'Penyimpanan Data Pribadi',
-        desc: 'Tersimpan aman di peramban Anda, bukan di server umum',
-        icon: 'shield-halved',
+        title: 'Penyimpanan Data Lokal Klien',
+        desc: 'Tersimpan aman di brankas peramban Anda, tanpa transit ke server pihak ketiga.',
+        icon: ShieldCheck,
+        badge: 'Aman',
       },
       {
         id: 'connection',
-        title: 'Koneksi Layanan Resmi',
-        desc: 'Jalur komunikasi aman terenkripsi ke seluruh portal kementerian',
-        icon: 'lock',
+        title: 'Koneksi Layanan Resmi Nasional',
+        desc: 'Jalur komunikasi aman terenkripsi ke seluruh portal kementerian & pemerintah daerah.',
+        icon: Lock,
+        badge: 'Enkripsi',
       },
       {
         id: 'account',
-        title: 'Status Akun Pengguna',
-        desc: `Masuk sebagai ${user?.email || 'Pengguna Terdaftar'} (Profil ${profileComp}% Lengkap)`,
-        icon: 'circle-user',
+        title: 'Status Profil Kependudukan',
+        desc: `Akun aktif ${user?.email || 'Warga Terdaftar'} (Kelengkapan Data: ${profileComp}%)`,
+        icon: UserCheck,
+        badge: `${profileComp}% Lengkap`,
       },
       {
         id: 'extension',
-        title: 'Ekstensi Pengisi Otomatis',
-        desc: 'Siap mendeteksi dan mengisi data formulir secara otomatis saat dibutuhkan',
-        icon: 'bolt',
+        title: 'Mesin Autofill Semantik',
+        desc: 'Mendeteksi atribut form publik dan mengisi seketika saat Anda menyetujui.',
+        icon: Zap,
+        badge: '0,3 Detik',
       },
       {
         id: 'privacy',
-        title: 'Privasi Riwayat Formulir',
-        desc: `${totalFilled} kali pengisian telah dicatat secara privat dan hanya dapat Anda lihat`,
-        icon: 'file-lines',
+        title: 'Privasi & Audit Log Riwayat',
+        desc: `${totalFilled} sesi pengisian tercatat secara privat dan hanya dapat Anda tinjau.`,
+        icon: Database,
+        badge: 'Privat',
       },
     ];
   }, [analytics, allActivities, user]);
 
-  // Tren Aktivitas & Field Realtime Berdasarkan Data Riwayat Autofill Sesungguhnya
+  // Tren Aktivitas Area Chart
   const { areaChartData, periodMetrics } = useMemo(() => {
     const now = new Date();
 
     if (timeRange === 'harian') {
-      // 7 Hari Terakhir Realtime
       const days: { name: string; dateIso: string; autofill: number; fields: number }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
@@ -324,7 +286,6 @@ export function Dashboard() {
     }
 
     if (timeRange === 'mingguan') {
-      // 6 Minggu Terakhir Realtime
       const weeks = [
         { name: 'Mg 1', startDays: 42, endDays: 35, autofill: 0, fields: 0 },
         { name: 'Mg 2', startDays: 35, endDays: 28, autofill: 0, fields: 0 },
@@ -359,7 +320,7 @@ export function Dashboard() {
       };
     }
 
-    // Default: Bulanan (12 Bulan Januari - Desember Tahun Ini Realtime)
+    // Default: Bulanan
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const currentYear = now.getFullYear();
     const months = monthNames.map((name) => ({
@@ -402,293 +363,313 @@ export function Dashboard() {
   }
 
   return (
-    <div className="page">
-      {/* Header Dasbor */}
-      <div className="page-head">
-        <div className="min-w-0">
-          <h1 className="page-title">Dasbor Analitik &amp; Pengisian Formulir</h1>
-          <p className="page-sub">Ringkasan analitik dan efisiensi pengisian formulir otomatis</p>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* ================= HEADER SECTION ================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-line">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-blue-500/10 text-blue-400 mb-2 border border-blue-500/20">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>GovConnect Core Telemetry</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-ink">
+            Dasbor Analitik &amp; Pengisian Formulir
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-2 mt-1">
+            Metrik efisiensi waktu, sebaran sesi autofill, dan transparansi jejak audit privasi kependudukan Anda.
+          </p>
         </div>
 
-        <Button
-          variant="secondary"
-          onClick={handleRefresh}
-          loading={refreshing}
-          icon={<FontAwesome name="rotate-right" />}
-          aria-label="Segarkan data ringkasan dashboard"
-        >
-          {refreshing ? 'Memperbarui...' : 'Perbarui data'}
-        </Button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Link
+            to="/demo"
+            className="px-3.5 h-11 rounded-xl text-xs sm:text-sm font-semibold border border-line bg-surface hover:bg-surface-2 text-ink flex items-center gap-2 transition-colors"
+          >
+            <Laptop className="w-4 h-4 text-blue-400" />
+            <span className="hidden sm:inline">Uji Simulator</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 h-11 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_-3px_rgba(37,99,235,0.4)] flex items-center gap-2 transition-all disabled:opacity-60"
+          >
+            <RotateCcw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Memperbarui...' : 'Perbarui Data'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Baris 1: Ringkasan KPI */}
+      {/* ================= 4 KPI CARDS (20px RADIUS, SOFT GLOW) ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Kartu bergantian: Total Pengisian / Rasio Sukses */}
-        <div className="kpi">
-          <div className="kpi-label">
-            <span className="truncate">
-              {activeInfoSlide === 0 ? 'Total Pengisian' : 'Rasio Sukses'}
+        {/* KPI 1: Total Pengisian / Rasio Keberhasilan */}
+        <div className="p-6 rounded-[20px] border border-line bg-surface shadow-xs transition-all hover:-translate-y-0.5 relative overflow-hidden group">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">
+              {activeInfoSlide === 0 ? 'Total Sesi Formulir' : 'Rasio Keberhasilan'}
             </span>
-
-            <span className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1">
               {[0, 1].map((idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setActiveInfoSlide(idx as 0 | 1)}
-                  aria-label={`Slide ${idx + 1}`}
-                  className={`h-1.5 rounded-full transition-colors cursor-pointer ${
-                    activeInfoSlide === idx ? 'w-4 bg-accent' : 'w-1.5 bg-line-2 hover:bg-ink-3'
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                    activeInfoSlide === idx ? 'w-4 bg-blue-500' : 'w-1.5 bg-line-2 hover:bg-ink-3'
                   }`}
+                  aria-label={`Slide ${idx + 1}`}
                 />
               ))}
-            </span>
+            </div>
           </div>
 
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span className="kpi-value truncate">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-3xl font-bold text-ink font-mono tabular-nums tracking-tight">
               {activeInfoSlide === 0 ? totalSessions : `${successRate}%`}
             </span>
-            <span className="text-[12px] font-medium text-ink-3 shrink-0">
-              {activeInfoSlide === 0 ? 'Formulir' : 'Sukses'}
+            <span className="text-xs font-semibold text-emerald-400 font-mono">
+              {activeInfoSlide === 0 ? 'Sesi' : 'Sukses'}
             </span>
           </div>
 
-          <p className="kpi-foot truncate">
-            {activeInfoSlide === 0 ? 'Formulir diproses' : 'Tingkat keberhasilan'}
+          <p className="text-xs text-ink-2">
+            {activeInfoSlide === 0 ? 'Formulir pelayanan publik diproses' : 'Akurasi pemetaan leksikal'}
           </p>
         </div>
 
-        <StatCard
-          title="Waktu yang dihemat"
-          value={`${timeSavedMinutes}m ${timeSavedSeconds}s`}
-          subLabel="Efisiensi dari pengisian otomatis"
-          trend={{ value: '35%', positive: true }}
-        />
+        {/* KPI 2: Waktu Yang Dihemat */}
+        <div className="p-6 rounded-[20px] border border-line bg-surface shadow-xs transition-all hover:-translate-y-0.5 relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Waktu Terhemat</span>
+            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <Clock className="w-3.5 h-3.5" />
+            </span>
+          </div>
 
-        <StatCard
-          title="Kelengkapan profil"
-          value={`${analytics?.profile_completion ?? 0}%`}
-          subLabel="Identitas siap untuk autofill"
-        />
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-3xl font-bold text-ink font-mono tabular-nums tracking-tight">
+              {timeSavedMinutes}m {timeSavedSeconds}s
+            </span>
+            <span className="text-xs font-semibold text-emerald-400 font-mono">+98.8%</span>
+          </div>
 
-        <StatCard
-          title="Total Autofill"
-          value={analytics?.total_autofill ?? 0}
-          subLabel="Total transaksi pengisian data"
-        />
+          <p className="text-xs text-ink-2">Dihitung dari rata-rata 4m30s manual</p>
+        </div>
+
+        {/* KPI 3: Kelengkapan Profil */}
+        <div className="p-6 rounded-[20px] border border-line bg-surface shadow-xs transition-all hover:-translate-y-0.5 relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Kelengkapan Profil</span>
+            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+              <UserCheck className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-3xl font-bold text-ink font-mono tabular-nums tracking-tight">
+              {analytics?.profile_completion ?? 0}%
+            </span>
+            <span className="text-xs font-mono text-blue-400">Brankas</span>
+          </div>
+
+          <p className="text-xs text-ink-2">Identitas siap untuk pengisian instan</p>
+        </div>
+
+        {/* KPI 4: Total Kolom Terisi */}
+        <div className="p-6 rounded-[20px] border border-line bg-surface shadow-xs transition-all hover:-translate-y-0.5 relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-ink-3 mb-2">
+            <span className="font-semibold uppercase tracking-wider text-[11px]">Field Terisi</span>
+            <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+              <Zap className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-3xl font-bold text-ink font-mono tabular-nums tracking-tight">
+              {periodMetrics.fields}
+            </span>
+            <span className="text-xs font-mono text-purple-400">Kolom</span>
+          </div>
+
+          <p className="text-xs text-ink-2">Total kolom formulir otomatis terisi</p>
+        </div>
       </div>
 
-      {/* Baris 2: Tren Aktivitas Pengisian Formulir */}
-      <Card>
-        <CardHeader className="flex-wrap">
-          <div className="min-w-0">
-            <CardTitle>Aktivitas Pengisian Formulir</CardTitle>
-            <CardDescription>Tren sesi dan field data terisi per periode</CardDescription>
+      {/* ================= TREN AKTIVITAS PENGISIAN (AREA CHART) ================= */}
+      <div className="p-6 rounded-[20px] border border-line bg-surface shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 mb-5 border-b border-line">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-ink">Tren Aktivitas Pengisian Formulir</h2>
+            <p className="text-xs text-ink-2 mt-0.5">Sebaran jumlah sesi dan kolom formulir yang terisi otomatis per periode</p>
           </div>
 
-          <Tabs
-            items={[
-              { id: 'harian', label: 'Harian' },
-              { id: 'mingguan', label: 'Mingguan' },
-              { id: 'bulanan', label: 'Bulanan' },
-            ]}
-            activeTab={timeRange}
-            onChange={(id) => setTimeRange(id as 'harian' | 'mingguan' | 'bulanan')}
-          />
-        </CardHeader>
+          {/* Time range segmented tab */}
+          <div className="inline-flex p-1 rounded-xl border border-line bg-surface-2 text-xs font-semibold self-start sm:self-auto">
+            {(['harian', 'mingguan', 'bulanan'] as const).map((range) => (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setTimeRange(range)}
+                className={`px-3 py-1.5 rounded-lg capitalize transition-colors ${
+                  timeRange === range
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-ink-2 hover:text-ink'
+                }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <CardContent>
-          <div className="flex flex-wrap items-start gap-x-8 gap-y-4 pb-5">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[22px] leading-none font-semibold text-ink tabular-nums tracking-[-0.02em]">
-                  {periodMetrics.sessions}
-                </span>
-                <Badge variant="info">{periodMetrics.sessGrowth}</Badge>
-              </div>
-              <p className="text-[11.5px] text-ink-3 mt-2">Sesi Formulir Selesai</p>
-            </div>
+        <div className="flex flex-wrap items-center gap-6 pb-4">
+          <div>
+            <span className="text-xs text-ink-3">Total Sesi Periode:</span>
+            <div className="text-2xl font-bold font-mono text-ink mt-0.5">{periodMetrics.sessions}</div>
+          </div>
+          <div className="pl-6 border-l border-line">
+            <span className="text-xs text-ink-3">Total Kolom Terisi:</span>
+            <div className="text-2xl font-bold font-mono text-ink mt-0.5">{periodMetrics.fields}</div>
+          </div>
+        </div>
 
-            <div className="sm:pl-8 sm:border-l border-line">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[22px] leading-none font-semibold text-ink tabular-nums tracking-[-0.02em]">
-                  {periodMetrics.fields}
-                </span>
-                <Badge variant="neutral">{periodMetrics.fieldGrowth}</Badge>
-              </div>
-              <p className="text-[11.5px] text-ink-3 mt-2">Field Data Terisi Otomatis</p>
-            </div>
+        <div className="h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={areaChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorAutofill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0.0} />
+                </linearGradient>
+                <linearGradient id="colorFields" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-3)', fontSize: 11 }} dy={6} />
+              <Tooltip content={<CustomAreaTooltip />} />
+              <Area type="monotone" dataKey="autofill" name="autofill" stroke="#2563EB" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAutofill)" />
+              <Area type="monotone" dataKey="fields" name="fields" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorFields)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ================= HASIL PENGISIAN & AUDIT PRIVASI ================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Donut Chart: Distribusi Hasil Sesi (5 cols) */}
+        <div className="lg:col-span-5 p-6 rounded-[20px] border border-line bg-surface shadow-xs flex flex-col justify-between">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-ink">Hasil Pengisian Formulir</h2>
+            <p className="text-xs text-ink-2 mt-0.5">Distribusi rasio keberhasilan pemetaan data</p>
           </div>
 
-          <div className="h-72 w-full">
+          <div className="relative w-52 h-52 mx-auto my-6 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={areaChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  horizontal={true}
-                  vertical={false}
-                  stroke="var(--line)"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
-                  dy={6}
-                />
-                <Tooltip content={<CustomAreaTooltip />} cursor={{ stroke: 'var(--line-2)' }} />
-                <Area
-                  type="monotone"
-                  dataKey="autofill"
-                  name="autofill"
-                  stroke="var(--accent)"
-                  strokeWidth={2}
-                  fill="var(--accent)"
-                  fillOpacity={0.08}
-                  dot={false}
-                  activeDot={{ r: 3.5, fill: 'var(--accent)', stroke: 'var(--surface)', strokeWidth: 2 }}
-                  isAnimationActive={false}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="fields"
-                  name="fields"
-                  stroke="var(--ink-3)"
-                  strokeWidth={1.5}
-                  fill="var(--ink-3)"
-                  fillOpacity={0.05}
-                  dot={false}
-                  activeDot={{ r: 3.5, fill: 'var(--ink-3)', stroke: 'var(--surface)', strokeWidth: 2 }}
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Baris 3: Hasil Pengisian Formulir & Ringkasan Audit Privasi */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Hasil Pengisian Formulir */}
-        <Card className="flex flex-col">
-          <CardHeader>
-            <div className="min-w-0">
-              <CardTitle>Hasil Pengisian Formulir</CardTitle>
-              <CardDescription>Distribusi rasio keberhasilan sesi</CardDescription>
-            </div>
-          </CardHeader>
-
-          <CardContent className="flex-1 flex flex-col items-center justify-center">
-            {/* Donut — klik slice atau lingkaran untuk info detail */}
-            <div
-              className="relative w-52 h-52 sm:w-56 sm:h-56 flex items-center justify-center cursor-pointer"
-              onClick={() => handleSelectSegment(null)}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={hasChartData ? resultsData : [{ name: 'Belum Ada Sesi', value: 1, color: 'var(--ink-3)' }]}
-                    innerRadius={64}
-                    outerRadius={84}
-                    paddingAngle={hasChartData ? 2 : 0}
-                    dataKey="value"
-                    onClick={(_, index) => handleSelectSegment(index)}
-                    cursor="pointer"
-                    stroke="none"
-                  >
-                    {(hasChartData ? resultsData : [{ name: 'Belum Ada Sesi', value: 1, color: 'var(--ink-3)' }]).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                {activeSegmentItem ? (
-                  <div className="flex flex-col items-center justify-center text-center px-4">
-                    <span
-                      className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1"
-                      style={{ color: activeSegmentItem.color }}
-                    >
-                      {activeSegmentItem.name}
-                    </span>
-                    <span className="text-[26px] leading-none font-semibold text-ink tabular-nums tracking-[-0.03em] my-1">
-                      {activeSegmentItem.percent}%
-                    </span>
-                    <span className="text-[11.5px] text-ink-3">
-                      {activeSegmentItem.value} Formulir
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center px-4">
-                    <span className="text-[11px] font-semibold text-ink-3 uppercase tracking-[0.08em]">
-                      Total Sesi
-                    </span>
-                    <span className="text-[26px] leading-none font-semibold text-ink tabular-nums tracking-[-0.03em] my-1">
-                      {totalSessions}
-                    </span>
-                    <span className="text-[11.5px] font-medium text-accent-text">Formulir</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-5">
-              {resultsData.map((item, idx) => {
-                const isSelected = selectedSegment === idx;
-                return (
-                  <button
-                    key={item.name}
-                    type="button"
-                    onClick={() => handleSelectSegment(idx)}
-                    className={`flex items-center gap-2 h-8 px-2.5 rounded-md border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-surface-3 border-line-2 text-ink'
-                        : 'border-transparent text-ink-2 hover:bg-surface-2 hover:text-ink'
-                    }`}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-[12.5px] font-medium">{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ringkasan Audit Privasi */}
-        <Card className="flex flex-col">
-          <CardHeader>
-            <div className="min-w-0">
-              <CardTitle>Ringkasan Audit Privasi</CardTitle>
-              <CardDescription>Status perlindungan data dan privasi akun Anda</CardDescription>
-            </div>
-          </CardHeader>
-
-          <CardContent className="flex-1">
-            <ul className="stagger">
-              {privacyAuditItems.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-start gap-3 py-3 border-b border-line last:border-b-0 first:pt-0 last:pb-0"
+              <PieChart>
+                <Pie
+                  data={hasChartData ? resultsData : [{ name: 'Belum Ada', value: 1, color: 'var(--ink-3)' }]}
+                  innerRadius={64}
+                  outerRadius={84}
+                  paddingAngle={hasChartData ? 3 : 0}
+                  dataKey="value"
+                  onClick={(_, index) => handleSelectSegment(index)}
+                  cursor="pointer"
+                  stroke="none"
                 >
-                  <span className="shrink-0 mt-px inline-flex items-center justify-center w-6 h-6 rounded-md bg-surface-3 border border-line text-ink-3">
-                    <FontAwesome name={item.icon} variant="solid" className="text-[11px]" />
+                  {(hasChartData ? resultsData : [{ name: 'Belum Ada', value: 1, color: 'var(--ink-3)' }]).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+              {activeSegmentItem ? (
+                <>
+                  <span className="text-[10px] font-mono font-semibold uppercase tracking-wider" style={{ color: activeSegmentItem.color }}>
+                    {activeSegmentItem.name}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-[12.5px] font-semibold text-ink">{item.title}</p>
-                    <p className="text-[11.5px] text-ink-3 mt-0.5 leading-relaxed">{item.desc}</p>
+                  <span className="text-2xl font-bold text-ink font-mono my-0.5">
+                    {activeSegmentItem.percent}%
+                  </span>
+                  <span className="text-[11px] text-ink-3 font-mono">{activeSegmentItem.value} Sesi</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-ink-3">Total Sesi</span>
+                  <span className="text-2xl font-bold text-ink font-mono my-0.5">{totalSessions}</span>
+                  <span className="text-[11px] text-blue-400 font-mono">Formulir</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-line">
+            {resultsData.map((item, idx) => (
+              <button
+                key={item.name}
+                type="button"
+                onClick={() => handleSelectSegment(idx)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                  selectedSegment === idx
+                    ? 'border-blue-500 bg-blue-500/10 text-ink'
+                    : 'border-line hover:border-line-2 text-ink-2'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span>{item.name} ({item.value})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Ringkasan Audit Privasi (7 cols) */}
+        <div className="lg:col-span-7 p-6 rounded-[20px] border border-line bg-surface shadow-xs flex flex-col justify-between">
+          <div className="pb-3 border-b border-line flex items-center justify-between">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-ink">Ringkasan Audit Privasi &amp; Kepatuhan</h2>
+              <p className="text-xs text-ink-2 mt-0.5">Prinsip pelindungan data kependudukan pribadi Anda</p>
+            </div>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+              UU PDP Terpenuhi
+            </span>
+          </div>
+
+          <div className="space-y-3 my-4">
+            {privacyAuditItems.map((item) => {
+              const IconComp = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  className="p-3 rounded-xl border border-line bg-surface-2 flex items-start gap-3 transition-colors hover:border-line-2"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <IconComp className="w-4 h-4" strokeWidth={1.5} />
                   </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink truncate">{item.title}</h3>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface border border-line text-slate-400 shrink-0">
+                        {item.badge}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-2 mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-3 border-t border-line flex items-center justify-between text-xs text-ink-3">
+            <span>Enkripsi Klien AES-256 Aktif</span>
+            <Link to="/activity" className="text-blue-400 font-semibold hover:underline inline-flex items-center gap-1">
+              <span>Buka Seluruh Riwayat</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

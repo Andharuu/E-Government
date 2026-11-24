@@ -1,16 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import {
+  Download,
+  Sun,
+  Moon,
+  Lock,
+  RotateCcw,
+  Check,
+  CheckCircle2,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Building2,
+  Landmark,
+  GraduationCap,
+  HeartPulse,
+  CheckCheck,
+  Search,
+  SlidersHorizontal,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Button, FontAwesome } from '../components/ui';
 import logoDark from '../assets/logo dark.png';
 import logoLight from '../assets/logo light.png';
+
+/* =========================================================================
+   Types & Models
+   ========================================================================= */
 
 interface DemoField {
   id: string;
   label: string;
   placeholder: string;
   valueKey: string;
+  isSensitive?: boolean;
 }
 
 interface DemoService {
@@ -18,172 +47,208 @@ interface DemoService {
   name: string;
   agency: string;
   url: string;
+  icon: typeof Landmark;
   fields: DemoField[];
 }
+
+interface ProfileData {
+  id: 'budi' | 'siti' | 'joko';
+  name: string;
+  role: string;
+  avatar: string;
+  values: Record<string, string>;
+  needsReviewKey?: string; // Kolom yang butuh tinjauan khusus
+  reviewReason?: string;
+}
+
+/* =========================================================================
+   Mock Services & Profiles
+   ========================================================================= */
+
+const SERVICES: Record<string, DemoService> = {
+  dukcapil: {
+    id: 'dukcapil',
+    name: 'Permohonan Akta Kelahiran & KK Baru',
+    agency: 'Dinas Kependudukan & Pencatatan Sipil',
+    url: 'https://layanan.dukcapil.go.id/permohonan-akta-online',
+    icon: Landmark,
+    fields: [
+      { id: 'f_nik', label: 'Nomor Induk Kependudukan (NIK)', placeholder: '16 digit NIK pemohon...', valueKey: 'nik', isSensitive: true },
+      { id: 'f_nama', label: 'Nama Lengkap Sesuai KTP', placeholder: 'Nama pemohon sesuai dokumen...', valueKey: 'nama' },
+      { id: 'f_kk', label: 'Nomor Kartu Keluarga (KK)', placeholder: '16 digit nomor KK...', valueKey: 'kk', isSensitive: true },
+      { id: 'f_ttl', label: 'Tempat & Tanggal Lahir', placeholder: 'Kota, DD/MM/YYYY...', valueKey: 'ttl' },
+      { id: 'f_alamat', label: 'Alamat Domisili KTP', placeholder: 'Jalan, RT/RW, Kelurahan, Kota...', valueKey: 'alamat' },
+      { id: 'f_telp', label: 'Nomor WhatsApp / HP Aktif', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
+      { id: 'f_email', label: 'Alamat Email Notifikasi', placeholder: 'nama@example.com...', valueKey: 'email' },
+    ],
+  },
+  kelurahan: {
+    id: 'kelurahan',
+    name: 'Surat Keterangan Usaha (SKU) & Domisili',
+    agency: 'Pelayanan Terpadu Kelurahan Sukomulyo',
+    url: 'https://pelayanan.kelurahan.go.id/surat-keterangan',
+    icon: Building2,
+    fields: [
+      { id: 'f_nik', label: 'NIK Pemohon', placeholder: '16 digit NIK...', valueKey: 'nik', isSensitive: true },
+      { id: 'f_nama', label: 'Nama Pemohon Sesuai KTP', placeholder: 'Nama pemohon...', valueKey: 'nama' },
+      { id: 'f_pekerjaan', label: 'Profesi / Bidang Usaha', placeholder: 'Bidang usaha pemohon...', valueKey: 'pekerjaan' },
+      { id: 'f_alamat', label: 'Alamat Tempat Usaha', placeholder: 'Alamat lengkap domisili usaha...', valueKey: 'alamat' },
+      { id: 'f_telp', label: 'Nomor Kontak Pemohon', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
+      { id: 'f_email', label: 'Email Verifikasi', placeholder: 'email@example.com...', valueKey: 'email' },
+    ],
+  },
+  beasiswa: {
+    id: 'beasiswa',
+    name: 'Pendaftaran Beasiswa Pendidikan Tinggi',
+    agency: 'Pusat Layanan Pembiayaan Pendidikan (Puslapdik)',
+    url: 'https://beasiswa.kemdikbud.go.id/registrasi-peserta',
+    icon: GraduationCap,
+    fields: [
+      { id: 'f_nik', label: 'NIK Mahasiswa', placeholder: '16 digit NIK...', valueKey: 'nik', isSensitive: true },
+      { id: 'f_nama', label: 'Nama Lengkap Mahasiswa', placeholder: 'Nama mahasiswa...', valueKey: 'nama' },
+      { id: 'f_nim', label: 'Nomor Induk Mahasiswa (NIM)', placeholder: 'Nomor induk mahasiswa...', valueKey: 'nim' },
+      { id: 'f_ttl', label: 'Tanggal Lahir', placeholder: 'Tempat, DD/MM/YYYY...', valueKey: 'ttl' },
+      { id: 'f_email', label: 'Email Kampus / Pribadi', placeholder: 'email@student.ac.id...', valueKey: 'email' },
+      { id: 'f_telp', label: 'No. WhatsApp Mahasiswa', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
+    ],
+  },
+  bpjs: {
+    id: 'bpjs',
+    name: 'Registrasi Mandiri Peserta JKN-KIS',
+    agency: 'Badan Penyelenggara Jaminan Sosial (BPJS) Kesehatan',
+    url: 'https://daftar.bpjs-kesehatan.go.id/registrasi-mandiri',
+    icon: HeartPulse,
+    fields: [
+      { id: 'f_nik', label: 'Nomor Induk Kependudukan (NIK)', placeholder: '16 digit NIK...', valueKey: 'nik', isSensitive: true },
+      { id: 'f_kk', label: 'Nomor Kartu Keluarga (KK)', placeholder: 'Nomor KK...', valueKey: 'kk', isSensitive: true },
+      { id: 'f_nama', label: 'Nama Lengkap Calon Peserta', placeholder: 'Nama peserta...', valueKey: 'nama' },
+      { id: 'f_bpjs', label: 'Nomor Rujukan / BPJS Sebelumnya', placeholder: '13 digit BPJS jika ada...', valueKey: 'bpjs' },
+      { id: 'f_alamat', label: 'Alamat Domisili KTP', placeholder: 'Alamat tempat tinggal...', valueKey: 'alamat' },
+      { id: 'f_telp', label: 'Nomor Handphone Terdaftar', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
+    ],
+  },
+};
+
+const PROFILES: Record<string, ProfileData> = {
+  budi: {
+    id: 'budi',
+    name: 'Ahmad Pratama',
+    role: 'Pekerja Swasta',
+    avatar: 'AP',
+    values: {
+      nik: '3500000000000003',
+      nama: 'Ahmad Pratama Putra, S.Kom',
+      kk: '3500000000000001',
+      ttl: 'Surabaya, 28 September 1998',
+      alamat: 'Jl. Pemuda No. 45, RT 02/RW 03, Gresik',
+      telepon: '081200000001',
+      email: 'ahmad.pratama@example.com',
+      pekerjaan: 'Software Engineer',
+      nim: '5025201089',
+      bpjs: '0001892837461',
+    },
+  },
+  siti: {
+    id: 'siti',
+    name: 'Siti Rahmawati',
+    role: 'Mahasiswi',
+    avatar: 'SR',
+    needsReviewKey: 'bpjs', // Pada BPJS / Kelurahan kolom ini perlu ditinjau
+    reviewReason: 'Nomor BPJS belum dikonfirmasi di profil',
+    values: {
+      nik: '3200000000000005',
+      nama: 'Siti Rahmawati Putri',
+      kk: '3200000000000008',
+      ttl: 'Bandung, 16 Juli 2002',
+      alamat: 'Jl. Margonda Raya No. 102, Beji, Depok',
+      telepon: '085700000002',
+      email: 'siti.rahma@student.ac.id',
+      pekerjaan: 'Pelajar / Mahasiswi',
+      nim: '1202204190',
+      bpjs: '', // Kosong di profil untuk mendemokan state "Perlu ditinjau"
+    },
+  },
+  joko: {
+    id: 'joko',
+    name: 'H. Joko Santoso',
+    role: 'Wiraswasta',
+    avatar: 'JS',
+    values: {
+      nik: '3300000000000004',
+      nama: 'H. Joko Widodo Santoso',
+      kk: '3300000000000002',
+      ttl: 'Surakarta, 15 April 1982',
+      alamat: 'Jl. Slamet Riyadi No. 78, Surakarta',
+      telepon: '081300000003',
+      email: 'joko.santoso@example.com',
+      pekerjaan: 'Pedagang / Wiraswasta',
+      nim: '9901827461',
+      bpjs: '0003847261948',
+    },
+  },
+};
+
+/* =========================================================================
+   COMPONENT: DEMO / SIMULATOR
+   ========================================================================= */
 
 export function Demo() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Selected Service & Citizen Profile
+  // State: Service & Profile
   const [selectedServiceId, setSelectedServiceId] = useState<string>('dukcapil');
   const [selectedProfileId, setSelectedProfileId] = useState<'budi' | 'siti' | 'joko'>('budi');
 
-  // Autofill Execution State
-  const [isFilled, setIsFilled] = useState(false);
-  const [isFilling, setIsFilling] = useState(false);
+  // State: Detection & Autofill lifecycle
+  // 'idle' | 'detecting' | 'ready' | 'filling' | 'filled'
+  const [simulationState, setSimulationState] = useState<'idle' | 'detecting' | 'ready' | 'filling' | 'filled'>('ready');
+  const [filledFieldIds, setFilledFieldIds] = useState<Set<string>>(new Set());
   const [fillTime, setFillTime] = useState<number | null>(null);
 
-  // Field selection toggles inside sidepanel
-  const [selectedFieldKeys, setSelectedFieldKeys] = useState<Record<string, boolean>>({
-    nik: true,
-    nama: true,
-    kk: true,
-    ttl: true,
-    alamat: true,
-    telepon: true,
-    email: true,
-    pekerjaan: true,
-    nim: true,
-    bpjs: true,
-  });
+  // Field selection toggles inside panel
+  const [selectedFieldKeys, setSelectedFieldKeys] = useState<Record<string, boolean>>({});
 
-  // Sample Profiles
-  const profiles = {
-    budi: {
-      name: 'Ahmad Pratama (Pekerja Swasta)',
-      nik: '3525012809980003',
-      nama: 'Ahmad Pratama Putra, S.Kom',
-      kk: '3525011204050001',
-      ttl: 'Surabaya, 28 September 1998',
-      alamat: 'Jl. Pemuda No. 45, RT 02 / RW 03, Gresik, Jawa Timur',
-      telepon: '081234567890',
-      email: 'ahmad.pratama@email.com',
-      pekerjaan: 'Software Engineer',
-      nim: '5025201089',
-      bpjs: '0001892837461',
-    },
-    siti: {
-      name: 'Siti Rahmawati (Mahasiswi)',
-      nik: '3201015607020005',
-      nama: 'Siti Rahmawati Putri',
-      kk: '3201012304990008',
-      ttl: 'Bandung, 16 Juli 2002',
-      alamat: 'Jl. Margonda Raya No. 102, RT 01 / RW 05, Beji, Depok',
-      telepon: '085712345678',
-      email: 'siti.rahma@student.ac.id',
-      pekerjaan: 'Pelajar / Mahasiswa',
-      nim: '1202204190',
-      bpjs: '0002981746253',
-    },
-    joko: {
-      name: 'H. Joko Widodo (Wiraswasta)',
-      nik: '3374011504820004',
-      nama: 'H. Joko Widodo Santoso',
-      kk: '3374019908750002',
-      ttl: 'Surakarta, 15 April 1982',
-      alamat: 'Jl. Slamet Riyadi No. 78, RT 03 / RW 02, Surakarta',
-      telepon: '081398765432',
-      email: 'joko.santoso@bisnis.id',
-      pekerjaan: 'Pedagang / Wiraswasta',
-      nim: '9901827461',
-      bpjs: '0003847261948',
-    },
-  };
+  // Privacy mask toggle (NIK & KK)
+  const [showSensitive, setShowSensitive] = useState<boolean>(false);
 
-  const currentProfile = profiles[selectedProfileId];
+  // Terminal Log accordion toggle
+  const [showTerminalLog, setShowTerminalLog] = useState<boolean>(false);
 
-  // Available Simulated Services
-  const services: Record<string, DemoService> = {
-    dukcapil: {
-      id: 'dukcapil',
-      name: 'Formulir Permohonan Akta Kelahiran & KK Baru',
-      agency: 'Dinas Kependudukan & Pencatatan Sipil',
-      url: 'https://layanan.dukcapil.go.id/permohonan-akta-online',
-      fields: [
-        { id: 'f_nik', label: 'Nomor Induk Kependudukan (NIK)', placeholder: '16 digit NIK...', valueKey: 'nik' },
-        { id: 'f_nama', label: 'Nama Lengkap Sesuai KTP', placeholder: 'Nama pemohon...', valueKey: 'nama' },
-        { id: 'f_kk', label: 'Nomor Kartu Keluarga (KK)', placeholder: '16 digit nomor KK...', valueKey: 'kk' },
-        { id: 'f_ttl', label: 'Tempat, Tanggal Lahir', placeholder: 'Kota, DD/MM/YYYY...', valueKey: 'ttl' },
-        { id: 'f_alamat', label: 'Alamat Lengkap Domisili KTP', placeholder: 'Jalan, RT/RW, Kelurahan, Kecamatan, Kota...', valueKey: 'alamat' },
-        { id: 'f_telp', label: 'Nomor Handphone / WhatsApp', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
-        { id: 'f_email', label: 'Alamat Email Aktif', placeholder: 'email@example.com...', valueKey: 'email' },
-      ],
-    },
-    kelurahan: {
-      id: 'kelurahan',
-      name: 'Surat Keterangan Usaha (SKU) & Domisili',
-      agency: 'Pelayanan Terpadu Kelurahan Sukomulyo',
-      url: 'https://pelayanan.kelurahan.go.id/surat-keterangan',
-      fields: [
-        { id: 'f_nik', label: 'NIK Pemohon', placeholder: 'NIK...', valueKey: 'nik' },
-        { id: 'f_nama', label: 'Nama Lengkap Pemohon', placeholder: 'Nama pemohon...', valueKey: 'nama' },
-        { id: 'f_pekerjaan', label: 'Profesi / Bidang Usaha', placeholder: 'Bidang usaha...', valueKey: 'pekerjaan' },
-        { id: 'f_alamat', label: 'Alamat Domisili KTP', placeholder: 'Alamat...', valueKey: 'alamat' },
-        { id: 'f_telp', label: 'Kontak WhatsApp', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
-        { id: 'f_email', label: 'Email Konfirmasi', placeholder: 'email...', valueKey: 'email' },
-      ],
-    },
-    beasiswa: {
-      id: 'beasiswa',
-      name: 'Pendaftaran Beasiswa Pendidikan Tinggi',
-      agency: 'Pusat Pembiayaan Pendidikan Nasional',
-      url: 'https://beasiswa.kemdikbud.go.id/registrasi-peserta',
-      fields: [
-        { id: 'f_nik', label: 'NIK Mahasiswa', placeholder: '16 digit NIK...', valueKey: 'nik' },
-        { id: 'f_nama', label: 'Nama Mahasiswa', placeholder: 'Nama lengkap...', valueKey: 'nama' },
-        { id: 'f_nim', label: 'Nomor Induk Mahasiswa (NIM)', placeholder: 'NIM...', valueKey: 'nim' },
-        { id: 'f_ttl', label: 'Tanggal Lahir', placeholder: 'Tempat / Tgl Lahir...', valueKey: 'ttl' },
-        { id: 'f_email', label: 'Email Mahasiswa', placeholder: 'email@student...', valueKey: 'email' },
-        { id: 'f_telp', label: 'No. WhatsApp Aktif', placeholder: '08xxxxxxxxxx...', valueKey: 'telepon' },
-      ],
-    },
-    bpjs: {
-      id: 'bpjs',
-      name: 'Registrasi Mandiri Peserta JKN-KIS',
-      agency: 'Badan Penyelenggara Jaminan Sosial Kesehatan',
-      url: 'https://daftar.bpjs-kesehatan.go.id/registrasi-mandiri',
-      fields: [
-        { id: 'f_nik', label: 'Nomor Induk Kependudukan (NIK)', placeholder: 'NIK...', valueKey: 'nik' },
-        { id: 'f_kk', label: 'Nomor Kartu Keluarga (KK)', placeholder: 'Nomor KK...', valueKey: 'kk' },
-        { id: 'f_nama', label: 'Nama Peserta', placeholder: 'Nama lengkap...', valueKey: 'nama' },
-        { id: 'f_bpjs', label: 'Nomor Kartu BPJS (Jika Ada)', placeholder: 'Nomor BPJS...', valueKey: 'bpjs' },
-        { id: 'f_alamat', label: 'Alamat Tempat Tinggal', placeholder: 'Alamat lengkap...', valueKey: 'alamat' },
-        { id: 'f_telp', label: 'Nomor Ponsel', placeholder: 'No HP...', valueKey: 'telepon' },
-      ],
-    },
-  };
+  // Stepper active step (1: Deteksi, 2: Tinjau, 3: Isi)
+  const [stepperStep, setStepperStep] = useState<number>(2);
 
-  const currentService = services[selectedServiceId] || services.dukcapil;
+  // Form submission simulated notification
+  const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
 
-  // Toggle field selection in sidepanel
-  const toggleField = (key: string) => {
-    setSelectedFieldKeys(prev => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
+  const currentService = SERVICES[selectedServiceId] || SERVICES.dukcapil;
+  const currentProfile = PROFILES[selectedProfileId] || PROFILES.budi;
 
-  // Execute Autofill
-  const handleAutofill = () => {
-    if (isFilling) return;
-    setIsFilling(true);
-    setIsFilled(false);
+  // Initialize selected fields when service changes
+  useEffect(() => {
+    const initialMap: Record<string, boolean> = {};
+    currentService.fields.forEach((f) => {
+      initialMap[f.valueKey] = true;
+    });
+    setSelectedFieldKeys(initialMap);
 
-    setTimeout(() => {
-      setIsFilled(true);
-      setIsFilling(false);
-      setFillTime(0.28);
-    }, 380);
-  };
-
-  const handleReset = () => {
-    setIsFilled(false);
+    // Trigger brief 500ms detection shimmer
+    setSimulationState('detecting');
+    setFilledFieldIds(new Set());
     setFillTime(null);
-  };
+    setFormSubmitted(false);
+    setStepperStep(1);
 
-  // Download Extension action
+    const timer = setTimeout(() => {
+      setSimulationState('ready');
+      setStepperStep(2);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [selectedServiceId, selectedProfileId, currentService.fields]);
+
+  // Handle Extension Download
   const handleDownloadExtension = () => {
     const link = document.createElement('a');
     link.href = '/govconnect-extension.zip';
@@ -193,406 +258,805 @@ export function Demo() {
     document.body.removeChild(link);
   };
 
-  // Count active matched fields
-  const activeFieldsCount = currentService.fields.filter(
-    f => selectedFieldKeys[f.valueKey] !== false
-  ).length;
+  // Toggle single field in panel
+  const toggleField = (key: string) => {
+    setSelectedFieldKeys((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
-  // Alur simulasi: dua langkah pertama selalu punya nilai awal, langkah ketiga mengikuti eksekusi
-  const steps: { label: string; state: 'done' | 'active' }[] = [
-    { label: 'Pilih layanan', state: 'done' },
-    { label: 'Pilih profil pengguna', state: 'done' },
-    { label: 'Isi otomatis', state: isFilled ? 'done' : 'active' },
-  ];
-  const completedSteps = steps.filter(step => step.state === 'done').length;
-  const progressPercent = Math.round((completedSteps / steps.length) * 100);
+  // Execute Autofill with Staggered 60-80ms delay per field
+  const handleExecuteAutofill = () => {
+    if (simulationState === 'filling') return;
+    setSimulationState('filling');
+    setFilledFieldIds(new Set());
+    setStepperStep(3);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const activeFields = currentService.fields.filter((f) => selectedFieldKeys[f.valueKey] !== false);
+
+    if (prefersReducedMotion) {
+      // Instant execution
+      const allIds = new Set(activeFields.map((f) => f.id));
+      setFilledFieldIds(allIds);
+      setFillTime(0.28);
+      setSimulationState('filled');
+      return;
+    }
+
+    // Staggered execution
+    let currentIdx = 0;
+    const interval = setInterval(() => {
+      if (currentIdx < activeFields.length) {
+        const field = activeFields[currentIdx];
+        setFilledFieldIds((prev) => new Set([...prev, field.id]));
+        currentIdx++;
+      } else {
+        clearInterval(interval);
+        setFillTime(0.28);
+        setSimulationState('filled');
+      }
+    }, 70);
+  };
+
+  // Reset demo
+  const handleReset = () => {
+    setFilledFieldIds(new Set());
+    setFillTime(null);
+    setSimulationState('ready');
+    setFormSubmitted(false);
+    setStepperStep(2);
+  };
+
+  // Sensitive data mask helper: 3500••••••••0003
+  const maskSensitive = (val: string) => {
+    if (!val || val.length < 8) return val;
+    return `${val.slice(0, 4)}••••••••${val.slice(-4)}`;
+  };
+
+  // Active fields count
+  const activeFields = currentService.fields.filter((f) => selectedFieldKeys[f.valueKey] !== false);
+  const matchedCount = activeFields.length;
+  const isSitiReviewKey = (valKey: string) =>
+    currentProfile.id === 'siti' && currentProfile.needsReviewKey === valKey;
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas text-ink">
-      {/* ================= 1. TOPBAR ================= */}
-      <header className="sticky top-0 z-40 border-b border-line bg-surface">
-        <div className="mx-auto flex h-14 w-full max-w-[1500px] items-center justify-between gap-3 px-4 sm:px-6">
-          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+    <div
+      className={`min-h-screen font-sans flex flex-col transition-colors duration-200 selection:bg-blue-600 selection:text-white ${
+        theme === 'dark' ? 'bg-[#050F1E] text-[#F2F6FB]' : 'bg-[#F8FAFC] text-[#0F172A]'
+      }`}
+    >
+      {/* ===================================================================
+          1. HEADER KONSISTEN (64px, LOGO + SIMULATOR PILL + TEMA + AKSI)
+          (Tombol "Beranda" yang redundan telah dihapus, logo tautan ke /)
+          =================================================================== */}
+      <header
+        className={`sticky top-0 z-40 h-16 border-b backdrop-blur-md transition-colors duration-200 ${
+          theme === 'dark'
+            ? 'bg-[#050F1E]/90 border-white/[0.08] shadow-sm'
+            : 'bg-white/90 border-slate-200 shadow-xs'
+        }`}
+      >
+        <div className="max-w-[1500px] mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-4">
+          {/* Logo & Simulator Badge */}
+          <Link
+            to="/"
+            className="flex items-center gap-3 shrink-0 focus-visible:outline-2 focus-visible:outline-blue-500 rounded-lg p-1 group"
+            title="Kembali ke Beranda GovConnect"
+          >
             <img
               src={theme === 'dark' ? logoDark : logoLight}
-              alt=""
-              className="h-8 w-8 shrink-0 object-contain"
+              alt="GovConnect Logo"
+              className="w-8 h-8 object-contain transition-transform duration-200 group-hover:scale-105"
+              width={32}
+              height={32}
             />
-            <span className="truncate text-[15px] font-bold tracking-[-0.02em] text-ink">GovConnect</span>
-            <span className="badge badge-neutral hidden shrink-0 sm:inline-flex">Simulator Ekstensi</span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-[17px] tracking-tight leading-none text-ink">
+                GovConnect
+              </span>
+              <span
+                className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full border ${
+                  theme === 'dark'
+                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                }`}
+              >
+                Simulator
+              </span>
+            </div>
           </Link>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Link to="/" className="btn btn-ghost btn-sm hidden md:inline-flex">
-              <FontAwesome name="arrow-left" className="text-[11px]" />
-              <span>Beranda</span>
-            </Link>
-
+          {/* Right Action Bar: Tema + Masuk + Pasang Ekstensi */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Theme Toggle Button */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="btn btn-ghost btn-icon btn-sm text-ink-2"
-              title={theme === 'dark' ? 'Beralih ke mode terang (Light mode)' : 'Beralih ke mode gelap (Dark mode)'}
-              aria-label="Toggle mode gelap atau terang"
+              className={`p-2 rounded-xl border transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                theme === 'dark'
+                  ? 'border-white/[0.08] text-[#9DB0C8] hover:text-white hover:bg-white/[0.05]'
+                  : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title={theme === 'dark' ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
+              aria-label="Ganti mode tema"
             >
-              <FontAwesome name={theme === 'dark' ? 'sun' : 'moon'} className="text-[13px]" />
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-300" strokeWidth={1.5} />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-700" strokeWidth={1.5} />
+              )}
             </button>
 
+            {/* Auth Button */}
             {user ? (
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => navigate('/dashboard')}
-                icon={<FontAwesome name="user" className="text-[11px]" />}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                  theme === 'dark'
+                    ? 'border-white/[0.12] text-white hover:bg-white/[0.06]'
+                    : 'border-slate-300 text-slate-800 hover:bg-slate-100'
+                }`}
               >
-                Dashboard
-              </Button>
+                Dasbor
+              </button>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => navigate('/login')}
-                icon={<FontAwesome name="right-to-bracket" className="text-[11px]" />}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                  theme === 'dark'
+                    ? 'text-[#9DB0C8] hover:text-white hover:bg-white/[0.05]'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
               >
                 Masuk
-              </Button>
+              </button>
             )}
 
-            <Button
-              size="sm"
+            {/* Primary Action Button: Pasang Ekstensi */}
+            <button
+              type="button"
               onClick={handleDownloadExtension}
-              icon={<FontAwesome name="download" className="text-[11px]" />}
-              title="Unduh file ekstensi zip"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_-3px_rgba(37,99,235,0.45)] transition-all duration-200 focus-visible:outline-2 focus-visible:outline-blue-400"
             >
-              Pasang Ekstensi
-            </Button>
+              <Download className="w-4 h-4" strokeWidth={1.5} />
+              <span className="hidden sm:inline">Pasang Ekstensi</span>
+              <span className="sm:hidden">Pasang</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* ================= 2. PEMILIH LAYANAN & PROFIL ================= */}
-      <div className="border-b border-line bg-surface-2">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-col justify-between gap-2.5 px-4 py-2.5 sm:px-6 lg:flex-row lg:items-center">
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
-            <span className="eyebrow shrink-0">Layanan</span>
-            <div className="segmented">
-              {[
-                { id: 'dukcapil', label: 'Dukcapil', icon: 'landmark' },
-                { id: 'kelurahan', label: 'Kelurahan', icon: 'building' },
-                { id: 'beasiswa', label: 'Beasiswa', icon: 'graduation-cap' },
-                { id: 'bpjs', label: 'BPJS Kesehatan', icon: 'heart-pulse' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  data-active={selectedServiceId === tab.id}
-                  onClick={() => {
-                    setSelectedServiceId(tab.id);
-                    handleReset();
-                  }}
-                  className="segmented-item"
-                >
-                  <FontAwesome
-                    name={tab.icon}
-                    className={`text-[11px] ${selectedServiceId === tab.id ? 'text-accent-text' : 'text-ink-3'}`}
-                  />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
+      {/* ===================================================================
+          2. SATU BAR KONTROL STICKY TERPADU
+          (Menggantikan 2 baris tab + stepper terpisah)
+          =================================================================== */}
+      <section
+        className={`sticky top-16 z-30 border-b transition-colors duration-200 ${
+          theme === 'dark' ? 'bg-[#07162C]/95 border-white/[0.08]' : 'bg-slate-100/90 border-slate-200'
+        } backdrop-blur-md`}
+      >
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-2.5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Bagian Kiri: Segmented Control Layanan Berikon */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[#9DB0C8] shrink-0 font-semibold hidden sm:inline">
+              Layanan:
+            </span>
+            <div
+              className={`inline-flex p-1 rounded-xl border ${
+                theme === 'dark' ? 'bg-[#0B1E38] border-white/[0.08]' : 'bg-white border-slate-200'
+              }`}
+              role="tablist"
+              aria-label="Pilih layanan publik"
+            >
+              {Object.values(SERVICES).map((srv) => {
+                const IconComponent = srv.icon;
+                const isSelected = selectedServiceId === srv.id;
+                return (
+                  <button
+                    key={srv.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    onClick={() => setSelectedServiceId(srv.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : theme === 'dark'
+                        ? 'text-[#9DB0C8] hover:text-white hover:bg-white/[0.04]'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span>{srv.id === 'dukcapil' ? 'Dukcapil' : srv.id === 'kelurahan' ? 'Kelurahan' : srv.id === 'beasiswa' ? 'Beasiswa' : 'BPJS'}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2.5 lg:justify-end">
-            <span className="eyebrow shrink-0">Profil</span>
-            <div className="segmented">
-              {(['budi', 'siti', 'joko'] as const).map(pKey => (
-                <button
-                  key={pKey}
-                  type="button"
-                  data-active={selectedProfileId === pKey}
-                  onClick={() => {
-                    setSelectedProfileId(pKey);
-                    handleReset();
-                  }}
-                  className="segmented-item"
-                >
-                  {pKey === 'budi' ? 'Ahmad (Pekerja)' : pKey === 'siti' ? 'Siti (Mahasiswi)' : 'H. Joko (Wiraswasta)'}
-                </button>
-              ))}
+          {/* Bagian Tengah/Kanan: Chip Profil & Stepper Ringkas 3 Langkah */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3">
+            {/* Profil Chips dengan Avatar Inisial & Peran */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar" role="tablist" aria-label="Pilih profil pengguna">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[#9DB0C8] shrink-0 font-semibold hidden md:inline">
+                Profil:
+              </span>
+              {Object.values(PROFILES).map((prof) => {
+                const isSelected = selectedProfileId === prof.id;
+                return (
+                  <button
+                    key={prof.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    onClick={() => setSelectedProfileId(prof.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-2 border transition-all focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                      isSelected
+                        ? theme === 'dark'
+                          ? 'border-blue-500/50 bg-blue-500/15 text-white font-semibold'
+                          : 'border-blue-500 bg-blue-50 text-blue-900 font-semibold'
+                        : theme === 'dark'
+                        ? 'border-white/[0.08] text-[#9DB0C8] hover:text-white hover:bg-white/[0.04]'
+                        : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span
+                      className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : theme === 'dark'
+                          ? 'bg-white/[0.08] text-slate-300'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {prof.avatar}
+                    </span>
+                    <span className="truncate">{prof.name.split(' ')[0]}</span>
+                    <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                      ({prof.role})
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {isFilled && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleReset}
-                icon={<FontAwesome name="undo" className="text-[11px]" />}
-                className="shrink-0"
-              >
-                Reset
-              </Button>
-            )}
+            {/* Stepper Ringkas 3 Langkah yang Bisa Diklik */}
+            <div
+              className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-mono ${
+                theme === 'dark' ? 'bg-[#0B1E38] border-white/[0.08]' : 'bg-white border-slate-200'
+              }`}
+            >
+              {[
+                { step: 1, label: 'Deteksi', icon: Search },
+                { step: 2, label: 'Tinjau', icon: SlidersHorizontal },
+                { step: 3, label: 'Isi', icon: Zap },
+              ].map((s) => {
+                const isDone = stepperStep > s.step || simulationState === 'filled';
+                const isCurrent = stepperStep === s.step && simulationState !== 'filled';
+                const StepIcon = s.icon;
+                return (
+                  <button
+                    key={s.step}
+                    type="button"
+                    onClick={() => {
+                      if (s.step === 3 && simulationState !== 'filled') {
+                        handleExecuteAutofill();
+                      } else if (s.step === 2) {
+                        handleReset();
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors ${
+                      isDone
+                        ? 'text-emerald-400 font-semibold'
+                        : isCurrent
+                        ? 'text-blue-400 font-semibold'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    <StepIcon className="w-3 h-3" />
+                    <span>{s.label}</span>
+                    {isDone && <Check className="w-2.5 h-2.5 text-emerald-400" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ================= 3. KONTEN ================= */}
-      <main className="flex w-full flex-1 flex-col">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-4 px-4 py-5 sm:px-6 lg:min-h-0">
-          {/* Progres alur */}
-          <section className="card card-flat flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <ol className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {steps.map((step, index) => (
-                <li key={step.label} className="flex items-center gap-2">
-                  <span
-                    className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums ${
-                      step.state === 'done'
-                        ? 'border-accent bg-accent text-accent-fg'
-                        : 'border-accent bg-surface text-accent-text'
-                    }`}
-                  >
-                    {step.state === 'done' ? <FontAwesome name="check-pure" className="text-[7px]" /> : index + 1}
-                  </span>
-                  <span
-                    className={`text-[12px] ${
-                      step.state === 'done' ? 'text-ink-2' : 'font-semibold text-ink'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                  {index < steps.length - 1 && <span className="ml-1 h-px w-4 bg-line sm:w-6" />}
-                </li>
-              ))}
-            </ol>
-
-            <div className="flex w-full items-center gap-2.5 sm:w-[220px]">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3">
-                <div
-                  className="h-full rounded-full bg-accent transition-[width] duration-300"
-                  style={{ width: `${progressPercent}%` }}
-                />
+      {/* ===================================================================
+          3. PANGGUNG UTAMA 60/40
+          (Kiri: Jendela Browser Realistis 60% · Kanan: Panel GovConnect Assistant 40%)
+          =================================================================== */}
+      <main className="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col justify-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ================= KIRI (60% / 7 cols): JENDELA BROWSER REALISTIS ================= */}
+          <div
+            className={`lg:col-span-7 xl:col-span-8 rounded-[20px] border overflow-hidden transition-all duration-300 ${
+              theme === 'dark'
+                ? 'bg-[#08182F] border-white/[0.08] shadow-xl'
+                : 'bg-white border-slate-200 shadow-lg'
+            }`}
+          >
+            {/* Window Chrome Header Bar */}
+            <div
+              className={`h-11 px-4 flex items-center justify-between border-b select-none ${
+                theme === 'dark' ? 'bg-[#061427] border-white/[0.08]' : 'bg-slate-100 border-slate-200'
+              }`}
+            >
+              {/* Traffic Light Dots */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
               </div>
-              <span className="shrink-0 text-[11px] font-medium tabular-nums text-ink-3">
-                {completedSteps}/{steps.length}
-              </span>
+
+              {/* URL Bar Monospace with Lock */}
+              <div
+                className={`flex-1 max-w-[520px] mx-4 h-7 px-3 rounded-lg flex items-center gap-2 text-xs font-mono truncate border ${
+                  theme === 'dark'
+                    ? 'bg-[#0B1E38] border-white/[0.08] text-slate-300'
+                    : 'bg-white border-slate-200 text-slate-700'
+                }`}
+              >
+                <Lock className="w-3 h-3 text-emerald-400 shrink-0" strokeWidth={1.5} />
+                <span className="text-emerald-400 font-semibold shrink-0">https://</span>
+                <span className="truncate">{new URL(currentService.url).hostname}</span>
+                <span className="text-emerald-400/90 font-sans text-[10px] ml-auto shrink-0 hidden sm:inline flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Sertifikat SSL Aktif
+                </span>
+              </div>
+
+              {/* Reset / Reload Button */}
+              <button
+                type="button"
+                onClick={handleReset}
+                className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                title="Muat ulang formulir simulasi"
+                aria-label="Muat ulang formulir simulasi"
+              >
+                <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.5} />
+              </button>
             </div>
-          </section>
 
-          {/* Split: formulir instansi + panel ekstensi */}
-          <div className="card grid grid-cols-1 overflow-hidden lg:min-h-0 lg:flex-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)]">
-            {/* ---------- KIRI: FORMULIR INSTANSI SIMULASI ---------- */}
-            <div className="flex min-w-0 flex-col border-b border-line lg:col-span-7 lg:min-h-0 lg:border-b-0 xl:col-span-8">
-              {/* Chrome bar */}
-              <div className="flex h-10 items-center gap-3 border-b border-line bg-surface-2 px-3 select-none">
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-line-2" />
-                </div>
-                <div className="mx-auto flex h-7 w-full max-w-[420px] items-center gap-2 rounded-md border border-line bg-surface px-2.5">
-                  <FontAwesome name="lock" className="shrink-0 text-[9px] text-ok" />
-                  <span className="mono truncate text-[11px] text-ink-3">{currentService.url}</span>
-                </div>
-                <FontAwesome name="rotate-right" className="shrink-0 text-[11px] text-ink-3" />
-              </div>
-
-              {/* Isi formulir */}
-              <div className="min-h-0 flex-1 overflow-y-auto bg-canvas p-5 sm:p-7">
-                <div className="mb-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="eyebrow">{currentService.agency}</p>
-                    <h1 className="mt-1.5 text-[18px] font-bold leading-snug tracking-[-0.02em] text-ink sm:text-[20px]">
-                      {currentService.name}
-                    </h1>
+            {/* Form Agency Content Area */}
+            <div className="p-6 sm:p-8">
+              {/* Header Instansi Publik */}
+              <div className="pb-5 mb-6 border-b border-white/[0.08] dark:border-white/[0.08] border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-blue-400 font-semibold">
+                    <Building2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span>{currentService.agency}</span>
                   </div>
+                  <h1 className="text-lg sm:text-xl font-bold text-ink mt-1">
+                    {currentService.name}
+                  </h1>
+                </div>
 
-                  {isFilled ? (
-                    <span className="badge badge-ok shrink-0 self-start">
-                      <FontAwesome name="circle-check" className="text-[10px]" />
-                      Terisi otomatis dalam {fillTime}s
+                {/* State Badge di Header Form */}
+                <div className="shrink-0 self-start sm:self-auto">
+                  {simulationState === 'filled' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" strokeWidth={1.5} />
+                      Terisi otomatis ({fillTime}s simulasi)
+                    </span>
+                  ) : simulationState === 'detecting' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-blue-500/10 border border-blue-500/30 text-blue-400 animate-pulse">
+                      <Search className="w-3.5 h-3.5" />
+                      Mendeteksi kolom...
                     </span>
                   ) : (
-                    <span className="badge badge-neutral shrink-0 self-start">
-                      <span className="dot animate-pulse" />
-                      Menunggu pengisian ekstensi
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-white/[0.04] border border-white/[0.08] text-[#9DB0C8]">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      Siaga aktif
                     </span>
                   )}
                 </div>
+              </div>
 
-                {/* Kolom formulir */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {currentService.fields.map(field => {
-                    const shouldFill = isFilled && selectedFieldKeys[field.valueKey] !== false;
-                    const profileVal = (currentProfile as Record<string, string>)[field.valueKey] || '';
-                    const isFullWidth = field.valueKey === 'alamat';
+              {/* Banner Terisi: "7 kolom terisi. Tinjau sebelum mengirim." */}
+              {simulationState === 'filled' && (
+                <div className="mb-6 p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/[0.08] flex items-center justify-between gap-3 animate-fadeIn">
+                  <div className="flex items-center gap-3">
+                    <CheckCheck className="w-5 h-5 text-emerald-400 shrink-0" strokeWidth={1.5} />
+                    <div>
+                      <p className="text-xs sm:text-sm font-semibold text-emerald-400">
+                        {filledFieldIds.size} kolom terisi otomatis. Tinjau sebelum mengirim.
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        GovConnect hanya mengisi formulir; tombol pengiriman data tetap milik Anda secara penuh.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                    return (
-                      <div key={field.id} className={isFullWidth ? 'sm:col-span-2' : ''}>
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <label htmlFor={field.id} className="text-[11.5px] font-semibold text-ink-2">
-                            {field.label}
-                          </label>
-                          {shouldFill && (
-                            <span className="flex shrink-0 items-center gap-1 text-[10.5px] font-semibold text-ok">
-                              <FontAwesome name="check-pure" className="text-[8px]" />
-                              Cocok
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          id={field.id}
-                          type="text"
-                          readOnly
-                          value={shouldFill ? profileVal : ''}
-                          placeholder={field.placeholder}
-                          className={`input ${
-                            shouldFill
-                              ? 'border-ok-line bg-ok-soft font-medium text-ink'
-                              : 'bg-surface-2 text-ink-3'
-                          }`}
-                        />
+              {/* Form Input Fields Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {currentService.fields.map((field) => {
+                  const isCheckedInPanel = selectedFieldKeys[field.valueKey] !== false;
+                  const isFieldFilled = filledFieldIds.has(field.id) && isCheckedInPanel;
+                  const profileVal = currentProfile.values[field.valueKey] || '';
+                  const isNeedsReview = isSitiReviewKey(field.valueKey);
+                  const isFullWidth = field.valueKey === 'alamat';
+
+                  return (
+                    <div
+                      key={field.id}
+                      className={`transition-all duration-300 ${isFullWidth ? 'sm:col-span-2' : ''}`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <label
+                          htmlFor={field.id}
+                          className="font-semibold text-slate-300 dark:text-slate-300"
+                        >
+                          {field.label}
+                        </label>
+
+                        {/* Status Label di Samping Input */}
+                        {isFieldFilled ? (
+                          <span className="text-[11px] font-mono font-semibold text-emerald-400 flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-400" strokeWidth={2} />
+                            Terisi ✓
+                          </span>
+                        ) : isNeedsReview ? (
+                          <span className="text-[11px] font-mono font-semibold text-amber-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-amber-400" strokeWidth={2} />
+                            Perlu ditinjau
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-mono text-slate-500">
+                            {isCheckedInPanel ? 'Siap diisi' : 'Dilewati'}
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
+
+                      {/* Field Input (Tinggi 48px, Radius 12px) */}
+                      <div
+                        className={`h-12 px-4 rounded-xl border flex items-center justify-between transition-all duration-300 ${
+                          isFieldFilled
+                            ? 'bg-emerald-500/[0.08] border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] font-mono text-sm'
+                            : isNeedsReview
+                            ? 'bg-amber-500/[0.08] border-amber-500/40 text-amber-300 font-mono text-sm'
+                            : theme === 'dark'
+                            ? 'bg-[#0B1E38] border-white/[0.08] text-slate-400 font-mono text-sm'
+                            : 'bg-white border-slate-200 text-slate-700 font-mono text-sm'
+                        }`}
+                      >
+                        <span className="truncate">
+                          {isFieldFilled
+                            ? field.isSensitive && !showSensitive
+                              ? maskSensitive(profileVal)
+                              : profileVal
+                            : field.placeholder}
+                        </span>
+
+                        {isFieldFilled && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-2" />
+                        )}
+                      </div>
+
+                      {isNeedsReview && (
+                        <p className="text-[11px] text-amber-400/90 mt-1 flex items-center gap-1 font-sans">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>{currentProfile.reviewReason}</span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Form Submission Action (Milik Pengguna) */}
+              <div className="mt-8 pt-6 border-t border-white/[0.08] dark:border-white/[0.08] border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-xs text-[#9DB0C8]">
+                  <span>Tombol kirim tetap milik Anda untuk verifikasi akhir berkas.</span>
                 </div>
 
-                {/* Hasil autofill */}
-                {isFilled && (
-                  <div className="mt-6 flex flex-col gap-3 rounded-lg border border-ok-line bg-ok-soft p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-2.5">
-                      <FontAwesome name="circle-check" className="mt-[1px] shrink-0 text-[15px] text-ok" />
-                      <div className="min-w-0">
-                        <p className="text-[12.5px] font-semibold text-ink">Autofill Berhasil Dieksekusi</p>
-                        <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-2">
-                          {activeFieldsCount} kolom instansi telah diisi secara akurat dari data profil{' '}
-                          {currentProfile.name}.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleDownloadExtension}
-                      icon={<FontAwesome name="arrow-right" className="text-[11px]" />}
-                      className="shrink-0"
-                    >
-                      Pasang di Browser Anda
-                    </Button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (simulationState !== 'filled') {
+                      alert('Silakan eksekusi pengisian kolom lewat panel GovConnect Assistant terlebih dahulu.');
+                      return;
+                    }
+                    setFormSubmitted(true);
+                  }}
+                  className={`w-full sm:w-auto px-6 h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+                    simulationState === 'filled'
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
+                      : 'bg-white/[0.06] text-slate-400 cursor-not-allowed border border-white/[0.08]'
+                  }`}
+                >
+                  <Send className="w-4 h-4" strokeWidth={1.5} />
+                  <span>{formSubmitted ? 'Berkas Berhasil Terkirim (Simulasi)' : 'Kirim Berkas Permohonan'}</span>
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* ---------- KANAN: PANEL EKSTENSI ---------- */}
-            <aside className="flex min-w-0 flex-col border-line bg-surface lg:col-span-5 lg:min-h-0 lg:border-l xl:col-span-4">
-              {/* Header panel */}
-              <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface-2 px-4">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <img
-                    src={theme === 'dark' ? logoDark : logoLight}
-                    alt=""
-                    className="h-6 w-6 shrink-0 object-contain"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold leading-tight text-ink">
-                      GovConnect Assistant
-                    </p>
-                    <p className="mt-0.5 truncate text-[10.5px] leading-tight text-ink-3">
-                      Ekstensi Pengisian Formulir
-                    </p>
+          {/* ================= KANAN (40% / 5 cols): PANEL GOVCONNECT ASSISTANT ================= */}
+          {/* Bobot visual lebih besar, kartu terangkat, border biru + glow lembut */}
+          <aside
+            className={`lg:col-span-5 xl:col-span-4 rounded-[20px] border transition-all duration-300 relative ${
+              theme === 'dark'
+                ? 'bg-[#0B203F] border-blue-500/40 shadow-[0_0_35px_-5px_rgba(37,99,235,0.28)]'
+                : 'bg-white border-blue-400 shadow-2xl'
+            }`}
+          >
+            {/* Header Panel */}
+            <div className="p-5 border-b border-white/[0.08] dark:border-white/[0.08] border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                    GC
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-ink leading-tight">GovConnect Assistant</h2>
+                    <p className="text-[10px] text-[#9DB0C8]">Ekstensi Formulir Publik</p>
                   </div>
                 </div>
-                <span className="badge badge-ok shrink-0">
-                  <span className="dot" />
+
+                {/* Status Indicator */}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   Siaga Aktif
                 </span>
               </div>
 
-              {/* Host aktif */}
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
-                <span className="mono truncate text-[11px] text-ink-3">
+              <div className="flex items-center justify-between text-xs text-[#9DB0C8] pt-1">
+                <span className="font-mono text-[11px] truncate">
                   {new URL(currentService.url).hostname}
                 </span>
-                <span className="shrink-0 text-[11px] font-semibold text-ok">100% Cocok</span>
+                <span className="font-semibold text-emerald-400 text-[11px]">
+                  {matchedCount}/{currentService.fields.length} kolom cocok
+                </span>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* CTA UTAMA: Ditempatkan menonjol di bagian atas panel */}
+              <div>
+                <button
+                  type="button"
+                  onClick={handleExecuteAutofill}
+                  disabled={simulationState === 'filling'}
+                  className={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition-all duration-200 shadow-[0_0_25px_-3px_rgba(37,99,235,0.5)] ${
+                    simulationState === 'filling'
+                      ? 'bg-blue-700 text-white cursor-wait opacity-80'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white'
+                  }`}
+                >
+                  <Zap className={`w-4 h-4 ${simulationState === 'filling' ? 'animate-bounce' : ''}`} strokeWidth={1.5} />
+                  <span>
+                    {simulationState === 'filling'
+                      ? 'Mengisi kolom...'
+                      : `Isi ${matchedCount} Kolom (1 Klik)`}
+                  </span>
+                  {fillTime && (
+                    <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/20">
+                      {fillTime}s (simulasi)
+                    </span>
+                  )}
+                </button>
+                <p className="text-[11px] text-center text-[#9DB0C8] mt-2">
+                  Data diproses secara lokal di browser Anda tanpa transit ke server luar.
+                </p>
               </div>
 
-              {/* Ringkasan deteksi */}
-              <div className="shrink-0 border-b border-line p-3.5">
-                <div className="rounded-md border border-line bg-surface-2 px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[12.5px] font-semibold text-ink">
-                      {currentService.fields.length} Kolom Terdeteksi
-                    </p>
-                    <FontAwesome name="bolt" className="shrink-0 text-[11px] text-accent-text" />
+              {/* Profil Kependudukan Card dengan Toggle Mata (Masking NIK/KK) */}
+              <div
+                className={`p-3.5 rounded-xl border text-xs ${
+                  theme === 'dark' ? 'bg-[#07172D] border-white/[0.08]' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-slate-300">Profil Terpilih:</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSensitive(!showSensitive)}
+                    className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 font-mono"
+                    title={showSensitive ? 'Samarkan NIK & KK' : 'Tampilkan NIK & KK'}
+                  >
+                    {showSensitive ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Samarkan</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Buka Sensor</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="space-y-1 font-mono text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Nama:</span>
+                    <span className="font-semibold text-ink truncate ml-2">{currentProfile.name}</span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-3">
-                    Cocok dengan data profil:{' '}
-                    <span className="font-semibold text-ink-2">{currentProfile.name.split(' ')[0]}</span>
-                  </p>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">NIK:</span>
+                    <span className="font-semibold text-ink">
+                      {showSensitive ? currentProfile.values.nik : maskSensitive(currentProfile.values.nik)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Nomor KK:</span>
+                    <span className="font-semibold text-ink">
+                      {showSensitive ? currentProfile.values.kk : maskSensitive(currentProfile.values.kk)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Checklist kolom */}
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                <div className="mb-2 flex items-center justify-between gap-2 px-1">
-                  <span className="eyebrow">Kolom Siap Diisi</span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-ink-3">
-                    {activeFieldsCount} dari {currentService.fields.length} dipilih
+              {/* Checklist Kolom dengan Checkbox per Kolom */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#9DB0C8]">
+                    Daftar Kolom Terdeteksi
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {activeFields.length}/{currentService.fields.length} dipilih
                   </span>
                 </div>
 
-                <div className="space-y-1">
-                  {currentService.fields.map(field => {
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto no-scrollbar pr-1">
+                  {currentService.fields.map((field) => {
                     const isChecked = selectedFieldKeys[field.valueKey] !== false;
+                    const isFieldFilled = filledFieldIds.has(field.id) && isChecked;
+                    const isNeedsReview = isSitiReviewKey(field.valueKey);
+
                     return (
-                      <label
+                      <div
                         key={field.id}
-                        onClick={() => toggleField(field.valueKey)}
-                        className={`flex cursor-pointer select-none items-center justify-between gap-2 rounded-md border px-2.5 py-2 transition-colors ${
-                          isChecked
-                            ? 'border-line bg-surface-2 hover:border-line-2'
-                            : 'border-transparent opacity-60'
+                        className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 transition-all ${
+                          isFieldFilled
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : isNeedsReview
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                            : isChecked
+                            ? theme === 'dark'
+                              ? 'bg-white/[0.03] border-white/[0.06] text-slate-200'
+                              : 'bg-white border-slate-200 text-slate-700'
+                            : 'bg-transparent border-transparent opacity-40'
                         }`}
                       >
-                        <span className="flex min-w-0 items-center gap-2">
+                        <label className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => {}}
-                            className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded accent-accent"
+                            onChange={() => toggleField(field.valueKey)}
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
                           />
-                          <span className="truncate text-[12px] font-medium text-ink-2">{field.label}</span>
-                        </span>
-                        <span
-                          className={`shrink-0 text-[10.5px] font-semibold ${
-                            isChecked ? 'text-ok' : 'text-ink-3'
-                          }`}
-                        >
-                          {isChecked ? 'Cocok' : 'Lewati'}
-                        </span>
-                      </label>
+                          <span className="truncate text-xs font-medium">{field.label}</span>
+                        </label>
+
+                        {/* Status Tag */}
+                        <div className="shrink-0 flex items-center gap-1 font-mono text-[10.5px]">
+                          {isFieldFilled ? (
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              Terisi ✓
+                            </span>
+                          ) : isNeedsReview ? (
+                            <span className="text-amber-400 font-semibold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-amber-400" />
+                              Perlu ditinjau
+                            </span>
+                          ) : isChecked ? (
+                            <span className="text-emerald-400 font-semibold">Cocok</span>
+                          ) : (
+                            <span className="text-slate-500">Lewati</span>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Aksi utama */}
-              <div className="shrink-0 border-t border-line bg-surface-2 p-3">
-                <Button
-                  onClick={handleAutofill}
-                  disabled={isFilling}
-                  loading={isFilling}
-                  className="w-full"
-                  icon={!isFilling && <FontAwesome name="bolt" className="text-[11px]" />}
+              {/* Log Aktivitas Bergaya Terminal Monospace (Collapsible) */}
+              <div
+                className={`rounded-xl border overflow-hidden ${
+                  theme === 'dark' ? 'bg-[#061528] border-white/[0.08]' : 'bg-slate-900 border-slate-800'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowTerminalLog(!showTerminalLog)}
+                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs font-mono text-emerald-400 hover:bg-white/[0.02]"
                 >
-                  {isFilling
-                    ? 'Mengeksekusi Autofill...'
-                    : `Isi ${activeFieldsCount} Kolom Formulir (1 Klik)`}
-                </Button>
+                  <span className="flex items-center gap-2">
+                    <Terminal className="w-3.5 h-3.5" />
+                    <span>Log Aktivitas Mesin Ekstensi</span>
+                  </span>
+                  {showTerminalLog ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                </button>
+
+                {showTerminalLog && (
+                  <div className="p-3 border-t border-white/[0.08] font-mono text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+                    <p className="text-slate-400">
+                      <span className="text-blue-400">[00:00.012]</span> DETECT -&gt; {currentService.fields.length} kolom terdeteksi di DOM pohon formulir
+                    </p>
+                    <p className="text-slate-400">
+                      <span className="text-blue-400">[00:00.045]</span> MATCH  -&gt; {matchedCount} kolom cocok, {currentProfile.id === 'siti' ? '1 kolom perlu ditinjau' : '0 galat'}
+                    </p>
+                    <p className="text-amber-400">
+                      <span className="text-blue-400">[00:00.120]</span> WAIT   -&gt; Menunggu konfirmasi persetujuan pengguna via panel samping...
+                    </p>
+                    {simulationState === 'filled' && (
+                      <p className="text-emerald-400 font-semibold">
+                        <span className="text-blue-400">[00:00.280]</span> FILLED -&gt; {filledFieldIds.size} kolom berhasil diisi dalam {fillTime}s (simulasi)
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </aside>
-          </div>
+            </div>
+          </aside>
         </div>
+
+        {/* ===================================================================
+            4. KARTU CTA KONVERSI SETELAH PENGISIAN
+            (Muncul di bawah panggung setelah formulir terisi)
+            =================================================================== */}
+        {simulationState === 'filled' && (
+          <div
+            className={`mt-8 p-6 sm:p-8 rounded-[20px] border flex flex-col md:flex-row items-center justify-between gap-6 animate-fadeIn ${
+              theme === 'dark'
+                ? 'bg-[#0B1E38] border-blue-500/40 shadow-xl'
+                : 'bg-white border-blue-300 shadow-md'
+            }`}
+          >
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 mb-2">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Simulasi Berhasil</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-ink">
+                Suka hasilnya? Pasang ekstensi gratis sekarang.
+              </h3>
+              <p className="text-sm text-[#9DB0C8] mt-1 max-w-[600px] leading-relaxed">
+                Nikmati kemudahan autofill kependudukan 0,3 detik ini langsung di browser Anda untuk seluruh portal
+                pelayanan publik di Indonesia.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={handleDownloadExtension}
+                className="px-5 py-3 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh untuk Chrome / Edge / Brave</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-colors ${
+                  theme === 'dark'
+                    ? 'border-white/[0.12] text-white hover:bg-white/[0.05]'
+                    : 'border-slate-300 text-slate-800 hover:bg-slate-100'
+                }`}
+              >
+                Coba Profil Lain / Reset
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
