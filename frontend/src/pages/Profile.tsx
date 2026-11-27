@@ -410,8 +410,8 @@ export function ProfilePage() {
         [slotId]: compressed,
       }));
       setHasUnsavedChanges(true);
-      setMessage({ type: 'success', text: `Berkas ${file.name} berhasil dimuat.` });
-      setTimeout(() => setMessage(null), 3000);
+      setMessage({ type: 'success', text: `Berkas ${file.name} berhasil dimuat. Tekan Simpan di bawah untuk menyinkronkan ke profil & ekstensi.` });
+      setTimeout(() => setMessage(null), 4000);
     } catch (err) {
       console.error('Failed to compress image:', err);
       setMessage({ type: 'error', text: 'Gagal memproses berkas gambar.' });
@@ -1091,6 +1091,7 @@ export function ProfilePage() {
                         onChange={e => {
                           const file = e.target.files?.[0];
                           if (file) handleStandardPhotoUpload(slot.id, file);
+                          e.target.value = '';
                         }}
                         className="hidden"
                       />
@@ -1585,7 +1586,7 @@ export function ProfilePage() {
             )}
             <div className="text-xs flex-1">
               <p className="font-bold text-ink">
-                {message.type === 'success' ? 'Berhasil Disimpan' : 'Perhatian'}
+                {message.type === 'success' ? 'Berhasil' : 'Perhatian'}
               </p>
               <p className="text-ink-2 mt-0.5 leading-relaxed">{message.text}</p>
             </div>
@@ -1737,6 +1738,7 @@ export function ProfilePage() {
                     onChange={e => {
                       const file = e.target.files?.[0];
                       if (file) handleModalPhotoSelected(file);
+                      e.target.value = '';
                     }}
                     className="hidden"
                   />

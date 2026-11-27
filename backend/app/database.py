@@ -110,11 +110,14 @@ def _ensure_profile_columns():
     if "profiles" not in inspector.get_table_names():
         return
     existing = {col["name"] for col in inspector.get_columns("profiles")}
+    longtext_sql = "TEXT" if settings.is_sqlite else "LONGTEXT"
     DDL = {
         "age": "ALTER TABLE profiles ADD COLUMN age TEXT",
         "home_phone": "ALTER TABLE profiles ADD COLUMN home_phone TEXT",
         "work_telephone": "ALTER TABLE profiles ADD COLUMN work_telephone TEXT",
         "fax": "ALTER TABLE profiles ADD COLUMN fax TEXT",
+        "custom_fields": f"ALTER TABLE profiles ADD COLUMN custom_fields {longtext_sql}",
+        "document_photos": f"ALTER TABLE profiles ADD COLUMN document_photos {longtext_sql}",
     }
     with engine.begin() as conn:
         for name, statement in DDL.items():
@@ -154,6 +157,15 @@ def _ensure_profile_encryption_columns():
                     logger.info(f"Migrasi: kolom profiles.{col} diubah menjadi TEXT untuk enkripsi PII.")
                 except Exception as exc:  # pragma: no cover - defensive
                     logger.warning(f"Gagal memodifikasi kolom profiles.{col}: {exc}")
+
+        for col in ("custom_fields", "document_photos"):
+            curr_type = cols.get(col, "")
+            if curr_type and "LONGTEXT" not in curr_type:
+                try:
+                    conn.execute(text(f"ALTER TABLE profiles MODIFY COLUMN {col} LONGTEXT NULL;"))
+                    logger.info(f"Migrasi: kolom profiles.{col} diubah menjadi LONGTEXT untuk berkas base64.")
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning(f"Gagal memodifikasi kolom profiles.{col} ke LONGTEXT: {exc}")
 
 
 def _bootstrap_admins():

@@ -75,8 +75,38 @@ const SHORT_KEYWORDS = new Set([
   "wa", "hp", "kab", "kot", "zip", "nim", "nip", "nrp", "dob", "sex", "job", "telp", "age", "sim", "day"
 ]);
 
-// Set global untuk mencatat kunci-kunci kolom kustom yang terdaftar dari profil pengguna
+// Set global untuk mencatat kunci-kunci kolom kustom dan berkas foto dari profil pengguna
 const customFieldKeySet = new Set();
+const customImageKeySet = new Set();
+const customPhotoDataMap = {};
+const STANDARD_PHOTO_KEYS = new Set(["foto_ktp", "foto_kk", "pasfoto", "foto_npwp", "foto_ijazah"]);
+const PHOTO_SLOT_TO_KEY = {
+  ktp: "foto_ktp",
+  kk: "foto_kk",
+  pasfoto: "pasfoto",
+  npwp_card: "foto_npwp",
+  ijazah: "foto_ijazah"
+};
+const PHOTO_KEY_TO_SLOT = {
+  foto_ktp: "ktp",
+  ktp: "ktp",
+  foto_kk: "kk",
+  kk: "kk",
+  pasfoto: "pasfoto",
+  foto_npwp: "npwp_card",
+  npwp_card: "npwp_card",
+  foto_ijazah: "ijazah",
+  ijazah: "ijazah"
+};
+const TEXT_TO_PHOTO_KEY = {
+  nik: "foto_ktp",
+  family_card_number: "foto_kk",
+  npwp: "foto_npwp"
+};
+
+function isPhotoProfileKey(key) {
+  return Boolean(key && (STANDARD_PHOTO_KEYS.has(key) || customImageKeySet.has(key)));
+}
 
 // ============================================================
 // HTML5 Standard Autocomplete Attribute Map (W3C Standard)
@@ -364,19 +394,24 @@ const KEYWORD_MAP = {
     "bpjs", "no_bpjs", "nomor_bpjs", "bpjs_kesehatan", "bpjs_ketenagakerjaan"
   ],
   foto_ktp: [
-    "foto_ktp", "upload_ktp", "scan_ktp", "berkas_ktp", "file_ktp", "dokumen_ktp", "ktp_file", "fotoktp"
+    "foto_ktp", "upload_ktp", "scan_ktp", "berkas_ktp", "file_ktp", "dokumen_ktp", "ktp_file", "fotoktp",
+    "ktp_photo", "foto_e_ktp", "foto_ektp", "upload_ektp", "lampiran_ktp"
   ],
   foto_kk: [
-    "foto_kk", "upload_kk", "scan_kk", "berkas_kk", "file_kk", "kartu_keluarga_file", "fotokk", "kk_file"
+    "foto_kk", "upload_kk", "scan_kk", "berkas_kk", "file_kk", "kartu_keluarga_file", "fotokk", "kk_file",
+    "kk_photo", "upload_kartu_keluarga", "lampiran_kk", "foto_kartu_keluarga"
   ],
   pasfoto: [
-    "pasfoto", "pas_foto", "foto_profil", "photo_file", "avatar_file", "foto_diri", "foto_wajah", "foto_formal", "fotodiri", "pas_photo"
+    "pasfoto", "pas_foto", "foto_profil", "photo_file", "avatar_file", "foto_diri", "foto_wajah", "foto_formal",
+    "fotodiri", "pas_photo", "profile_photo", "upload_foto", "foto_3x4", "foto_4x6"
   ],
   foto_npwp: [
-    "foto_npwp", "upload_npwp", "scan_npwp", "kartu_npwp_file", "berkas_npwp", "npwp_file"
+    "foto_npwp", "upload_npwp", "scan_npwp", "kartu_npwp_file", "berkas_npwp", "npwp_file",
+    "npwp_photo", "upload_kartu_npwp", "lampiran_npwp", "foto_kartu_npwp"
   ],
   foto_ijazah: [
-    "foto_ijazah", "upload_ijazah", "scan_ijazah", "berkas_ijazah", "dokumen_ijazah", "ijazah_file"
+    "foto_ijazah", "upload_ijazah", "scan_ijazah", "berkas_ijazah", "dokumen_ijazah", "ijazah_file",
+    "ijazah_photo", "lampiran_ijazah", "upload_dokumen_ijazah"
   ]
 };
 
@@ -440,9 +475,70 @@ const DROPDOWN_VALUE_MAP = {
 // ============================================================
 // Helper: Periksa Apakah Element Benar-benar Terlihat di Layar
 // ============================================================
+function isContainerVisiblyRendered(container) {
+  if (!container || !container.isConnected) return false;
+  if (typeof container.checkVisibility === "function") {
+    try {
+      if (!container.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+        return false;
+      }
+    } catch (e) {}
+  }
+  try {
+    const style = window.getComputedStyle(container);
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+      return false;
+    }
+    const rect = container.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+function findVisibleFileTrigger(el) {
+  if (!el) return null;
+  if (el.id) {
+    try {
+      const escapedId = window.CSS && CSS.escape ? CSS.escape(el.id) : el.id;
+      const lbl = document.querySelector(`label[for="${escapedId}"]`);
+      if (isContainerVisiblyRendered(lbl)) return lbl;
+    } catch (e) {}
+  }
+
+  const dropzone = el.closest(
+    "label, .file-dropzone, .dropzone, .upload-zone, .custom-file, .p-fileupload, .ant-upload, [class*='dropzone'], [class*='upload'], [class*='file-input']"
+  );
+  if (dropzone && dropzone !== el && isContainerVisiblyRendered(dropzone)) {
+    return dropzone;
+  }
+
+  const parent = el.parentElement;
+  if (parent && parent.tagName.toLowerCase() !== "body" && parent.tagName.toLowerCase() !== "form" && isContainerVisiblyRendered(parent)) {
+    return parent;
+  }
+  return null;
+}
+
+function getMarkerTargetElement(el) {
+  if (!el) return el;
+  const type = (el.type || el.getAttribute?.("type") || "").toLowerCase();
+  if (type === "file") {
+    try {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0" || rect.width === 0 || rect.height === 0) {
+        return findVisibleFileTrigger(el) || el;
+      }
+    } catch (e) {}
+  }
+  return el;
+}
+
 function isElementVisible(el) {
   if (!el) return false;
   if (el.type === "hidden") return false;
+  const elType = (el.type || el.getAttribute?.("type") || "").toLowerCase();
 
   // Pengecualian khusus: PrimeNG host element (<p-dropdown> atau div.p-dropdown)
   // Angular sering melampirkannya di dalam portal-outlet atau container posisional
@@ -459,47 +555,45 @@ function isElementVisible(el) {
 
   // Pengecualian khusus: Custom radio / checkbox (Bootstrap, Tailwind, DemoQA custom-control)
   // Seringkali input native disembunyikan dengan opacity: 0 atau position: absolute, tetapi label pendukungnya terlihat jelas
-  if (el.type === "radio" || el.type === "checkbox") {
+  if (elType === "radio" || elType === "checkbox") {
     const parentContainer = el.closest(".custom-control, .form-check, label, div");
-    if (parentContainer) {
-      const pStyle = window.getComputedStyle(parentContainer);
-      if (pStyle.display !== "none" && pStyle.visibility !== "hidden") {
-        const pRect = parentContainer.getBoundingClientRect();
-        if (pRect.width > 0 || pRect.height > 0) return true;
-      }
+    if (parentContainer && isContainerVisiblyRendered(parentContainer)) {
+      return true;
     }
   }
 
   // Native checkVisibility (Chrome 105+) - Akurat mendeteksi ancestor display:none
+  let selfVisible = true;
   if (typeof el.checkVisibility === "function") {
     try {
-      return el.checkVisibility({
+      selfVisible = el.checkVisibility({
         checkOpacity: true,
         checkVisibilityCSS: true
       });
     } catch (e) {}
+  } else {
+    try {
+      const style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+        selfVisible = false;
+      } else if (el.offsetParent === null && style.position !== "fixed") {
+        selfVisible = false;
+      } else {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) {
+          selfVisible = false;
+        }
+      }
+    } catch (e) {
+      selfVisible = true;
+    }
   }
 
-  try {
-    const style = window.getComputedStyle(el);
-    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
-      return false;
-    }
-
-    // Jika parent tersembunyi (offsetParent null)
-    if (el.offsetParent === null && style.position !== "fixed") {
-      return false;
-    }
-
-    const rect = el.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) {
-      return false;
-    }
-  } catch (e) {
-    return true; // Fallback jika getComputedStyle gagal
+  if (!selfVisible && elType === "file") {
+    return Boolean(findVisibleFileTrigger(el));
   }
 
-  return true;
+  return selfVisible;
 }
 
 /**
@@ -534,13 +628,16 @@ function getAllFormFields() {
   const standardInputs = querySelectorAllDeep(
     "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=password]):not([type=image]), select, textarea"
   ).filter(el => {
-    // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
-    if (el.closest(".p-hidden-accessible, .cdk-visually-hidden, [aria-hidden='true']")) {
+    const type = (el.type || el.getAttribute("type") || "").toLowerCase();
+    // Perlindungan ketat: Tolak mutlak seluruh kolom kata sandi (password)
+    if (type === "password") {
       return false;
     }
-    // Perlindungan ketat: Tolak mutlak seluruh kolom kata sandi (password)
-    const type = (el.type || el.getAttribute("type") || "").toLowerCase();
-    if (type === "password") {
+    // Abaikan input pembantu internal yang tersembunyi di dalam custom component (PrimeNG, Material, dll.)
+    if (el.closest(".p-hidden-accessible, .cdk-visually-hidden")) {
+      return false;
+    }
+    if (el.closest("[aria-hidden='true']") && !(type === "file" && findVisibleFileTrigger(el))) {
       return false;
     }
     // Abaikan input jika berada di dalam p-dropdown kecuali jika berupa search filter
@@ -789,20 +886,125 @@ async function fillReactSelect(el, value, profileKey) {
   return false;
 }
 
+function parseJsonSafely(val, fallback = null) {
+  if (!val) return fallback;
+  if (typeof val === "object") return val;
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
+function extractCustomFieldItems(rawCustomFields) {
+  const cf = parseJsonSafely(rawCustomFields, null);
+  if (!cf) return [];
+  if (Array.isArray(cf)) return cf;
+  if (typeof cf === "object") {
+    if (Array.isArray(cf.fields)) return cf.fields;
+    return Object.entries(cf).map(([k, v]) => ({
+      key: k,
+      label: typeof v === "object" ? (v.label || k) : k,
+      value: typeof v === "object" ? v.value : v,
+      type: typeof v === "object" ? v.type : undefined,
+      aliases: typeof v === "object" && Array.isArray(v.aliases) ? v.aliases : undefined,
+      photoData: typeof v === "object" ? v.photoData : undefined,
+      photoName: typeof v === "object" ? v.photoName : undefined
+    }));
+  }
+  return [];
+}
+
 function registerDocumentPhotos(profile) {
   if (!profile || !profile.document_photos) return;
   try {
-    const docs = typeof profile.document_photos === "string"
-      ? JSON.parse(profile.document_photos)
-      : profile.document_photos;
-    
-    if (docs.ktp && docs.ktp.data) profile.foto_ktp = docs.ktp.name || "ktp.jpg";
-    if (docs.kk && docs.kk.data) profile.foto_kk = docs.kk.name || "kk.jpg";
-    if (docs.pasfoto && docs.pasfoto.data) profile.pasfoto = docs.pasfoto.name || "pasfoto.jpg";
-    if (docs.npwp_card && docs.npwp_card.data) profile.foto_npwp = docs.npwp_card.name || "npwp.jpg";
-    if (docs.ijazah && docs.ijazah.data) profile.foto_ijazah = docs.ijazah.name || "ijazah.jpg";
+    const docs = parseJsonSafely(profile.document_photos, null);
+    if (!docs || typeof docs !== "object") return;
+
+    Object.entries(docs).forEach(([slotKey, slotVal]) => {
+      if (!slotVal || !slotVal.data) return;
+      const fileName = slotVal.name || `${slotKey}.jpg`;
+      const targetKey = PHOTO_SLOT_TO_KEY[slotKey] || slotKey;
+      profile[targetKey] = fileName;
+      if (slotKey !== targetKey && !profile[slotKey]) {
+        profile[slotKey] = fileName;
+      }
+      if (!STANDARD_PHOTO_KEYS.has(targetKey)) {
+        customImageKeySet.add(targetKey);
+        customPhotoDataMap[targetKey] = slotVal;
+      }
+    });
   } catch (e) {
     console.warn("GovConnect: Gagal memproses document_photos:", e);
+  }
+}
+
+function resolvePhotoSlot(profile, profileKey) {
+  if (!profileKey) return null;
+  const docPhotos = profile ? parseJsonSafely(profile.document_photos, {}) : {};
+  const mappedSlot = PHOTO_KEY_TO_SLOT[profileKey];
+
+  if (mappedSlot && docPhotos && docPhotos[mappedSlot]?.data) {
+    return docPhotos[mappedSlot];
+  }
+  if (docPhotos && docPhotos[profileKey]?.data) {
+    return docPhotos[profileKey];
+  }
+
+  // Fallback ke custom_fields item bertipe berkas / photoData
+  if (profile && profile.custom_fields) {
+    const items = extractCustomFieldItems(profile.custom_fields);
+    const matched = items.find(
+      it => it && (it.key === profileKey || (it.key || "").toLowerCase() === profileKey.toLowerCase()) && it.photoData
+    );
+    if (matched) {
+      return {
+        data: matched.photoData,
+        name: matched.photoName || matched.value || `${profileKey}.jpg`,
+        type: undefined
+      };
+    }
+  }
+
+  if (customPhotoDataMap[profileKey]?.data) {
+    return customPhotoDataMap[profileKey];
+  }
+
+  return null;
+}
+
+async function fillFileInputElement(el, profile, profileKey) {
+  const photoSlot = resolvePhotoSlot(profile, profileKey);
+  if (!photoSlot || !photoSlot.data || !photoSlot.data.includes(",")) {
+    return false;
+  }
+
+  try {
+    const parts = photoSlot.data.split(",");
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mimeType = photoSlot.type || (mimeMatch ? mimeMatch[1] : "image/jpeg");
+    const byteString = atob(parts[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+    const file = new File([blob], photoSlot.name || `${profileKey}.jpg`, { type: mimeType });
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    el.files = dataTransfer.files;
+
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  } catch (fileErr) {
+    console.warn("GovConnect: Error saat autofill file input:", fileErr);
+    return false;
   }
 }
 
@@ -992,30 +1194,25 @@ function registerCustomProfileFields(profile) {
 
   if (!profile.custom_fields) return;
   try {
-    const cf = typeof profile.custom_fields === "string"
-      ? JSON.parse(profile.custom_fields)
-      : profile.custom_fields;
-    
-    let items = [];
-    if (Array.isArray(cf)) {
-      items = cf;
-    } else if (typeof cf === "object" && cf !== null) {
-      if (Array.isArray(cf.fields)) {
-        items = cf.fields;
-      } else {
-        items = Object.entries(cf).map(([k, v]) => ({
-          key: k,
-          label: typeof v === "object" ? (v.label || k) : k,
-          value: typeof v === "object" ? v.value : v,
-          aliases: typeof v === "object" && Array.isArray(v.aliases) ? v.aliases : undefined
-        }));
-      }
-    }
+    const items = extractCustomFieldItems(profile.custom_fields);
 
     items.forEach(item => {
       if (item && item.key) {
         const key = item.key;
-        profile[key] = item.value;
+        const isImageItem = item.type === "image" || Boolean(item.photoData);
+        if (isImageItem) {
+          customImageKeySet.add(key);
+          if (item.photoData) {
+            customPhotoDataMap[key] = {
+              data: item.photoData,
+              name: item.photoName || item.value || `${key}.jpg`,
+              type: undefined
+            };
+          }
+          profile[key] = item.photoName || item.value || `${key}.jpg`;
+        } else {
+          profile[key] = item.value;
+        }
         if (!MARKER_LABELS[key]) {
           MARKER_LABELS[key] = item.label || key;
         }
@@ -1189,15 +1386,17 @@ function ensureMarkerLayer() {
 }
 
 function clearFieldMarkers() {
-  activeMarkers.forEach(({ el, badge }) => {
-    if (el) {
-      el.classList.remove(
-        "govconnect-field-ready",
-        "govconnect-field-filled",
-        "govconnect-field-focus",
-        "govconnect-field-fadeout"
-      );
-    }
+  activeMarkers.forEach(({ el, markerEl, badge }) => {
+    [el, markerEl].forEach(node => {
+      if (node) {
+        node.classList.remove(
+          "govconnect-field-ready",
+          "govconnect-field-filled",
+          "govconnect-field-focus",
+          "govconnect-field-fadeout"
+        );
+      }
+    });
     if (badge && badge.parentNode) {
       badge.remove();
     }
@@ -1237,16 +1436,19 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
     // Filter berdasarkan activeKeys jika diberikan
     if (allowedKeys && !allowedKeys.includes(profileKey)) continue;
 
-    // Filter jika profil tidak memiliki nilai untuk key ini
+    // Filter jika profil tidak memiliki nilai untuk key ini (untuk file, periksa juga resolver photo)
     const val = currentProfile[profileKey];
-    if (currentProfile && Object.keys(currentProfile).length > 0 && (!val || val.toString().trim() === "")) {
+    const hasFileSlot = inputType === "file" && Boolean(resolvePhotoSlot(currentProfile, profileKey));
+    if (currentProfile && Object.keys(currentProfile).length > 0 && (!val || val.toString().trim() === "") && !hasFileSlot) {
       continue;
     }
 
     if (!isElementVisible(el)) continue;
 
-    // Pasang highlight border
-    el.classList.add("govconnect-field-ready");
+    const markerEl = getMarkerTargetElement(el) || el;
+
+    // Pasang highlight border pada elemen terlihat (termasuk dropzone kustom jika file input tersembunyi)
+    markerEl.classList.add("govconnect-field-ready");
 
     // Pasang badge floating di sudut kanan atas kolom
     const badge = document.createElement("div");
@@ -1263,20 +1465,21 @@ async function renderFieldMarkers(activeKeys = null, profile = null) {
 
     badge.addEventListener("click", (e) => {
       e.stopPropagation();
-      const trigger = el.querySelector?.(".p-dropdown-trigger, .p-dropdown") || el;
-      trigger.focus();
+      const trigger = el.querySelector?.(".p-dropdown-trigger, .p-dropdown") || markerEl;
+      trigger.focus?.();
     });
 
     layer.appendChild(badge);
-    activeMarkers.push({ el, badge, profileKey });
+    activeMarkers.push({ el, markerEl, badge, profileKey });
   }
 
   repositionMarkers();
 }
 
 function repositionMarkers() {
-  activeMarkers.forEach(({ el, badge }) => {
-    if (!el || !document.body.contains(el)) {
+  activeMarkers.forEach(({ el, markerEl, badge }) => {
+    const target = (markerEl && document.body.contains(markerEl)) ? markerEl : el;
+    if (!target || !document.body.contains(target)) {
       badge.remove();
       return;
     }
@@ -1286,7 +1489,7 @@ function repositionMarkers() {
     }
 
     badge.style.display = "inline-flex";
-    const rect = el.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
     const isNearTop = rect.top + window.scrollY < 16;
     const top = isNearTop
       ? (rect.top + window.scrollY + 3)
@@ -1299,23 +1502,25 @@ function repositionMarkers() {
 }
 
 function highlightFieldOnPage(profileKey, name, id) {
-  activeMarkers.forEach(({ el, badge, profileKey: key }) => {
+  activeMarkers.forEach(({ el, markerEl, badge, profileKey: key }) => {
+    const target = markerEl || el;
     const isMatch = (profileKey && key === profileKey) ||
                     (name && el.name === name) ||
                     (id && el.id === id);
     if (isMatch) {
-      el.classList.add("govconnect-field-focus");
+      target.classList.add("govconnect-field-focus");
       if (badge) badge.classList.add("govconnect-badge-hover");
     } else {
-      el.classList.remove("govconnect-field-focus");
+      target.classList.remove("govconnect-field-focus");
       if (badge) badge.classList.remove("govconnect-badge-hover");
     }
   });
 }
 
 function unhighlightFieldOnPage() {
-  activeMarkers.forEach(({ el, badge }) => {
+  activeMarkers.forEach(({ el, markerEl, badge }) => {
     if (el) el.classList.remove("govconnect-field-focus");
+    if (markerEl) markerEl.classList.remove("govconnect-field-focus");
     if (badge) badge.classList.remove("govconnect-badge-hover");
   });
 }
@@ -1328,11 +1533,12 @@ function markFieldsAsFilled(filledKeys, profile) {
     markerFadeOutTimer = null;
   }
 
-  activeMarkers.forEach(({ el, badge, profileKey }) => {
+  activeMarkers.forEach(({ el, markerEl, badge, profileKey }) => {
+    const target = markerEl || el;
     if (filledKeys && filledKeys.includes(profileKey)) {
-      if (el) {
-        el.classList.remove("govconnect-field-ready", "govconnect-field-focus", "govconnect-field-fadeout");
-        el.classList.add("govconnect-field-filled");
+      if (target) {
+        target.classList.remove("govconnect-field-ready", "govconnect-field-focus", "govconnect-field-fadeout");
+        target.classList.add("govconnect-field-filled");
       }
       if (badge) {
         badge.classList.remove("govconnect-badge-fadeout");
@@ -1355,11 +1561,13 @@ function markFieldsAsFilled(filledKeys, profile) {
 
   // Animasi menghilang (Fade out) secara mulus setelah 2.2 detik
   markerFadeOutTimer = setTimeout(() => {
-    activeMarkers.forEach(({ el, badge }) => {
-      if (el && el.classList.contains("govconnect-field-filled")) {
-        el.classList.remove("govconnect-field-filled");
-        el.classList.add("govconnect-field-fadeout");
-      }
+    activeMarkers.forEach(({ el, markerEl, badge }) => {
+      [el, markerEl].forEach(node => {
+        if (node && node.classList.contains("govconnect-field-filled")) {
+          node.classList.remove("govconnect-field-filled");
+          node.classList.add("govconnect-field-fadeout");
+        }
+      });
       if (badge && badge.classList.contains("govconnect-badge-filled")) {
         badge.classList.add("govconnect-badge-fadeout");
       }
@@ -1743,6 +1951,17 @@ async function fillSemanticElement(el, profileKey) {
   // T6/T10: tidak ada lagi fallback PII dummy hardcoded.
   if (!profile) return;
 
+  if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
+    const ok = await fillFileInputElement(el, profile, profileKey);
+    if (ok) {
+      const markerEl = getMarkerTargetElement(el) || el;
+      markerEl.classList.remove("govconnect-field-ready", "govconnect-field-focus");
+      markerEl.classList.add("govconnect-field-filled");
+      markerEl.style.borderColor = "#16a34a";
+    }
+    return;
+  }
+
   let value = profile[profileKey];
   if (!value && profileKey === "mother_name") {
     value = profile.mother_name || profile.nama_ibu;
@@ -2018,14 +2237,16 @@ async function fillForm(profile, targetFields = null) {
       }
     }
 
-    // Hanya isi jika field tersebut dicentang/ada dalam profile yang dikirim
-    if (!profile || !(profileKey in profile)) {
+    // Hanya isi jika field tersebut dicentang/ada dalam profile (atau tersedia slot foto untuk input file)
+    const isFileEl = el.tagName.toLowerCase() === "input" && inputType === "file";
+    const resolvedFileSlot = isFileEl ? resolvePhotoSlot(profile, profileKey) : null;
+    if (!profile || (!(profileKey in profile) && !resolvedFileSlot)) {
       results.push({ id: fieldIdentifier, status: "skipped", profileKey });
       continue;
     }
 
     const value = profile[profileKey];
-    if (value === undefined || value === null || value === "") {
+    if ((value === undefined || value === null || value === "") && !resolvedFileSlot) {
       results.push({ id: fieldIdentifier, status: "skipped", profileKey });
       continue;
     }
@@ -2148,57 +2369,16 @@ async function fillForm(profile, targetFields = null) {
       continue;
     }
 
-    // Jika tag adalah input type=file (Autofill Berkas & Foto Dokumen)
-    if (el.tagName.toLowerCase() === "input" && (el.type || "").toLowerCase() === "file") {
-      let docPhotos = {};
-      if (profile && profile.document_photos) {
-        try {
-          docPhotos = typeof profile.document_photos === "string"
-            ? JSON.parse(profile.document_photos)
-            : profile.document_photos;
-        } catch (e) {}
-      }
-
-      let photoSlot = null;
-      if (profileKey === "foto_ktp" || profileKey === "ktp") photoSlot = docPhotos.ktp;
-      else if (profileKey === "foto_kk" || profileKey === "kk") photoSlot = docPhotos.kk;
-      else if (profileKey === "pasfoto") photoSlot = docPhotos.pasfoto;
-      else if (profileKey === "foto_npwp" || profileKey === "npwp_card") photoSlot = docPhotos.npwp_card;
-      else if (profileKey === "foto_ijazah" || profileKey === "ijazah") photoSlot = docPhotos.ijazah;
-      else if (docPhotos[profileKey]) photoSlot = docPhotos[profileKey];
-
-      if (photoSlot && photoSlot.data) {
-        try {
-          const parts = photoSlot.data.split(",");
-          const mimeType = photoSlot.type || (parts[0].match(/:(.*?);/) ? parts[0].match(/:(.*?);/)[1] : "image/jpeg");
-          const byteString = atob(parts[1]);
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-          const blob = new Blob([ab], { type: mimeType });
-          const file = new File([blob], photoSlot.name || `${profileKey}.jpg`, { type: mimeType });
-
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          el.files = dataTransfer.files;
-
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-          el.dispatchEvent(new Event("change", { bubbles: true }));
-
-          filledCount++;
-          results.push({ id: fieldIdentifier, status: "filled", profileKey });
-          continue;
-        } catch (fileErr) {
-          console.warn("GovConnect: Error saat autofill file input:", fileErr);
-          results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-          continue;
-        }
+    // Jika tag adalah input type=file (Autofill Berkas & Foto Dokumen — standar & kustom)
+    if (isFileEl) {
+      const fileFilled = await fillFileInputElement(el, profile, profileKey);
+      if (fileFilled) {
+        filledCount++;
+        results.push({ id: fieldIdentifier, status: "filled", profileKey });
       } else {
         results.push({ id: fieldIdentifier, status: "skipped", profileKey });
-        continue;
       }
+      continue;
     }
 
     // Input text / textarea / date / tel / email
@@ -2758,10 +2938,14 @@ async function matchProfileKey(el) {
   if (inputType === "password") {
     return null;
   }
+  const isFileInput = inputType === "file";
+  const isRelevantKeyForInput = (k) => (isFileInput ? isPhotoProfileKey(k) : !isPhotoProfileKey(k));
 
-  // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence)
-  const autoKey = getAutocompleteProfileKey(el);
-  if (autoKey) return autoKey;
+  // Pass 0: Standard W3C HTML5 autocomplete attribute (100% confidence, non-file)
+  if (!isFileInput) {
+    const autoKey = getAutocompleteProfileKey(el);
+    if (autoKey) return autoKey;
+  }
 
   const hostEl = el.closest("p-dropdown, mat-select") || el;
   const rawFormControl = hostEl.getAttribute("formcontrolname") || hostEl.getAttribute("ng-reflect-name") || "";
@@ -2797,7 +2981,15 @@ async function matchProfileKey(el) {
   const strippedSanitizedName = strip(sanitizedName);
   const expandedSanitizedName = ABBREVIATION_MAP[cleanSanitizedName] || ABBREVIATION_MAP[strippedSanitizedName] || "";
 
-  for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+  const keywordEntries = isFileInput
+    ? [
+        ...Object.entries(KEYWORD_MAP).filter(([k]) => isPhotoProfileKey(k)),
+        ...Object.entries(KEYWORD_MAP).filter(([k]) => Boolean(TEXT_TO_PHOTO_KEY[k]))
+      ]
+    : Object.entries(KEYWORD_MAP).filter(([k]) => !isPhotoProfileKey(k));
+
+  for (const [profileKey, keywords] of keywordEntries) {
+    const resolvedKey = isFileInput ? (TEXT_TO_PHOTO_KEY[profileKey] || profileKey) : profileKey;
     const strippedProfileKey = strip(profileKey);
     if (
       elName === profileKey || elId === profileKey || formControl === profileKey ||
@@ -2805,7 +2997,7 @@ async function matchProfileKey(el) {
       strippedElName === strippedProfileKey || strippedElId === strippedProfileKey || strippedFormControl === strippedProfileKey ||
       cleanSanitizedName === profileKey || expandedSanitizedName === profileKey || strippedSanitizedName === strippedProfileKey
     ) {
-      return profileKey;
+      return resolvedKey;
     }
     for (const kw of keywords) {
       const cleanKw = kw.replace(/[^a-z0-9]/g, "_");
@@ -2817,7 +3009,7 @@ async function matchProfileKey(el) {
         strippedElName === strippedKw || strippedElId === strippedKw || strippedFormControl === strippedKw ||
         cleanSanitizedName === cleanKw || expandedSanitizedName === kw || strippedSanitizedName === strippedKw
       ) {
-        return profileKey;
+        return resolvedKey;
       }
     }
   }
@@ -2853,7 +3045,32 @@ async function matchProfileKey(el) {
   const hasWork = inputTokens.includes("work") || inputTokens.includes("kantor") || inputTokens.includes("office");
   const hasCell = inputTokens.includes("cell") || inputTokens.includes("mobile") || inputTokens.includes("hp") || inputTokens.includes("handphone") || inputTokens.includes("wa") || inputTokens.includes("whatsapp");
 
-  // Shortcut Pasti Berdasarkan Semantik Universal
+  // Shortcut khusus untuk <input type="file"> (Berkas Foto Resmi)
+  if (isFileInput) {
+    if (inputTokens.includes("ktp") || inputTokens.includes("ektp") || (inputTokens.includes("kartu") && inputTokens.includes("penduduk"))) {
+      return "foto_ktp";
+    }
+    if (inputTokens.includes("kk") || (inputTokens.includes("kartu") && inputTokens.includes("keluarga"))) {
+      return "foto_kk";
+    }
+    if (inputTokens.includes("npwp")) {
+      return "foto_npwp";
+    }
+    if (inputTokens.includes("ijazah") || inputTokens.includes("skl")) {
+      return "foto_ijazah";
+    }
+    if (
+      inputTokens.includes("pasfoto") ||
+      (inputTokens.includes("pas") && inputTokens.includes("foto")) ||
+      inputTokens.includes("avatar") ||
+      (inputTokens.includes("foto") && (inputTokens.includes("diri") || inputTokens.includes("wajah") || inputTokens.includes("formal") || inputTokens.includes("profil")))
+    ) {
+      return "pasfoto";
+    }
+  }
+
+  // Shortcut Pasti Berdasarkan Semantik Universal (khusus input non-file)
+  if (!isFileInput) {
   // 1. Email
   if (inputTokens.includes("email") || inputTokens.includes("surel") || inputTokens.includes("emailadr")) {
     return "email";
@@ -2990,12 +3207,14 @@ async function matchProfileKey(el) {
   if ((inputTokens.includes("company") || inputTokens.includes("perusahaan") || inputTokens.includes("instansi")) && !inputTokens.includes("position") && !inputTokens.includes("posisi")) {
     return "organization";
   }
+  }
 
   // Phase 2.5: BM25 for long labels (> 4 tokens)
   if (inputTokens.length > 4) {
     let bestBm25Score = 0;
     let bestBm25Candidate = null;
     for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+      if (!isRelevantKeyForInput(profileKey)) continue;
       for (const kw of keywords) {
         const score = computeBM25Similarity(inputTokens, tokenize(kw));
         if (score > bestBm25Score) {
@@ -3015,6 +3234,7 @@ async function matchProfileKey(el) {
   let highestScore = 0;
 
   for (const [profileKey, keywords] of Object.entries(KEYWORD_MAP)) {
+    if (!isRelevantKeyForInput(profileKey)) continue;
     // Modifier Penalty: Mencegah tabrakan silang
     if (hasIbu && profileKey === "full_name") continue;
     if (hasAyah && profileKey === "full_name") continue;

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: govconnect-api
+    runtime: python
+    region: singapore  # Terdekat dengan Indonesia
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        value: sqlite:///./govconnect.db
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PII_ENCRYPTION_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.13.0"

@@ -3,10 +3,14 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, ForeignKey, JSON
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
+
+# SQLite uses unbounded TEXT; MySQL TEXT caps at 64KB, so base64 documents require LONGTEXT.
+_LONGTEXT = Text().with_variant(LONGTEXT, "mysql")
 
 
 class User(Base):
@@ -87,8 +91,8 @@ class Profile(Base):
     driver_license = Column(Text, nullable=True)
     
     # Extensible fields
-    custom_fields = Column(Text, nullable=True)  # JSON string
-    document_photos = Column(Text, nullable=True)  # JSON metadata/base64
+    custom_fields = Column(_LONGTEXT, nullable=True)  # JSON string
+    document_photos = Column(_LONGTEXT, nullable=True)  # JSON metadata/base64
     
     # Metadata
     completion_percentage = Column(Integer, default=0)

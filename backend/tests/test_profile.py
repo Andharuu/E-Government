@@ -181,3 +181,55 @@ def test_profile_telephone_fields(client, auth_headers):
     assert get_data["fax"] == "021-5554321"
 
 
+def test_profile_document_photos_and_custom_image_roundtrip(client, auth_headers):
+    """Memverifikasi penyimpanan & dekripsi berkas foto berukuran besar (>64KB) pada document_photos dan custom_fields."""
+    # Simulasi base64 payload ~90KB (melebihi limit 64KB MySQL TEXT standar)
+    sample_b64 = "data:image/jpeg;base64," + ("A" * 90000)
+    doc_photos = {
+        "ktp": {
+            "name": "ktp_sample.jpg",
+            "type": "image/jpeg",
+            "data": sample_b64,
+            "size": 67500,
+        }
+    }
+    custom_payload = {
+        "categories": [],
+        "fields": [
+            {
+                "id": "cf_img_1",
+                "category": "documents",
+                "key": "foto_paspor",
+                "label": "Foto Halaman Paspor",
+                "value": "paspor.jpg",
+                "type": "image",
+                "aliases": ["foto_paspor", "scan_paspor"],
+                "photoData": sample_b64,
+                "photoName": "paspor.jpg",
+                "photoSize": 67500,
+            }
+        ],
+    }
+
+    put_res = client.put(
+        "/api/v1/profile/me",
+        json={
+            "document_photos": json.dumps(doc_photos),
+            "custom_fields": json.dumps(custom_payload),
+        },
+        headers=auth_headers,
+    )
+    assert put_res.status_code == 200
+
+    get_res = client.get("/api/v1/profile/me", headers=auth_headers)
+    assert get_res.status_code == 200
+    get_data = get_res.json()
+    parsed_docs = json.loads(get_data["document_photos"])
+    parsed_cf = json.loads(get_data["custom_fields"])
+    assert parsed_docs["ktp"]["name"] == "ktp_sample.jpg"
+    assert len(parsed_docs["ktp"]["data"]) > 90000
+    assert parsed_cf["fields"][0]["photoName"] == "paspor.jpg"
+    assert len(parsed_cf["fields"][0]["photoData"]) > 90000
+
+
+

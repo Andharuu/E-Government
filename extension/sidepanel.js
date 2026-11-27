@@ -137,6 +137,23 @@ function renderFieldOptionsHtml(currentSelectedKey) {
   });
   html += `</optgroup>`;
 
+  // 3. Group Berkas & Foto Dokumen Resmi
+  const documentPhotoKeys = [
+    { key: "foto_ktp", label: "Foto e-KTP" },
+    { key: "foto_kk", label: "Foto Kartu Keluarga (KK)" },
+    { key: "pasfoto", label: "Pasfoto Diri" },
+    { key: "foto_npwp", label: "Foto Kartu NPWP" },
+    { key: "foto_ijazah", label: "Foto Ijazah" }
+  ];
+  html += `<optgroup label="Berkas & Foto Dokumen">`;
+  documentPhotoKeys.forEach(item => {
+    const selected = item.key === currentSelectedKey ? "selected" : "";
+    const val = cachedProfile ? cachedProfile[item.key] : "";
+    const valSnippet = val ? ` (${truncate(val, 15)})` : "";
+    html += `<option value="${item.key}" ${selected}>${item.label}${escapeHtml(valSnippet)}</option>`;
+  });
+  html += `</optgroup>`;
+
   return html;
 }
 
@@ -257,11 +274,23 @@ function processCustomFields(profile) {
         ? JSON.parse(profile.document_photos)
         : profile.document_photos;
 
-      if (docs.ktp?.data) profile.foto_ktp = docs.ktp.name || "ktp.jpg";
-      if (docs.kk?.data) profile.foto_kk = docs.kk.name || "kk.jpg";
-      if (docs.pasfoto?.data) profile.pasfoto = docs.pasfoto.name || "pasfoto.jpg";
-      if (docs.npwp_card?.data) profile.foto_npwp = docs.npwp_card.name || "npwp.jpg";
-      if (docs.ijazah?.data) profile.foto_ijazah = docs.ijazah.name || "ijazah.jpg";
+      const photoSlotMap = {
+        ktp: "foto_ktp",
+        kk: "foto_kk",
+        pasfoto: "pasfoto",
+        npwp_card: "foto_npwp",
+        ijazah: "foto_ijazah"
+      };
+      if (docs && typeof docs === "object") {
+        Object.entries(docs).forEach(([slotKey, slotVal]) => {
+          if (slotVal && slotVal.data) {
+            const fileName = slotVal.name || `${slotKey}.jpg`;
+            const mappedKey = photoSlotMap[slotKey] || slotKey;
+            if (!profile[mappedKey]) profile[mappedKey] = fileName;
+            if (slotKey !== mappedKey && !profile[slotKey]) profile[slotKey] = fileName;
+          }
+        });
+      }
     } catch (e) {
       console.warn("GovConnect: Gagal memproses document_photos di sidepanel:", e);
     }
@@ -290,7 +319,11 @@ function processCustomFields(profile) {
 
     items.forEach(item => {
       if (item && item.key) {
-        profile[item.key] = item.value;
+        if (item.type === "image" && item.photoData) {
+          profile[item.key] = item.photoName || item.value || `${item.key}.jpg`;
+        } else {
+          profile[item.key] = item.value;
+        }
         customFieldLabels[item.key] = item.label || item.key;
 
         // Auto-Cross-Binding cerdas ke profil standar jika field standar kosong
@@ -1067,12 +1100,14 @@ async function executeAutofill() {
     }
   });
 
-  // Pastikan komponen tanggal lahir tersedia lengkap di payload
+  // Pastikan komponen tanggal lahir, berkas foto, dan kolom kustom tersedia di payload autofill
   if (cachedProfile) {
     if (cachedProfile.birth_date && selectedProfile.birth_date === undefined) selectedProfile.birth_date = cachedProfile.birth_date;
     if (cachedProfile.birth_day && selectedProfile.birth_day === undefined) selectedProfile.birth_day = cachedProfile.birth_day;
     if (cachedProfile.birth_month && selectedProfile.birth_month === undefined) selectedProfile.birth_month = cachedProfile.birth_month;
     if (cachedProfile.birth_year && selectedProfile.birth_year === undefined) selectedProfile.birth_year = cachedProfile.birth_year;
+    if (cachedProfile.document_photos) selectedProfile.document_photos = cachedProfile.document_photos;
+    if (cachedProfile.custom_fields) selectedProfile.custom_fields = cachedProfile.custom_fields;
   }
 
   try {
