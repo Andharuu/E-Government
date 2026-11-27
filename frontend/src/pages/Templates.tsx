@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { profileApi, type Profile } from '../services/api';
 import {
@@ -704,9 +705,9 @@ export function TemplatesPage() {
       )}
 
       {/* ── DETAIL MODAL ── */}
-      {selectedTemplate && (
+      {selectedTemplate && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setSelectedTemplate(null)}
         >
           <div
@@ -828,13 +829,14 @@ export function TemplatesPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── CREATE CUSTOM TEMPLATE MODAL ── */}
-      {isCreateModalOpen && (
+      {isCreateModalOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setIsCreateModalOpen(false)}
         >
           <div
@@ -992,7 +994,8 @@ export function TemplatesPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

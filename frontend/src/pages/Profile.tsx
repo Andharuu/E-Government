@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { profileApi, type Profile } from '../services/api';
 import type {
   CustomFieldType,
@@ -1596,9 +1597,9 @@ export function ProfilePage() {
       )}
 
       {/* ── Modal Tambah Kolom Kustom ── */}
-      {showAddFieldModal && (
+      {showAddFieldModal && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setShowAddFieldModal(false)}
         >
           <div
@@ -1806,13 +1807,14 @@ export function ProfilePage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Modal Tambah Kategori Baru ── */}
-      {showAddCategoryModal && (
+      {showAddCategoryModal && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setShowAddCategoryModal(false)}
         >
           <div
@@ -1884,13 +1886,14 @@ export function ProfilePage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Lightbox Image Preview ── */}
-      {previewPhoto && (
+      {previewPhoto && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setPreviewPhoto(null)}
         >
           <div
@@ -1918,7 +1921,8 @@ export function ProfilePage() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

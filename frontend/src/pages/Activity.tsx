@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { activityApi, type Activity } from '../services/api';
 import {
   RotateCcw,
@@ -287,9 +288,9 @@ export function ActivityPage() {
               key={tab.id}
               type="button"
               onClick={() => setStatusFilter(tab.id as any)}
-              className={`px-3 py-2 rounded-lg transition-colors ${
+              className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                 statusFilter === tab.id
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-accent text-accent-fg shadow-xs'
                   : 'text-ink-2 hover:text-ink'
               }`}
             >
@@ -427,8 +428,8 @@ export function ActivityPage() {
       </div>
 
       {/* Confirmation Modal */}
-      {confirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+      {confirmModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] p-4 animate-fadeIn">
           <div className="w-full max-w-md rounded-[20px] border border-line bg-surface p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
@@ -461,7 +462,8 @@ export function ActivityPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

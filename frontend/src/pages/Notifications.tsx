@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { type NotificationItem } from '../services/api';
 import { useNotifications } from '../hooks/useNotifications';
@@ -575,7 +576,7 @@ export function NotificationsPage() {
       </div>
 
       {/* ── BAR FILTER STICKY DUA DIMENSI ── */}
-      <div className="sticky top-0 z-30 bg-canvas/95 backdrop-blur-md py-3 border-b border-line -mx-4 px-4 sm:-mx-6 sm:px-6">
+      <div className="sticky top-0 z-30 bg-canvas/90 backdrop-blur-xs py-3 border-b border-line -mx-4 px-4 sm:-mx-6 sm:px-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Dimensi A: Segmented Control Status (Semua | Belum Dibaca) */}
           <div className="flex items-center p-1 rounded-xl border border-line bg-surface-2 self-start shrink-0">
@@ -764,7 +765,7 @@ export function NotificationsPage() {
             {paginatedSections.map(section => (
               <div key={section.id} className="space-y-2">
                 {/* Header Tanggal Sticky */}
-                <div className="sticky top-14 z-20 bg-canvas/90 backdrop-blur-md py-1.5 flex items-center justify-between">
+                <div className="sticky top-14 z-20 bg-canvas/85 backdrop-blur-xs py-1.5 flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-ink-3">
                     {section.title}
                   </span>
@@ -1007,9 +1008,9 @@ export function NotificationsPage() {
       </div>
 
       {/* ── DETAIL DRAWER (SIDE OVER) ── */}
-      {selectedDrawerNotif && (
+      {selectedDrawerNotif && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex justify-end animate-in fade-in duration-200 p-0 sm:p-3 sm:pl-0"
           onClick={() => setSelectedDrawerNotif(null)}
         >
           <div
@@ -1017,7 +1018,7 @@ export function NotificationsPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Detail Notifikasi"
-            className="w-full max-w-md h-full bg-surface border-l border-line shadow-2xl p-6 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200"
+            className="w-full max-w-md h-full bg-surface border border-line rounded-l-[24px] sm:rounded-[24px] shadow-2xl p-6 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200"
           >
             <div className="space-y-6">
               {/* Header Drawer */}
@@ -1136,13 +1137,14 @@ export function NotificationsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── DIALOG KONFIRMASI HAPUS SEMUA ── */}
-      {isConfirmClearModalOpen && (
+      {isConfirmClearModalOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setIsConfirmClearModalOpen(false)}
         >
           <div
@@ -1184,7 +1186,8 @@ export function NotificationsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── TOAST HAPUS DENGAN URUNGKAN (UNDO 6 DETIK) ── */}

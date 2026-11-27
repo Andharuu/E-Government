@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FontAwesome } from '../ui';
 
 interface AuthHelpModalProps {
@@ -64,8 +65,8 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] p-4 animate-fadeIn">
       <div className="card page-enter relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden">
         {/* Close Button */}
         <button
@@ -225,6 +226,7 @@ export function AuthHelpModal({ isOpen, onClose, defaultEmail = '' }: AuthHelpMo
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

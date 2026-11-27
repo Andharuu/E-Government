@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Sun,
@@ -1171,8 +1172,8 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
       </div>
 
       {/* ================= MODAL LUPA KATA SANDI ================= */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
+      {showForgotModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 dark:bg-[#030d18]/65 backdrop-blur-[3px] p-4 animate-fadeIn">
           <div
             className={`w-full max-w-[420px] rounded-2xl border p-6 shadow-2xl relative ${
               theme === 'dark' ? 'bg-[#0B1E38] border-white/[0.08]' : 'bg-white border-slate-200'
@@ -1244,7 +1245,8 @@ export function AuthPage({ defaultMode }: AuthPageProps) {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= MODAL SYARAT & KETENTUAN ================= */}

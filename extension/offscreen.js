@@ -4,22 +4,19 @@ import { pipeline, env } from './lib/transformers.js';
 // Digunakan untuk menjalankan komputasi berat (Web Workers / ONNX) secara background tanpa memblokir UI thread
 
 // ============================================================
-// KONFIGURASI ONNX RUNTIME WEBASSEMBLY (SAFEGUARDS)
+// KONFIGURASI ONNX RUNTIME WEBASSEMBLY (SAFEGUARDS - MV3 LOCAL ONLY)
 // ============================================================
 // Tujuan konfigurasi ini:
-//   1. Mengarahkan path .wasm + Web Worker ke CDN publik yang stabil → mencegah
-//      kegagalan "Failed to fetch/load .wasm or worker" saat file lokal tidak lengkap.
+//   1. Menggunakan path .wasm dan model lokal yang dibundel di dalam ekstensi
+//      (kepatuhan kebijakan Manifest V3: zero remotely hosted code).
 //   2. Mematikan multithreading (numThreads = 1, proxy = false) → mencegah error
 //      SharedArrayBuffer dan menghindari keharusan menyetel header COOP/COEP.
-
-// Pin versi ONNX Runtime Web ke rilis stabil yang kompatibel dengan Transformers.js.
-const ONNX_RUNTIME_VERSION = '1.14.0';
 
 // Base path lokal ekstensi untuk zero-network execution
 const LOCAL_WASM_PATH = chrome.runtime.getURL('lib/');
 const LOCAL_MODEL_PATH = chrome.runtime.getURL('models/');
 
-// 1. ATUR PATH WASM SECARA EKSPLISIT (Prioritas Lokal)
+// 1. ATUR PATH WASM SECARA EKSPLISIT (Lokal Bundled)
 env.backends.onnx.wasm.wasmPaths = LOCAL_WASM_PATH;
 
 // 2. NONAKTIFKAN MULTITHREADING (WAJIB)
@@ -31,9 +28,9 @@ env.backends.onnx.wasm.proxy = false;
 // Logging ORT dibuat lebih tenang agar tidak membanjiri console offscreen.
 env.backends.onnx.logLevel = 'error';
 
-// Konfigurasi Zero-Remote Egress: Aktifkan model lokal dari extension/models/
+// Konfigurasi Zero-Remote Egress: Hanya gunakan model lokal dari extension/models/
 env.allowLocalModels = true;
-env.allowRemoteModels = true; // Fallback jika local model corrupt
+env.allowRemoteModels = false;
 env.localModelPath = LOCAL_MODEL_PATH;
 
 // 3. NONAKTIFKAN BROWSER CACHE API (WAJIB untuk Chrome Extension / MV3 Offscreen)
@@ -47,73 +44,40 @@ console.log(
 );
 
 // ============================================================
-// INISIALISASI PIPELINE SBERT (dengan Error Handling & Fallback)
+// INISIALISASI PIPELINE SBERT (Lokal Bundled)
 // ============================================================
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-
-// Daftar strategi pemuatan berlapis. Prioritas 1: Bundel Lokal (Offline 100%).
-// Lapis berikutnya sebagai fallback bila file lokal mengalami kendala.
-const LOAD_STRATEGIES = [
-  {
-    name: 'Local Bundled WASM & Models (100% Offline / Zero-Network)',
-    wasmPaths: LOCAL_WASM_PATH
-  },
-  {
-    name: 'jsDelivr CDN (fallback)',
-    wasmPaths: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
-  },
-  {
-    name: 'unpkg CDN (fallback)',
-    wasmPaths: `https://unpkg.com/onnxruntime-web@${ONNX_RUNTIME_VERSION}/dist/`
-  }
-];
 
 // Inisialisasi pipeline model SBERT
 let extractorPromise = null;
 
-async function loadExtractorWithFallback() {
-  let lastError = null;
+async function loadLocalExtractor() {
+  try {
+    env.backends.onnx.wasm.wasmPaths = LOCAL_WASM_PATH;
+    env.backends.onnx.wasm.numThreads = 1;
+    env.backends.onnx.wasm.proxy = false;
 
-  for (const strategy of LOAD_STRATEGIES) {
-    try {
-      // Setel ulang path WASM sesuai strategi yang sedang dicoba.
-      // Selalu eksplisit dan tidak pernah kosong.
-      env.backends.onnx.wasm.wasmPaths = strategy.wasmPaths;
-      env.backends.onnx.wasm.numThreads = 1;
-      env.backends.onnx.wasm.proxy = false;
-
-      console.log(`GovConnect Offscreen: Mencoba memuat model SBERT via ${strategy.name}...`);
-      console.log(`GovConnect Offscreen: wasmPaths = ${env.backends.onnx.wasm.wasmPaths}`);
-
-      const extractor = await pipeline('feature-extraction', MODEL_ID);
-      console.log(`GovConnect Offscreen: Model SBERT berhasil dimuat via ${strategy.name}.`);
-      return extractor;
-    } catch (err) {
-      lastError = err;
-      console.error(
-        `GovConnect Offscreen: Gagal memuat model via ${strategy.name}. ` +
-        `Mencoba strategi berikutnya...`,
-        err
-      );
-    }
+    console.log(`GovConnect Offscreen: Memuat model SBERT lokal (${MODEL_ID})...`);
+    const extractor = await pipeline('feature-extraction', MODEL_ID);
+    console.log('GovConnect Offscreen: Model SBERT lokal berhasil dimuat.');
+    return extractor;
+  } catch (err) {
+    const finalErr = new Error(
+      `Gagal memuat model SBERT lokal "${MODEL_ID}". ` +
+      `Penyebab: ${err?.message || err}`
+    );
+    finalErr.cause = err;
+    throw finalErr;
   }
-
-  // Semua strategi gagal → lempar error terakhir dengan pesan yang jelas.
-  const finalErr = new Error(
-    `Gagal memuat model SBERT "${MODEL_ID}" dari semua sumber CDN. ` +
-    `Penyebab terakhir: ${lastError?.message || lastError}`
-  );
-  finalErr.cause = lastError;
-  throw finalErr;
 }
 
 async function getExtractor() {
   if (!extractorPromise) {
-    extractorPromise = loadExtractorWithFallback()
+    extractorPromise = loadLocalExtractor()
       .catch(err => {
         // Penting: reset promise agar percobaan berikutnya bisa mencoba lagi,
         // alih-alih menyimpan promise yang sudah rejected selamanya.
-        console.error("GovConnect Offscreen: Inisialisasi model SBERT gagal total:", err);
+        console.error("GovConnect Offscreen: Inisialisasi model SBERT gagal:", err);
         extractorPromise = null;
         throw err;
       });
